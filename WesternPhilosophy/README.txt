@@ -1,4 +1,4 @@
-Contents
+Contents:
 
 Greek Philosophy
 1. Milesian School
@@ -16,3 +16,8 @@ Greek Philosophy
 14. Skepticism
 15. Jewis-Greek Pilosopy
 16. Neoplatomism
+
+
+
+References
+Frank Thilly, A History of Philosophy
