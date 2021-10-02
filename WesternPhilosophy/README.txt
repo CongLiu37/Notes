@@ -14,5 +14,5 @@ Greek Philosophy
 11. Epicurus
 12. Stocism
 14. Skepticism
-15. Jewis-reek Pilosopy
+15. Jewis-Greek Pilosopy
 16. Neoplatomism
