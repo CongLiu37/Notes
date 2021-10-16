@@ -17,7 +17,8 @@ Greek Philosophy
 15. Jewis-Greek Pilosopy
 16. Neoplatomism
 
-
+Medieval Philosophy
+17. Patristic Period
 
 References
 Frank Thilly, A History of Philosophy
