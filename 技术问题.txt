@@ -1,0 +1,15 @@
+{添加域名到hosts}
+$ ping github.com
+# 打开hosts
+$ sudo vi /etc/hosts
+# 在hosts最后一行添加
+# 20.205.243.166 github.com
+# 保存并生效
+$ sudo /etc/init.d/networking restart
+
+{Google scholar国内域名}
+172.245.241.129 scholar.google.com
+172.245.241.129 scholar.google.com.hk
+172.245.241.129 scholar.google.com.tw
+172.245.241.129 scholar.google.com.sg
+172.245.241.129 scholar.googleusercontent.com
