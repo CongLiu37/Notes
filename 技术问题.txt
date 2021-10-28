@@ -1,4 +1,4 @@
-{添加域名到hosts}
+# 添加域名到hosts
 $ ping github.com
 # 打开hosts
 $ sudo vi /etc/hosts
@@ -7,9 +7,46 @@ $ sudo vi /etc/hosts
 # 保存并生效
 $ sudo /etc/init.d/networking restart
 
-{Google scholar国内域名}
+# Google scholar国内域名
 172.245.241.129 scholar.google.com
 172.245.241.129 scholar.google.com.hk
 172.245.241.129 scholar.google.com.tw
 172.245.241.129 scholar.google.com.sg
 172.245.241.129 scholar.googleusercontent.com
+
+# Github国内域名
+140.82.112.4 github.com
+140.82.112.10 nodeload.github.com
+140.82.114.5 api.github.com
+140.82.113.10 codeload.github.com
+185.199.108.133 raw.github.com
+185.199.108.153 training.github.com
+185.199.108.153 assets-cdn.github.com
+185.199.108.153 documentcloud.github.com
+185.199.108.154 help.github.com
+
+# domain: githubstatus.com
+185.199.108.153 githubstatus.com
+
+# domain: fastly.net
+199.232.69.194 github.global.ssl.fastly.net
+
+# domain: githubusercontent.com
+185.199.108.133 raw.githubusercontent.com
+185.199.108.154 pkg-containers.githubusercontent.com
+185.199.108.133 cloud.githubusercontent.com
+185.199.108.133 gist.githubusercontent.com
+185.199.108.133 marketplace-screenshots.githubusercontent.com
+185.199.108.133 repository-images.githubusercontent.com
+185.199.108.133 user-images.githubusercontent.com
+185.199.108.133 desktop.githubusercontent.com
+185.199.108.133 avatars.githubusercontent.com
+185.199.108.133 avatars0.githubusercontent.com
+185.199.108.133 avatars1.githubusercontent.com
+185.199.108.133 avatars2.githubusercontent.com
+185.199.108.133 avatars3.githubusercontent.com
+185.199.108.133 avatars4.githubusercontent.com
+185.199.108.133 avatars5.githubusercontent.com
+185.199.108.133 avatars6.githubusercontent.com
+185.199.108.133 avatars7.githubusercontent.com
+185.199.108.133 avatars8.githubusercontent.com
