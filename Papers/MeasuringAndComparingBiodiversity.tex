@@ -20,6 +20,7 @@
 \usepackage[toc,page]{appendix}
 \usepackage{makecell}
 \usepackage{amsfonts}
+\usepackage{amsmath}
 
 \title{Measuring and Comparing Biodiversity}
 \date{}
@@ -145,7 +146,7 @@ Guiasu (2011, 2012) proposed a weighted Gini-Simpson index for pairs of species 
 
 \newline
 
-Ricota & Szeidl (2009) and de Bello \textit{et al} (2010) transformed Rao's $Q$ for functional diversity to the effective number of species with a maximum species pairwise distance $d_{max}$. 
+Ricota and Szeidl (2009) and de Bello \textit{et al} (2010) transformed Rao's $Q$ for functional diversity to the effective number of species with a maximum species pairwise distance $d_{max}$. 
 It is the theoretical species richness of a perfectly even assemblage with the same Rao's $Q$ as the original assemblage:
 \begin{equation}
     Q_e = \frac{1}{1-Q/d_{max}}
@@ -153,18 +154,19 @@ It is the theoretical species richness of a perfectly even assemblage with the s
 \end{equation}
 
 \section{Measure diversity by Hill numbers}
-% Consider an assemblage of $S$ species with relative abundance $\{p_1,p_2.p_3,\dots,p_S\}, \sum\limits_{i=1}^{S}p_i=1$. All species are connected by a phylogenetic tree and a matrix of pairwise distance between species based on functional traits. 
-Measures of species diversity, phylogenetic diversity and functional diversity can be incorporated into a unified framework based on Hill numbers (Chao and Chiu \textit{et al}, 2014)
+Measures of species diversity, phylogenetic diversity and functional diversity can be incorporated into a unified framework based on Hill numbers (Chao and Chiu \textit{et al} 2014)
 Denote by $C$ an assemblage of entities (species or phylogenetic tree branch segments or species pairs), and by $u$ elements in $C$. 
 For each $u$, denote by $v_u$ its attribute value and by $a_u$ its weight (\textit{e.g.} biomass, cover area, abundance). 
 The weighted mean attribute value is
 \begin{equation}
     \bar{V} = \sum\limits_{u\in C}a_uv_u
+    \label{WeightedMeanAttributeValue}
 \end{equation}
 The Hill number of order $q$ is defined as 
 \begin{equation}
     ^{q}AD(\bar{V}) = 
     [\sum\limits_{u\in C} v_u \times (\frac{a_u}{\bar{V}})^q]^{\frac{1}{1-q}} = [\sum\limits_{u\in C} v_u \times (\frac{a_u}{\sum\limits_{u\in C}a_uv_u})^q]^{\frac{1}{1-q}}
+    \label{HillNumber}
 \end{equation}
 AD is short for attribute diversity. 
 Further, 
@@ -179,6 +181,75 @@ Further,
 \end{equation}
 
 \newline
+
+For species diversity, $C$ is an assemblage of species indexed by $i = 1,2,3,\dots,S$. 
+Denote by $p_i$ the relative abundance of $i$th species and let it be its weight. 
+Since all species are equally distinct, they have same attribute value 1. 
+Thus, Equation \ref{HillNumber} reduces to ordinary Hill numbers (Hill 1973):
+\begin{equation}
+    ^{q}D = (\sum\limits_{i=1}^{S}p_i^q)^\frac{1}{1-q}
+    \label{HillNUmber_Species}
+\end{equation}
+
+\newline
+
+For phylogenetic diversity, $C$ is the assemblage of all branch segments in a phylogenetic tree. 
+Index each branch by $i = 1,2,3,\dots,B$, and denote by $L_i$ the length of branch $i$. 
+Let $a_i$ be the branch abundance, \textit{i.e.} the summed relative abundance of all species descended from the branch $i$. 
+The weighted mean attribute value is 
+\begin{equation}
+    \bar{T} = \sum\limits_{i=1}^{B}L_ia_i
+    \label{WeightedMeanAttributeValue_Phylogenetic}
+\end{equation}
+The Hill number for phylogenetic diversity is (Chao \textit{et al} 2010)
+\begin{equation}
+    ^{q}\bar{D}(\bar{T}) = [\sum\limits_{i=1}^{B}L_i \times (\frac{a_i}{\sum\limits_{i=1}^{B}L_ia_i})^q]^{(\frac{1}{1-q})}
+    \label{HillNumber_Phylogenetic}
+\end{equation}
+
+\newline
+
+For functional diversity, $C$ is the assemblage of pairs of species. 
+Denote by $S$ species richness and by $p_i$ relative abundance of $i$th species. 
+For species pair $u=(i,j)$, its attribute value $v_u$ equals functional distance of species $i$ and $j$, \textit{i.e.} $v_u = d_{ij}$. 
+Its abundance $a_u = p_ip_j$. 
+The weighted mean attribute value is 
+\begin{equation}
+    Q = \sum\limits_{i,j=1}^{S}d_{ij}p_ip_j
+    \label{WeightedMeanAttributeValue_Functional}
+\end{equation}
+The Hill number for functional diversity is (Chiu and Chao 2014)
+\begin{equation}
+    ^{q}FD(Q) = [\sum\limits_{i,j=1}^{S}d_{ij} \times (\frac{p_ip_j}{\sum\limits_{i,j=1}^{S}d_{ij}p_ip_j})^q]^{\frac{1}{1-q}}
+\end{equation}
+
+\section{Replication principle}
+Assume there is a total of $N$ assemblages of entities (species or phylogenetic tree branch segments or species pairs), denoted by $C_1, C_2,\dots,C_N$. 
+These assemblages are completely distinct, \textit{i.e.} $\forall i,j=1,2,\dots,N, C_iC_j = \emptyset$. 
+For assemblage $C_i$, denote by by $v_{ui}$ the attribute value of element $u \in C_i$ and by $a_{ui}$ its weight. 
+Assume all assemblages are identical in weighted mean attribute value and Hill number of same order $q$, \textit{i.e.}
+\begin{equation}
+    \bar{V} = \sum\limits_{u\in C_i}a_{ui}v_{ui}, i = 1,2,3,\dots,N
+\end{equation}
+and 
+\begin{equation}
+    ^{q}AD(\bar{V}) = [\sum\limits_{u\in C_i} v_{ui} \times (\frac{a_{ui}}{\bar{V}})^q]^{\frac{1}{1-q}}, i = 1,2,3,\dots,N
+\end{equation}
+For pooled assemblage $\sum\limits_{i=1}^{N}C_i$, its weighted mean attribute value 
+\begin{equation}
+    \bar{V}_p = \sum\limits_{i=1}^{N} \sum\limits_{u\in C_i}a_{ui}v_{ui} = \sum\limits_{i=1}^{N} \bar{V} = N \times \bar{V}
+\end{equation}
+The Hill number of pooled assemblage is 
+\begin{equation}
+    \begin{aligned}
+    ^{q}AD(\bar{V}_p) & = 
+    [\sum\limits_{i=1}^{N} \sum\limits_{u\in C_i} v_{ui} \times (\frac{a_{ui}}{\bar{V}_p})^q]^{\frac{1}{1-q}} \\ & =
+    [\sum\limits_{i=1}^{N} \sum\limits_{u\in C_i} v_{ui} \times (\frac{a_{ui}}{\bar{V}})^q \times \frac{1}{N^q}]^{\frac{1}{1-q}} \\ & = 
+    \{\sum\limits_{i=1}^{N} \frac{1}{N_q} \times [^{q}AD(\bar{V})]^{1-q}\}^{\frac{1}{1-q}} \\ &=
+    N \times ^{q}AD(\bar{V})
+    \end{aligned}
+    \label{ReplicationPrinciple}
+\end{equation}
 
 
 
