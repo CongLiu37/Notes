@@ -1,0 +1,287 @@
+\documentclass[11pt]{article}
+
+\usepackage{setspace}
+\usepackage[colorlinks,linkcolor=blue,anchorcolor=red,citecolor=black]{hyperref}
+\usepackage{lineno}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{floatrow}
+\usepackage{subfigure}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{geometry}
+\usepackage{multirow}
+\usepackage{longtable}
+\usepackage{lscape}
+\usepackage{booktabs}
+\usepackage{natbib}
+\usepackage{natbibspacing}
+\usepackage[toc,page]{appendix}
+\usepackage{makecell}
+\usepackage{amsfonts}
+\usepackage{amsmath}
+
+\title{Measuring Biodiversity by Hill Numbers}
+\date{}
+
+\linespread{1.5}
+\geometry{left=2cm,right=2cm,top=2cm,bottom=2cm}
+
+\begin{document}
+
+  \maketitle
+
+  \linenumbers
+
+\section{Diversity of species, phylogeny and function}
+For an assemblage of individuals, its diversity can be measured in ways different in incorporation of species difference. 
+In species diversity, all species are assumed to be equally distinct. 
+In phylogenetic diversity, evolutionary or phylogenetic differences, \textit{e.g.} taxonomic classification and well-supported phylogenetic tree, is taken into consideration. 
+All else being equal, an assemblage of closely related species is less diverse in terms of phylogeny than an assemblage composed of highly divergent species. 
+In functional diversity, species are described by a set of traits and species difference can be measured by dissimilarities of trait profiles. 
+There are three main approach to functional diversity measures: distance based, dendrogram based and trait-value based.
+
+\section{Classic measures of species diversity}
+\label{SpeciesRichness}
+Species richness is a simple count of number of species present in an assemblage. 
+It is an intuitive and frequently used diversity index and is a key metric in conservation biology. 
+However, it does not incorporate information about species abundances and is difficult to estimate accurately from small samples. 
+
+\newline
+
+Shannon index is another measure of diversity, defined as 
+\begin{equation}
+    H_{Sh} = -\sum\limits_{i=1}^{S}p_i \ln p_i
+    \label{ShannonIndex}
+\end{equation}
+where $S$ is species richness and $p_i$ is the relative abundance of $i$th species.
+
+\newline
+
+Gini-Simpson index is another popular measure of diversity, defined as 
+\begin{equation}
+    H_{GS}=1-\sum\limits_{i=1}^{S}p_i^2
+    \label{GiniSimpsonIndex}
+\end{equation}
+It gives the probability that two randomly drawn individuals belong to different species.
+
+\newline
+
+Species richness, Shannon index and Gini-Simpson index can be united into a family of generalized indexes, parametrized by a variable $q \ge 0$. 
+The generalized index is defined as 
+\begin{equation}
+    ^{q}H = \frac{1-\sum\limits_{i=1}^{S} p_i^q}{q-1}
+    \label{GeneralizedIndex}
+\end{equation}
+Thus,
+\begin{equation}
+    ^{0}H = S-1
+\end{equation}
+\begin{equation}
+    ^{1}H = \lim\limits_{q\rightarrow 1}{^{q}H} = H_{Sh}
+\end{equation}
+\begin{equation}
+    ^{2}H = H_{GS}
+\end{equation}
+
+\section{Classic measures of phylogenetic diversity}
+\label{FaithPD}
+Faith's phylogenetic diversity (PD) (Faith 1992) is a widely used measure of phylogenetic diversity. 
+It is defined as the sum of all branch lengths of a phylogenetic tree connecting all species present in an assemblage. 
+Like species richness, Faith's PD does not incorporate information on species abundance.
+
+\newline
+
+Rao's quadratic entropy (Rao 1982) incorporates both phylogeny and species abundances, defined as 
+\begin{equation}
+    Q = \sum\limits_{i=1}^{S}\sum\limits_{i=1}^{S} d_{ij}p_{i}p_{j}
+    \label{RaoPD}
+\end{equation}
+where $d_{ij}$ is the phylogenetic distance between $i$th and $j$th species. 
+
+\newline
+
+Allen \textit{et al.} (2009) proposed another measure of phylogenetic measure: 
+\begin{equation}
+    H_p = -\sum\limits_{i} L_ia_i \ln a_i
+    \label{AllenPD}
+\end{equation}
+where $L_i$ is the length of branch $i$, $a_i$ is the summed relative abundance of all species descended from branch $i$.
+
+\newline
+
+For an ultrametric tree in which all branch tips are the same distance (denote by depth $T$) to the root, Faith's PD, Rao's $Q$ and $H_p$ of Allen \textit{et al.} can be generalized as (Pavoine \textit{et al.} 2009)
+\begin{equation}
+    ^{q}I = \frac{T-\sum\limits_{i}L_ia_i^q}{q-1}
+    \label{GeneralizedPD}
+\end{equation}
+Thus,
+\begin{equation}
+    ^{0}I = \sum\limits_{i}L_i - T
+\end{equation}
+\begin{equation}
+    ^{1}I = \lim_{q\rightarrow 1} {^{q}I} = -\sum\limits_{i}L_ia_i\ln a_i
+\end{equation}
+\begin{equation}
+    ^{2}I = T-\sum\limits_{i}L_i a_i^2
+\end{equation}
+
+\section{Classic measures of functional diversity (distance-based)}
+Functional attribute diversity (FAD) (Walker \textit{et al.} 1999) is the sum of the pairwise distances between species: 
+\begin{equation}
+    FAD = \sum\limits_{i=1}^{S}\sum\limits_{j=1}^{S}d_{ij}
+    \label{FAD}
+\end{equation}
+where $d_{ij}$ is the functional distance of species $i$ and $j$.
+
+\newline
+
+Rao's $Q$ (Equation \ref{RaoPD}) can be used as a measure of functional diversity, replacing $d_{ij}$ by functional distance. 
+Guiasu (2011, 2012) proposed a weighted Gini-Simpson index for pairs of species as follows:
+\begin{equation}
+    GS_D = \sum\limits_{i=1}^{S}\sum\limits_{j=1}^{S}d_{ij}p_ip_j = Q-\sum\limits_{i=1}^{S}\sum\limits_{j=1}^{S}d_{ij}(p_ip_j)^2
+    \label{Guiasu}
+\end{equation}
+
+\newline
+
+Ricota and Szeidl (2009) and de Bello \textit{et al.} (2010) transformed Rao's $Q$ for functional diversity to the effective number of species with a maximum species pairwise distance $d_{max}$. 
+It is the theoretical species richness of a perfectly even assemblage with the same Rao's $Q$ as the original assemblage:
+\begin{equation}
+    Q_e = \frac{1}{1-Q/d_{max}}
+    \label{EffectiveRichnessQ}
+\end{equation}
+
+\section{Measure diversity by Hill numbers}
+Measures of species diversity, phylogenetic diversity and functional diversity can be incorporated into a unified framework based on Hill numbers (Chao and Chiu \textit{et al.} 2014)
+Denote by $C$ an assemblage of entities (species or phylogenetic tree branch segments or species pairs), and by $u$ elements in $C$. 
+For each $u$, denote by $v_u$ its attribute value and by $a_u$ its weight (\textit{e.g.} biomass, cover area, abundance). 
+The weighted mean attribute value is
+\begin{equation}
+    \bar{V} = \sum\limits_{u\in C}a_uv_u
+    \label{WeightedMeanAttributeValue}
+\end{equation}
+The Hill number of order $q$ is defined as 
+\begin{equation}
+    ^{q}AD(\bar{V}) = 
+    [\sum\limits_{u\in C} v_u \times (\frac{a_u}{\bar{V}})^q]^{\frac{1}{1-q}} = [\sum\limits_{u\in C} v_u \times (\frac{a_u}{\sum\limits_{u\in C}a_uv_u})^q]^{\frac{1}{1-q}}
+    \label{HillNumber}
+\end{equation}
+AD is short for attribute diversity. 
+Further, 
+\begin{equation}
+    ^{0}AD(\bar{V}) = \sum\limits_{u\in C}v_u
+\end{equation}
+\begin{equation}
+    ^{1}AD(\bar{V}) = \lim\limits_{q\rightarrow 1}{^{1}AD(\bar{V})} = exp\{-\sum\limits_{u\in C}v_u\frac{a_u}{\bar{V}}\ln\frac{a_u}{\bar{V}}\} 
+\end{equation}
+\begin{equation}
+    ^{2}AD(\bar{V}) = \frac{1}{\sum\limits_{u\in C}v_u (\frac{a_u}{\bar{V}})^2}
+\end{equation}
+
+\newline
+
+For species diversity, $C$ is an assemblage of species indexed by $i = 1,2,3,\dots,S$. 
+Denote by $p_i$ the relative abundance of $i$th species and let it be its weight. 
+Since all species are equally distinct, they have same attribute value 1. 
+Thus, Equation \ref{HillNumber} reduces to ordinary Hill numbers (Hill 1973):
+\begin{equation}
+    ^{q}D = (\sum\limits_{i=1}^{S}p_i^q)^\frac{1}{1-q}
+    \label{HillNUmber_Species}
+\end{equation}
+
+\newline
+
+For phylogenetic diversity, $C$ is the assemblage of all branch segments in a phylogenetic tree. 
+Index each branch by $i = 1,2,3,\dots,B$, and denote by $L_i$ the length of branch $i$. 
+Let $a_i$ be the branch abundance, \textit{i.e.} the summed relative abundance of all species descended from the branch $i$. 
+The weighted mean attribute value is 
+\begin{equation}
+    \bar{T} = \sum\limits_{i=1}^{B}L_ia_i
+    \label{WeightedMeanAttributeValue_Phylogenetic}
+\end{equation}
+The Hill number for phylogenetic diversity is (Chao \textit{et al.} 2010)
+\begin{equation}
+    ^{q}\bar{D}(\bar{T}) = [\sum\limits_{i=1}^{B}L_i \times (\frac{a_i}{\sum\limits_{i=1}^{B}L_ia_i})^q]^{(\frac{1}{1-q})}
+    \label{HillNumber_Phylogenetic}
+\end{equation}
+
+\newline
+
+For functional diversity, $C$ is the assemblage of pairs of species. 
+Denote by $S$ species richness and by $p_i$ relative abundance of $i$th species. 
+For species pair $u=(i,j)$, its attribute value $v_u$ equals functional distance of species $i$ and $j$, \textit{i.e.} $v_u = d_{ij}$. 
+Its abundance $a_u = p_ip_j$. 
+The weighted mean attribute value is 
+\begin{equation}
+    Q = \sum\limits_{i,j=1}^{S}d_{ij}p_ip_j
+    \label{WeightedMeanAttributeValue_Functional}
+\end{equation}
+The Hill number for functional diversity is (Chiu and Chao 2014)
+\begin{equation}
+    ^{q}FD(Q) = [\sum\limits_{i,j=1}^{S}d_{ij} \times (\frac{p_ip_j}{\sum\limits_{i,j=1}^{S}d_{ij}p_ip_j})^q]^{\frac{1}{1-q}}
+\end{equation}
+
+\section{Replication principle}
+Assume there is a total of $N$ assemblages of entities (species or phylogenetic tree branch segments or species pairs), denoted by $C_1, C_2,\dots,C_N$. 
+These assemblages are completely distinct, \textit{i.e.} $\forall i,j=1,2,\dots,N, C_iC_j = \emptyset$. 
+For assemblage $C_i$, denote by by $v_{ui}$ the attribute value of element $u \in C_i$ and by $a_{ui}$ its weight. 
+Assume all assemblages are identical in weighted mean attribute value and Hill number of same order $q$, \textit{i.e.}
+\begin{equation}
+    \bar{V} = \sum\limits_{u\in C_i}a_{ui}v_{ui}, i = 1,2,3,\dots,N
+\end{equation}
+and 
+\begin{equation}
+    ^{q}AD(\bar{V}) = [\sum\limits_{u\in C_i} v_{ui} \times (\frac{a_{ui}}{\bar{V}})^q]^{\frac{1}{1-q}}, i = 1,2,3,\dots,N
+\end{equation}
+For pooled assemblage $\sum\limits_{i=1}^{N}C_i$, its weighted mean attribute value 
+\begin{equation}
+    \bar{V}_p = \sum\limits_{i=1}^{N} \sum\limits_{u\in C_i}a_{ui}v_{ui} = \sum\limits_{i=1}^{N} \bar{V} = N \times \bar{V}
+\end{equation}
+The Hill number of pooled assemblage is 
+\begin{equation}
+    \begin{aligned}
+    ^{q}AD(\bar{V}_p) & = 
+    [\sum\limits_{i=1}^{N} \sum\limits_{u\in C_i} v_{ui} \times (\frac{a_{ui}}{\bar{V}_p})^q]^{\frac{1}{1-q}} \\ & =
+    [\sum\limits_{i=1}^{N} \sum\limits_{u\in C_i} v_{ui} \times (\frac{a_{ui}}{\bar{V}})^q \times \frac{1}{N^q}]^{\frac{1}{1-q}} \\ & = 
+    \{\sum\limits_{i=1}^{N} \frac{1}{N_q} \times [^{q}AD(\bar{V})]^{1-q}\}^{\frac{1}{1-q}} \\ &=
+    N \times ^{q}AD(\bar{V})
+    \end{aligned}
+    \label{ReplicationPrinciple}
+\end{equation}
+
+\section{Decomposition of Hill numbers}
+Consider a pooled assemblage composed of $N$ assemblages. 
+Denote by $z_{ik}$ the weight of $i$th entities (species or phylogenetic tree branch segments or species pairs) in $k$th assemblage, where $i=1,2,3,\dots,S$ and $k=1,2,3,\dots,N$. 
+The total weight in $k$th assemblage is $z_{+k}=\sum_{i=1}^{S}z_{ik}$, and the total weight of $i$th entity in the pooled assemblage is $z_{i+}=\sum_{k=1}^{N}z_{ik}$. 
+The total weight of all entities in the pooled assemblage is $z_{++}=\sum_{k=1}^{N}\sum_{i=1}^{S}z_{ik}$. 
+The attribute value of $i$th entity is $v_i$. 
+
+\newline
+
+The gamma diversity of the pooled assemblage given by Equation \ref{HillNumber} is 
+\begin{equation}
+    ^qAD_{\gamma}(\bar{V}) = (\sum_{i=1}^{S}v_i \times (\frac{z_{i+}}{\sum_{i=1}^{S}z_{i+}v_i})^q )^{\frac{1}{1-q}}
+    \label{Gamma}
+\end{equation}
+The alpha diversity is (Chiu \textit{et al.}) 
+\begin{equation}
+    ^qAD_{\alpha}(\bar{V}) = ( \sum_{i=1}^{S}v_i \times \sum_{k=1}^{N} (\frac{z_{ik}}{\sum_{i=1}^{S}z_{i+}v_i} )^q )^{\frac{1}{1-q}}
+    \label{Alpha}
+\end{equation}
+The beta diversity is
+\begin{equation}
+    ^qAD_{\beta}(\bar{V}) = \frac{1}{N}\frac{^qAD_{\gamma}(\bar{V})}{^qAD_{\alpha}(\bar{V})}
+\end{equation}
+
+\newline
+
+When the $N$ assemblages are completely identical, \textit{i.e.} $z_{ik}=z$ for all $i=1,2,3,\dots,S$ and $k=1,2,3,\dots,N$, $^qAD_{\beta}(\bar{V})$ equals 1. 
+When the $N$ assemblages are completely distinct, \textit{i.e.} any two assemblages do not have shared entity, $^qAD_{\beta}(\bar{V})$ equals $N$.
+
+\newpage
+\textbf{References} %APA
+\newline
+[1] Chao, A. , Chiu, C. H. , & Jost, L. . (2014). Unifying species diversity, phylogenetic diversity, functional diversity, and related similarity and differentiation measures through hill numbers. Annual Review of Ecology Evolution & Systematics, 45(1), 297-324.
+\end{document}
