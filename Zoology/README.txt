@@ -9,7 +9,7 @@
 7：环节动物门（）
 8：软体动物门（）
 9：节肢动物门（）
-10：棘皮动物门（）
+10：棘皮动物门（Echinodermata）
 11：半索动物门（Hemichordata）
 12：脊索动物门（Chordata）
 13：圆口纲（Cyclostomata）
