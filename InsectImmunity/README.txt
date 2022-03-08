@@ -6,3 +6,4 @@ Content:
 4. Nazario-Toole et al., 2017, Phagocytosis in insect immunity.
 5. Nakhleh et al., 2017, The melanization response in insect immunity.
 6. Lee et al., 2017, Microbiota, gut physiology, and insect immunity.
+7. Waterhouse et al., 2007, Immune-related genes and pathways in disease-vector mosquitoes.
