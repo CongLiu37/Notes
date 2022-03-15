@@ -2,7 +2,7 @@ Differential expression analysis of RNA-seq by Hisat2, StringTie and DESeq2 (ref
 
 Dependencies:
 Softwares: SRA-toolkit, FastQC, Trimmomatic, Cufflinks, Hisat2, SAMtools, StringTie, eggNOG-mapper. 
-R packages: DESeq2, ggplot2, ComplexHeatmap, circlize, annotate, stringr, dplyr
+R packages: DESeq2, ggplot2, ComplexHeatmap, circlize, annotate, stringr, dplyr, pathview
 
 main.R
 Major modules.

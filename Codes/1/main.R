@@ -62,7 +62,7 @@ gtf2faa = function(gff=gff,fna=fna,faa=faa){
   return(0)
 }
 
-# Hisat2; Build hisat2 index of reference genome.
+# Hisat2: Build hisat2 index of reference genome.
 Hisat2Build = function(fna=fna, # FASTA of reference genome
                        index_prefix=index_prefix){
   cmd = paste("hisat2-build",fna,index_prefix,sep=" ")
@@ -232,32 +232,33 @@ PCA = function(mat=mat, # Expression matrix transformed by vst.
 # Gene expression heatmap
 Heatmap = function(mat=mat, # Expression matrix transformed by vst.
                    output=output){
-    library(ComplexHeatmap)
-    library(circlize)
-    mat = read.table(mat,sep="\t",row.names=1,header=TRUE,quote="")
-    mat = log10(as.matrix(mat))
+  mat="Results/DESeq2_CountDataTransformations.txt"
+  library(ComplexHeatmap)
+  library(circlize)
+  mat = read.table(mat,sep="\t",row.names=1,header=TRUE,quote="")
+  mat = log10(as.matrix(mat))
     
-    pdf(output,onefile = FALSE)
-    p = Heatmap(mat,
-                heatmap_legend_param = list(title = "log10(VST counts)",
-                                            title_position="topleft",
-                                            title_gp=gpar(fontsize=5, fontface="bold"),
-                                            labels_gp = gpar(fontsize = 5)),
-                show_row_names = FALSE,
-                column_title="Sample",
-                column_names_gp=gpar(fontface ="bold",fontsize=10),
-                column_title_gp=gpar(fontface="bold",fontsize=10),
-                column_names_side = "top",
-                column_names_rot = 0,
-                cluster_rows=FALSE,
-                cluster_columns=TRUE,
-                col=circlize::colorRamp2(c(min(mat),max(mat)),c("white","red"))
+  pdf(output,onefile = FALSE)
+  p = Heatmap(mat,
+              heatmap_legend_param = list(title = "log10(VST counts)",
+                                          title_position="topleft",
+                                          title_gp=gpar(fontsize=5, fontface="bold"),
+                                          labels_gp = gpar(fontsize = 5)),
+              show_row_names = FALSE,
+              column_title="Sample",
+              column_names_gp=gpar(fontface ="bold",fontsize=10),
+              column_title_gp=gpar(fontface="bold",fontsize=10),
+              column_names_side = "top",
+              column_names_rot = 0,
+              cluster_rows=FALSE,
+              cluster_columns=TRUE,
+              col=circlize::colorRamp2(c(min(mat),median(mat),max(mat)),c("blue","white","red"))
     )
-    p=draw(p,heatmap_legend_side="left")
-    print(p)
-    dev.off()
+  p=draw(p,heatmap_legend_side="left")
+  print(p)
+  dev.off()
     
-    return(0)
+  return(0)
 }
 
 # GO enrichment
@@ -265,8 +266,9 @@ enrichGO = function(Background=Background, # Tabular table with header and row n
                                            # Row names are gene names.
                                            # Column "color" indicates whether gene expression is "up", "down" or "none" changed.
                     up=up, # logical. If true, enrich up-regulated genes.
-                    Annotation=Annotation, # Output of eggNOG-mapper, 
-                                           # Annotations of reference genome
+                    Annotation=Annotation, # Table (tab, header) with columns "query" and "GOs". 
+                                           # Can be output of eggNOG-mapper.
+                                           # Annotations of reference genome.
                     output_prefix=output_prefix){
   #Background="Results/DESeq2_DEGs.txt"
   #Annotation="Results/NemVec_faa_annotations_AgainstMetazoa.txt"
@@ -451,12 +453,27 @@ PathInf = function(Annotation=Annotation, # Output of eggNOG-mapper
   return(0)
 }
 
+# Convert IDs to KEGG identifier
+# KeggAPI = function(target_db=target_db, # KEGG organism code, e.g. hsa for Homo sapiens
+#                    source_db=source_db, # "ncbi-geneid" or "ncbi-proteinid" or "uniprot"
+#                    output_dir=out_dir){
+#   api=paste("http://rest.kegg.jp/conv/",target_db,source_db,sep="")
+#   cmd=paste("wget",api,sep=" ");system(cmd,wait=TRUE)
+#   d=read.table(source_db,header=FALSE,sep="\t",quote="")
+#   d[,1]=gsub(paste(source_db,":",sep=""),"",d[,1])
+#   colnames(d)=c(source_db,"KeggID")
+#   write.table(d,paste(output_dir,"/",source_db,"2KeggID.txt",sep=""),sep="\t",row.names=FALSE,quote=FALSE)
+#   write.table(d[,2],paste(output_dir,"/KeggID.txt",sep=""),sep="\t",row.names=FALSE,quote=FALSE)
+#   return(0)
+#}
+
 # KEGG pathway enrichment
 enrichKEGG = function(Background=Background, # Tabular table with header and row names.
                                              # Row names are gene names.
                                              # Column "color" indicates whether gene expression is "up", "down" or "none" changed.
                       up=up, # logical. If true, enrich up-regulated genes.
-                      Annotation=Annotation, # output of eggNOG-mapper, 
+                      Annotation=Annotation, # Table (tab, header) with columns "query", "KEGG_Pathway" and "KEGG_ko". 
+                                             # output of eggNOG-mapper, 
                                              # annotations of reference genome
                       WholeGenomePath=WholeGenomePath, # Tabular table with column "PathwayID", which represents KEGG pathways present in reference genome.
                                                        # It can be from MinPath, or from KEGG Taxonomy.
@@ -622,7 +639,7 @@ enrichKO = function(Background=Background, # Tabular table with header and row n
                                            # Row names are gene names.
                                            # Column "color" indicates whether gene expression is "up", "down" or "none" changed.
                     up=up,# logical. If true, enrich up-regulated genes.
-                    Annotation=Annotation, # output of eggNOG-mapper, 
+                    Annotation=Annotation, # output of eggNOG-mapper, column "query" and "KEGG_ko".
                                            # annotations of reference genome
                     KOmapper=KOmapper, # From MinPath github: https://github.com/mgtools/MinPath/blob/master/data/KEGG-family.txt
                     output_prefix=output_prefix){
@@ -737,3 +754,68 @@ enrichKOplot = function(df=df, # Tabular table with header.
   dev.off()
   return(plot)
 }
+
+# Visualize pathways enriched by DEGs.
+PathwayView=function(up_KO,down_KO, # Two tables of same format (tab, header). 
+                                    # Column "Pathway", which represents KEGG pathay IDs (e.g. map00330) enriched by up-/down-regulated genes.
+                     FC=FC, # Tabular table with header and row names.
+                            # Row names are gene names.
+                            # Column "color" indicates whether gene expression is "up", "down" or "none" changed.
+                     Genome=Genome # output of eggNOG-mapper, 
+                                   # annotations of reference genome
+    ){
+  #up_KO="/home/cong/OistCourseWork/Rotation_Watanabe/Results/up_KEGGenriched.txt"
+  #down_KO="/home/cong/OistCourseWork/Rotation_Watanabe/Results/down_KEGGenriched.txt"
+  #FC="/home/cong/OistCourseWork/Rotation_Watanabe/Results/DESeq2_DEGs.txt"
+  #Genome="/home/cong/OistCourseWork/Rotation_Watanabe/Results/NemVec_faa_annotations_AgainstMetazoa.txt"
+
+  # Pathways to be plotted.
+  up_KO=read.table(up_KO,sep="\t",header=TRUE,quote="")
+  down_KO=read.table(down_KO,sep="\t",header=TRUE,quote="")
+  KO=rbind(up_KO,down_KO)
+  KEGGs=KO[,"Pathway"];KEGGs=KEGGs[!duplicated(KEGGs)]
+  KEGGs=gsub("map","",KEGGs)
+
+  # DEGs
+  FC=read.table(FC,sep="\t",header=TRUE,quote="")
+  FC=data.frame(Gene=rownames(FC),log2fc=FC[,"log2FoldChange"],color=FC[,"color"])
+
+  Genome=read.table(Genome,sep="\t",header=TRUE,quote="")
+  Genome=data.frame(Gene=Genome[,"query"],KO=Genome[,"KEGG_ko"])
+  Genome=Genome[Genome[,"KO"]!="-",]
+  Genome=merge(Genome,FC,by="Gene",all=TRUE)
+  Genome=Genome[!is.na(Genome[,"KO"]),]
+
+  library(stringr);library(dplyr)
+  KOs = str_split(Genome[,"KO"],",")
+  time = sapply(KOs,length) 
+  Genome = data.frame(Gene=rep(Genome[,"Gene"],time),
+                      log2fc=rep(Genome[,"log2fc"],time),
+                      color=rep(Genome[,"color"],time),
+                      KO=unlist(KOs))
+  Genome=Genome[!is.na(Genome[,"log2fc"]),]
+
+  Genome[Genome[,"color"]=="none","log2fc"]=0
+  Genome[Genome[,"color"]=="up","log2fc"]=1
+  Genome[Genome[,"color"]=="down","log2fc"]=-1
+  func=function(vector){
+    f=0
+    if (-1 %in% vector){f=-1}
+    if (1 %in% vector){f=1}
+    return(f)
+  }
+  gene=tapply(Genome$log2fc,Genome$KO,func)
+  IDs=gsub("ko:","",names(gene));gene=as.vector(gene)
+  names(gene)=IDs
+
+  library(pathview)
+  pathview(gene.data=gene,
+           pathway.id=KEGGs,
+           species="nve",
+           node.sum="max",
+           limit=list(gene=1),
+           low=list(gene="blue"),
+           mid=list(gene="grey"),
+           high=list(gene="red"))
+}
+
