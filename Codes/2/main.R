@@ -4,17 +4,17 @@
 #   Softwares: BEDtools
 #   R packages: Biostrings
 
-gff2bed_promoters=function(gff=gff,bed=bed){# Extract bed of promoters from gff file.
-  #gff="/home/cong/Downloads/NemVec.gff"
+# Extract bed of promoters from gff file.
+gff2bed_promoters=function(gff=gff,bed=bed){
   gff=read.table(gff,sep="\t",header=FALSE,quote="")
-  gene=subset(gff,gff[,3]=="mRNA") # Only mRNA considered
+  gene=subset(gff,gff[,3]=="gene")
   bed_promoters=data.frame(gene[,1],gene[,4]-1501,gene[,4]+500,gene[,9],gene[,6],gene[,7])
   bed_promoters[,2][bed_promoters[,2]<0]=0
   
   # Wrangle gene IDs
   func=function(str){
     str=unlist(strsplit(str,";"))[1]
-    str=gsub(pattern="ID=rna-",replacement="",x=str)
+    str=gsub(pattern="ID=gene-",replacement="",x=str)
   }
   
   bed_promoters[,4]=sapply(bed_promoters[,4],func)
@@ -22,19 +22,20 @@ gff2bed_promoters=function(gff=gff,bed=bed){# Extract bed of promoters from gff 
   return(0)
 }
 
+# BEDtools: Extract fasta by bed.
 bed2fasta_promoter=function(bed=bed,fna=fna,promoters.fna=promoters.fna){
   cmd=paste("bedtools getfasta -s -name -fi",fna,"-bed",bed,">",promoters.fna,sep=" ")
   system(cmd,wait=TRUE)
   return(0)
 }
 
+# Search patterns.
 PatternInPromoters=function(promoters.fna=promoters.fna,
-                            pattern=pattern, # IUPAC ambiguity code
+                            pattern=pattern, # IUPAC ambiguity code.
+                                             # e.g. hypoxia response element
+                                             # RCGTGVBB
+                                             # means [AG][C][G][T][G][ACG][AG][AG]
                             out=out){
-  #promoters.fna="/home/cong/Downloads/promoters.fna"
-  #pattern="RCGTGVBB" #"[AG][C][G][T][G][ACG][AG][AG]" hypoxia response element
-  #out="/home/cong/OistCourseWork/Rotation_Watanabe/Results/HypoxiaResponseElements.txt"
-  
   library(Biostrings)
   promoters=readBStringSet(promoters.fna, format="fasta",
                            nrec=-1L, skip=0L, seek.first.rec=FALSE,
