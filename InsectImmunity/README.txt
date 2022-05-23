@@ -9,3 +9,4 @@ Content:
 7. Waterhouse et al., 2007, Immune-related genes and pathways in disease-vector mosquitoes.
 8. Altincicek et al., 2008, Wounding-mediated gene expression and accelerated viviparous reproduction of the pea aphid Acyrthosiphon pisum.
 9. Gerardo et al., 2010, Immunity and other defenses in pea aphids, Acyrthosiphon pisum.
+10. Hillyer, 2016, Insect immunology and hematopoiesis

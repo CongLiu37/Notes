@@ -1,90 +1,86 @@
 # Differentail expression analysis using RNA-seq and reference genome.
 # Dependencies:
-#   Softwares: SRA-toolkit, FastQC, Trimmomatic, Cufflinks, Hisat2, SAMtools, StringTie, Minpath, eggNOG-mapper (online web). 
+#   Softwares: SRA-toolkit, FastQC, Trimmomatic, Gffread, Hisat2, SAMtools, StringTie, Minpath, eggNOG-mapper (online web). 
 #   R packages: DESeq2, ggplot2, ComplexHeatmap, circlize, annotate, stringr, dplyr, pathview.
 
 # SRA-toolkit: Download fastq from NCBI SRA.
-DownloadSRA = function(AccessionList=AccessionList, # a tabular table without header. Its first column is SRA IDs.
+DownloadSRA = function(AccessionList=AccessionList, # a tabular table without header. 
+                                                    # Its first column is SRA IDs.
                        out_dir=out_dir, # directory in which downloaded fq files are saved.
                        threads=threads){
   threads = as.character(threads)
+  
   Accessions = read.table(AccessionList,sep="\t",header=FALSE,quote="")
   for (accession in Accessions[,1]){
       cmd = paste("fasterq-dump","--split-files",accession,"-O",out_dir,"-e",threads,sep=" ")
-      print(cmd)
-      system(cmd,wait=TRUE)
+      print(cmd);system(cmd,wait=TRUE)
   }
-  return(0)
+  
+  return(out_dir)
 }
 
-# FastQC: Check quality of sequencing data.
+# FastQC: Assess quality of sequencing data.
 QualityCheck = function(fq1=fq1, # Input fq file.
-                        fq2=fq2, # Input fq file. Set "None" if single-end.
+                        fq2=fq2, # Input fq file. Set "none" if single-end.
                         out_dir=out_dir, # directory in which quality check reports are saved.
                         threads=threads){
   threads = as.character(threads)
-  if (fq2!="None"){ # pair-end
+  
+  if (fq2!="none"){ # pair-end
       cmd = paste("fastqc","-o",out_dir,"-t",threads,fq1,fq2,sep=" ")
   }else{ # single-end
       cmd = paste("fastqc","-o",out_dir,"-t",threads,fq1,sep=" ")
   }
-  print(cmd)
-  system(cmd,wait=TRUE)
-  return(0)
+  print(cmd);system(cmd,wait=TRUE)
+  
+  return(out_dir)
 }
 
 # Trimmomatic: Quality control of sequencing data.
-QualityFilter = function(fq1=fq1,fq2=fq2, # Input fq files. Set fq2="None" if single-end.
-                         clean_fq1=clean_fq1,clean_fq2=clean_fq2,# Names of clean fq files. Set clean_fq2="None" if single-end.
-                         unpaired_fq1=unpaired_fq1,unpaired_fq2=unpaired_fq2, # Names of fq files for unpaired clean reads. Set unpaired_fq2="None" if single-end.
+QualityFilter = function(fq1=fq1,fq2=fq2, # Input fq files. Set fq2="none" if single-end.
+                         clean_fq1=clean_fq1,clean_fq2=clean_fq2,# Names of clean fq files. Set clean_fq2="none" if single-end.
+                         unpaired_fq1=unpaired_fq1,unpaired_fq2=unpaired_fq2, # Names of fq files for unpaired clean reads. Set unpaired_fq2="none" if single-end.
+                         QualityFilter=QualityFilter, # String of step options of Trimmomatic.
+                                                      # General steps included in quality filter:
+                                                      # 1. adaptor; 2. low quality tail; 3. read length; 4. average quality score
                          threads=threads){
   threads = as.character(threads)
     
-  # General steps included in quality filter:
-  # 1. adaptor; 2. low quality head/tail; 3. read length; 4. average quality score
-  # Modify QualityFilter according to quality check results
-  QualityFilter = "CROP:150 HEADCROP:15 LEADING:20 TRAILING:20 MINLEN:50 AVGQUAL:20" 
-    
-  if (fq2!="None"){ # pair-end
+  if (fq2!="none"){ # pair-end
       cmd = paste("trimmomatic","PE","-threads",threads,"-phred33",fq1,fq2,clean_fq1,unpaired_fq1,clean_fq2,unpaired_fq2,QualityFilter,sep=" ")
   }else{ # single-end
       cmd = paste("trimmomatic","SE","-threads",threads,"-phred33",fq1,clean_fq1,QualityFilter,sep=" ")
   }
-  print(cmd)
-  system(cmd,wait=TRUE)
+  print(cmd);system(cmd,wait=TRUE)
+  
   return(0)
 }
 
-# Cufflinks: Get transcripts from gff, and translate to protein. 
-# In this way, head line in faa will be ">transcript_ID  gene_ID"
-gtf2faa = function(gff=gff,fna=fna,faa=faa){
-  cmd = paste("gffread",gff,"-g",fna,"-y",paste(faa,"_temp",sep=""),sep=" ")
-  system(cmd,wait=TRUE)
-  
-  # Wrangle head lines of faa
-  system(paste("sed","\'s/rna-//\'",paste(faa,"_temp",sep=""),">",faa,sep=" "),wait=TRUE)
-  
-  system(paste("rm",paste(faa,"_temp",sep=""),sep=" "),wait=TRUE)
-  return(0)
+# gffread: Extract cds from gff.
+gffread = function(gff=gff,fna=fna,cds.fna=cds.fna){
+  cmd = paste("gffread",gff,"-g",fna,"-x",cds.fna,sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  return(cds.fna)
 }
 
 # Hisat2; Build hisat2 index of reference genome.
 Hisat2Build = function(fna=fna, # FASTA of reference genome
                        index_prefix=index_prefix){
   cmd = paste("hisat2-build",fna,index_prefix,sep=" ")
-  system(cmd,wait=TRUE)
-  return(0)
+  print(cmd);system(cmd,wait=TRUE)
+  return(index_prefix)
 }
 
 # Hisat2: Map reads to reference genome. 
 # SAMtools: Compress SAM to BAM and sort BAM.
-Hisat = function(fq1=fq1,fq2=fq2, # Input fq files. Make fq2="None" if single-end.
+Hisat = function(fq1=fq1,fq2=fq2, # Input fq files. Make fq2="none" if single-end.
                  index=index, # Basename of Hisat2 index of reference genome.
                  out_prefix=out_prefix, # Prefix of output BAM file.
                  threads=threads){
   threads = as.character(threads)
+  
   bam_filename=paste(out_prefix,".bam",sep="")
-  if (fq2!="None"){ # pair-end
+  if (fq2!="none"){ # pair-end
       cmd = paste("hisat2","--dta","-x",index,"-p",threads,"-1",fq1,"-2",fq2,"|",
                   "samtools","view","-@",threads,"-bS","|",
                   "samtools","sort","-@",threads,"-o",bam_filename,sep=" ")
@@ -93,31 +89,30 @@ Hisat = function(fq1=fq1,fq2=fq2, # Input fq files. Make fq2="None" if single-en
                   "samtools","view","-@",threads,"-bS","|",
                   "samtools","sort","-@",threads,"-o",bam_filename,sep=" ")
   }
-  print(cmd)
-  system(cmd,wait=TRUE)
-  return(0)
+  print(cmd);system(cmd,wait=TRUE)
+  return(bam_filename)
 }
 
 # StringTie: Assemble transcripts.
-StringTie = function(input_bam=input_bam, # Input BAM.
+StringTie = function(input_bam=input_bam, # Input sorted BAM.
                      gtf=gtf, # GTF of reference genome.
+                     output_prefix=output_prefix,
                      threads=threads){
   threads = as.character(threads)
-  output_prefix = gsub(pattern="\\.bam",replacement="",x=input_bam)
+  
   gtf_filename = paste(output_prefix,".gtf",sep="")
   cmd = paste("stringtie","-p", threads,"-G", gtf, "-o", gtf_filename, "-e -l", output_prefix, input_bam,sep=" ")
-  print(cmd)
-  system(cmd,wait = T)
-  return(0)
+  print(cmd);system(cmd,wait = T)
+  return(gtf_filename)
 }
 
 # prepDE.py3 provided by StringTie: Extract gene/transcript read count matrix from output of stringtie.
-run.prepDE.py <- function(inputfile=inputfile # A space-separated table without header. 
+run.prepDE.py = function(inputfile=inputfile # A space-separated table without header. 
                                               # Its first column is sample name, and second column is path to corresponding GTF from stringtie.
                          ){
   cmd = paste("python3","prepDE.py3","-i",inputfile,sep=" ")
-  print(cmd)
-  system(cmd,wait=T)
+  print(cmd);system(cmd,wait=T)
+  return(0)
 }
 
 # DESeq2: Differential expression analysis.
@@ -126,7 +121,8 @@ DESeq = function(mat=mat, # Expression matrix generated by stringtie-prepDE.py3.
                                     # first column is sample name, 
                                     # second column is a list of paths to fq files seperated by comma, 
                                     # third column is sample description (factor).
-                 # ith column of mat and ith row of metadata must represent the same sample.
+                                    # ith column of mat and ith row of metadata must represent the same sample.
+                                    # Name experiment group prior to control group.
                  output_prefix=output_prefix){
   library(DESeq2)
     
@@ -137,7 +133,7 @@ DESeq = function(mat=mat, # Expression matrix generated by stringtie-prepDE.py3.
   # Normalize read count via variance stabilizing transformation (vst).
   Transformed = as.data.frame(vst(as.matrix(countData),blind=FALSE))
   # This is the expression matrix shall be used for tasks other than differential expression analysis, e.g. PCA and clustering.
-  write.table(Transformed,paste(output_prefix,"CountDataTransformations.txt",sep=""),sep="\t",row.names=TRUE,quote=FALSE)
+  write.table(Transformed,paste(output_prefix,"_NormalizedCount.txt",sep=""),sep="\t",row.names=TRUE,quote=FALSE)
     
   # Differential expression.
   dds = DESeqDataSetFromMatrix(countData=countData,colData=colData,design=~Treatment)
@@ -145,11 +141,7 @@ DESeq = function(mat=mat, # Expression matrix generated by stringtie-prepDE.py3.
   res = results(dds)
   resOrdered = res[order(res$padj), ]
   resOrdered = as.data.frame(resOrdered)
-  
-  # Check whether the fold change is control/test or test/control.
-  # If in metadata, controls is listed prior to experiments, fold change is control/test
-  ##resOrdered$log2FoldChange =-resOrdered$log2FoldChange
-    
+
   # Whether a gene is induced, inhibited or not influenced.
   GetColor = function(i){
     FoldChange = resOrdered[i,"log2FoldChange"]
@@ -191,6 +183,7 @@ Volcano = function(deseq2=deseq2, # Tabular table of differential expression ana
               legend.title = element_blank())
     print(p)
     dev.off()
+    return(p)
 }
 
 #Principle component analysis
@@ -234,7 +227,7 @@ PCA = function(mat=mat, # Expression matrix transformed by vst.
             legend.title = element_blank())
     print(p)
     dev.off()
-    return(0)
+    return(p)
 }
 
 # Gene expression heatmap
@@ -264,8 +257,18 @@ Heatmap = function(mat=mat, # Expression matrix transformed by vst.
     p=draw(p,heatmap_legend_side="left")
     print(p)
     dev.off()
-    
-    return(0)
+    return(p)
+}
+
+# eggNOG-mapper: CDS functional annotation.
+eggNOG = function(cds.fna=cds.fna,out_prefix=out_prefix,
+                  threads=threads,block_size=block_size){
+  threads=as.character(threads);block_size=as.character(block_size)
+  
+  cmd=paste("emapper.py","-m","diamond","--itype","CDS","-i",cds.fna,"-o",out_prefix,
+            "--no_file_comments","--block_size",block_size,"--cpu",threads,sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  return(0)
 }
 
 # GO enrichment
@@ -277,13 +280,10 @@ enrichGO = function(Background=Background, # Tabular table with header and row n
                                            # Fields: query,GOs ("-" if unannotated) 
                                            # Annotations of reference genome
                     output_prefix=output_prefix){
-  #Background="Results/DESeq2_DEGs.txt"
-  #Annotation="Results/NemVec_faa_annotations_AgainstMetazoa.txt"
-  #output_prefix="Results/down_GO";up=F
-  
   # Read data
   Background = read.table(Background,sep="\t",header=TRUE,row.names=1,quote="")
-  Annotation = read.table(Annotation,sep="\t",header=TRUE,quote=""); Annotation = data.frame(query=Annotation[,"query"],term=Annotation[,"GOs"])
+  Annotation = read.table(Annotation,sep="\t",header=TRUE,quote="")
+  Annotation = data.frame(query=Annotation[,"query"],term=Annotation[,"GOs"])
   
   # DEG names
   if (up){
@@ -363,7 +363,7 @@ enrichGO = function(Background=Background, # Tabular table with header and row n
   write.table(data.frame(DEG=DEG2GO_des$DEG,GO=DEG2GO_des$GO,
                          Description=DEG2GO_des$Description,Category=DEG2GO_des$Category,
                          AdjustedP=DEG2GO_des$padj),
-              paste(output_prefix,"enriched.txt",sep=""),
+              paste(output_prefix,"_GOenriched.txt",sep=""),
               sep="\t",row.names=FALSE,quote=FALSE)
   return(0)
 }
@@ -372,7 +372,6 @@ enrichGO = function(Background=Background, # Tabular table with header and row n
 enrichGOplot = function(df=df, # Tabular table with header.
                                # Columns include "Description" (character), "Category" (factor), "AdjustedP" (numeric).
                         output_prefix=output_prefix){
-  #df="Results/up_GOenriched.txt";output_prefix="Results/up_GO"
   df=read.table(df,sep="\t",header=TRUE,quote="")
   df=data.frame(Description=df$Description,Category=df$Category,AdjustedP=df$AdjustedP)
   DEGcount=table(df$Description)
@@ -431,11 +430,18 @@ PathInf = function(Annotation=Annotation, # Output of eggNOG-mapper
   write.table(data,"temp_query2KO.txt",sep="\t",quote=FALSE,row.names=FALSE) # Temporary table.
   
   # Run MinPath
-  cmd = paste("python","MinPath.py","-ko","temp_query2KO.txt","-report",paste(output_prefix,".txt",sep=""),"-details",paste(output_prefix,"Details.txt",sep=""),sep=" ")
+  cmd = paste("python","MinPath.py","-ko","temp_query2KO.txt","-report",
+              paste(output_prefix,".txt",sep=""),
+              "-details",
+              paste(output_prefix,"_Details.txt",sep=""),
+              sep=" ")
   system(cmd,wait=TRUE)
   system(paste("rm","temp_query2KO.txt",sep=" "),wait=TRUE)
   
-  cmd = paste("sed","\'s/  /\t/\'",paste(output_prefix,".txt",sep=""),">",paste(output_prefix,"_tab.txt",sep=""))
+  cmd = paste("sed","\'s/  /\t/\'",
+              paste(output_prefix,".txt",sep=""),
+              ">",
+              paste(output_prefix,"_tab.txt",sep=""))
   system(cmd,wait=TRUE)
   
   Pathways = read.table(paste(output_prefix,"_tab.txt",sep=""),sep="\t",header=FALSE,quote="")
@@ -457,11 +463,13 @@ PathInf = function(Annotation=Annotation, # Output of eggNOG-mapper
   }
   Description = sapply(Pathways$V2,ExtractDes)
   
-  o = data.frame(PathwayID=PathwayID,Naive=Naive,MinPath=MinPath,TotalGene=TotalGene,GeneFound=GeneFound,Coverage=Coverage,Description=Description)
+  o = data.frame(PathwayID=PathwayID,Naive=Naive,MinPath=MinPath,
+                 TotalGene=TotalGene,GeneFound=GeneFound,Coverage=Coverage,
+                 Description=Description)
   o = o[order(o$Coverage,decreasing=TRUE),]
   
   write.table(o,paste(output_prefix,"_WholeGenome.txt",sep=""),row.names=FALSE,quote=FALSE)
-  return(0)
+  return(paste(output_prefix,"_WholeGenome.txt",sep=""))
 }
 
 # KEGG pathway enrichment
@@ -473,17 +481,10 @@ enrichKEGG = function(Background=Background, # Tabular table with header and row
                                              # Fields: query,KEGG_Pathway ("-" if unannotated),KEGG_ko ("-" if unannotated)
                                              # Annotations of reference genome
                       WholeGenomePath=WholeGenomePath, # Tabular table with column "PathwayID", which represents KEGG pathways present in reference genome.
-                                                       # It can be from MinPath, or from KEGG Taxonomy.
+                                                       # It can be from "PathInf", or from KEGG Taxonomy.
                       Pathway2KO=Pathway2KO, # From MinPath github: https://github.com/mgtools/MinPath/blob/master/data/KEGG-mapping.txt
                       KO2Des=KO2Des, # From MinPath github: https://github.com/mgtools/MinPath/blob/master/data/KEGG-family.txt
                       output_prefix=output_prefix){
-  #Background="Results/DESeq2_DEGs.txt"
-  #Annotation="Results/NemVec_faa_annotations_AgainstMetazoa.txt"
-  #WholeGenomePath="Results/Pathway_KEGG.txt"
-  #output_prefix = "Results/down_KEGGenriched";up=F
-  #Pathway2KO="Codes/MinPath/data/KEGG-mapping.txt"
-  #KO2Des="Codes/MinPath/data/KEGG-family.txt"
-
   Background = read.table(Background,sep="\t",header=TRUE,row.names=1,quote="")
   Annotation = read.table(Annotation,sep="\t",header=TRUE,quote="")
   Annotation = data.frame(query=Annotation[,"query"],term=Annotation[,"KEGG_Pathway"],KO=Annotation[,"KEGG_ko"])
@@ -524,7 +525,6 @@ enrichKEGG = function(Background=Background, # Tabular table with header and row
     DEG_NOterm = nrow(DEGs2Term)-DEG_term
     NoDEG_term = Term2AnnotationCount[term]-DEG_term
     NoDEG_NOterm = nrow(Background)-DEG_term-DEG_NOterm-NoDEG_term
-    #expected=(DEG_term+DEG_NOterm)*(DEG_term+NoDEG_term)/(DEG_term+DEG_NOterm+NoDEG_term+NoDEG_NOterm)
     return(DEG_term)
   }
   
@@ -585,7 +585,7 @@ enrichKEGG = function(Background=Background, # Tabular table with header and row
   out=out[!duplicated(out),]
   out=out[order(out$Pathway_padj),]
   write.table(out,paste(output_prefix,".txt",sep=""),sep="\t",quote=FALSE,row.names = FALSE)
-  return(0)
+  return(paste(output_prefix,".txt",sep=""))
 }
 
 # Bar plot for 30 most significantly enriched KEGG pathways.
@@ -637,11 +637,6 @@ PathwayView=function(up_KO,down_KO, # Two tables of same format (tab, header).
                                    # fields: query,KEGG_ko
                                    # annotations of reference genome
   ){
-  #up_KO="/home/cong/OistCourseWork/Rotation_Watanabe/Results/up_KEGGenriched.txt"
-  #down_KO="/home/cong/OistCourseWork/Rotation_Watanabe/Results/down_KEGGenriched.txt"
-  #FC="/home/cong/OistCourseWork/Rotation_Watanabe/Results/DESeq2_DEGs.txt"
-  #Genome="/home/cong/OistCourseWork/Rotation_Watanabe/Results/NemVec_faa_annotations_AgainstMetazoa.txt"
-  
   # Pathways to be plotted.
   up_KO=read.table(up_KO,sep="\t",header=TRUE,quote="")
   down_KO=read.table(down_KO,sep="\t",header=TRUE,quote="")
@@ -701,11 +696,6 @@ enrichKO = function(Background=Background, # Tabular table with header and row n
                                            # annotations of reference genome
                     KOmapper=KOmapper, # From MinPath github: https://github.com/mgtools/MinPath/blob/master/data/KEGG-family.txt
                     output_prefix=output_prefix){
-  #Background="Results/DESeq2_DEGs.txt";up=F
-  #Annotation="Results/NemVec_faa_annotations_AgainstMetazoa.txt"
-  #output_prefix="Results/up_KO"
-  #KOmapper="/home/cong/OistCourseWork/Rotation_Watanabe/Codes/MinPath/data/KEGG-family.txt"
-  
   Background = read.csv(Background,sep="\t",header=TRUE)
   Annotation = read.csv(Annotation,sep="\t",header=TRUE)
   Annotation = data.frame(query=Annotation[,"query"],term=Annotation[,"KEGG_ko"])
@@ -778,7 +768,6 @@ enrichKO = function(Background=Background, # Tabular table with header and row n
 enrichKOplot = function(df=df, # Tabular table with header.
                                # Columns include "Description" (character) and "AdjustedP" (numeric).
                         output_prefix=output_prefix){
-  #df="Results/up_KOenriched.txt";output_prefix="Results/up_KO"
   df=read.table(df,sep="\t",header=TRUE,quote="")
   df=data.frame(Description=df$Description,AdjustedP=df$AdjustedP)
   DEGcount=table(df$Description)

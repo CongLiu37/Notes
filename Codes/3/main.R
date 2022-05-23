@@ -1,6 +1,6 @@
 # Rarefaction analysis
-# Dependencies:
 
+# Simulate reduced sampling effort.
 SamplingEffortSimulation=function(AbundanceTable=AbundanceTable, # A dataframe with column "Name" and "Abundance".
                                   Time=Time, # How many times a reduced sampling effort is simulated.
                                   Effort=Effort, # Reduced sampling effort. It can be either percent of full effort (e.g. 0.50) or an integer smaller than fuu effort (e.g. 50).
