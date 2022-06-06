@@ -91,6 +91,16 @@ SPAdes=function(fq1=fq1,fq2=fq2, # Input fq files. Set fq2="none" if single-end.
   return(out_dir)
 }
 
+# Filter scaffolds that are too small.
+LengthFilter=function(fna=fna,threshold=threshold,out=out){
+  library(ape)
+  data=read.dna(fna,format="fasta",as.character=TRUE)
+  ContigSizes=sapply(data,length)
+  data=data[which(ContigSizes>threshold)]
+  write.dna(data,out,"fasta",colsep="")
+  return(out)
+}
+
 # Basic statistics of assembly.
 # N50, min/max/median contig size, gap percent, GC content
 BSG=function(fna=fna,
@@ -126,7 +136,7 @@ BSG=function(fna=fna,
   Min=min(ContigSizes);Max=max(ContigSizes);Median=median(ContigSizes);Mean=mean(ContigSizes)
   GapPercent=sum(GapSizes)/sum(ContigSizes)
   if (GenomeSize!="none"){LateralCoverage=sum(ContigSizes)/GenomeSize}else{LateralCoverage="none"}
-  GcContent=sum(GcSizes)/sum(ContigSizes)
+  GcContent=sum(GcSizes)/(sum(ContigSizes)-GapSizes)
   
   o=list(fna=fna,ThresholdSize=Threshold,
          SmallContigCount=SmallContigCount,TotalSmallContigSizes=TotalSmallContigSizes,
@@ -148,33 +158,31 @@ BUSCO=function(fna=fna, # Fasta file of nucleotide or protein.
                                 # BUSCO will download lineage dataset automatically.
                Out_prefix=Out_prefix, # Give the analysis run a recognisable short name.
                                       # Output folders and files will be labelled with this name.
-               Threads=Threads
-){
+                                      # Cannot be path
+               out_dir=out_dir,
+               Threads=Threads){
   Threads=as.character(Threads)
   
   cmd=paste("busco","--in",fna,"--lineage_dataset",Lineage,"--out",Out_prefix,"--mode",Mode,"--cpu",Threads,sep=" ")
   print(cmd);system(cmd,wait=TRUE)
-  
-  # Remove temporaries
-  # cmd=paste("rm","-r","augustus_config",sep=" ")
-  # print(cmd);system(cmd,wait=TRUE)
-  
+
   # Print result summary
-  cmd=paste("cat",paste(Out_prefix,"/short_summary.specific.",Lineage,".",Out_prefix,".txt"),sep=" ")
+  cmd=paste("cat",paste(Out_prefix,"/short_summary.specific.",Lineage,".",Out_prefix,".txt",sep=""),sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   
   # BUSCO completeness
-  re=readLines(paste(Out_prefix,"/short_summary.specific.",Lineage,".",Out_prefix,".txt"))[9]
+  re=readLines(paste(Out_prefix,"/short_summary.specific.",Lineage,".",Out_prefix,".txt",sep=""))[9]
   re=gsub("\t*C:","",re)
   re=strsplit(re,"%")[[1]][1]
   re=as.numeric(re)/100
   print("BUSCO completeness:")
   print(re)
-  
+  system(paste("mv",Out_prefix,out_dir,sep=" "),wait=TRUE)
   return(list(BuscoCompleteness=re,Database=Lineage))
 }
 
 # CheckM: Assess completeness and contamination of genomic bins via using collocated sets of genes that are ubiquitous and single-copy within a phylogenetic lineage by CheckM.
+# CheckM is dependent on python3, HMMER (>=3.1b1), prodigal (2.60 or >=2.6.1), pplacer (>=1.1). 
 checkm=function(bin_dir=bin_dir, # the directory in which bins are located.
                 bin_basename=bin_basename, # the base name of bins, e.g. fna
                 out_dir=out_dir,
@@ -196,9 +204,10 @@ Bowtie2Build = function(fna=fna, # FASTA of genome
 }
 
 # Bowtie2: Map reads to genome. 
-# SAMtools: Compress SAM to BAM and sort BAM.
+# SAMtools: Compress SAM to BAM, sort BAM, index BAM.
 Bowtie2 = function(fq1=fq1,fq2=fq2, # Input fq files. Make fq2="none" if single-end.
-                   index=index, # Basename of Hisat2 index of reference genome.
+                                    # Can be comma-separated list of files if multiple libraries used
+                   index=index, # Basename of Bowtie2 index of reference genome.
                    out_prefix=out_prefix, # Prefix of output BAM file.
                    threads=threads){
   threads = as.character(threads)
@@ -214,17 +223,117 @@ Bowtie2 = function(fq1=fq1,fq2=fq2, # Input fq files. Make fq2="none" if single-
                 "samtools","sort","-@",threads,"-o",bam_filename,sep=" ")
   }
   print(cmd);system(cmd,wait=TRUE)
+  
+  cmd=paste("samtools","index",bam_filename,"-@",threads,sep=" ")
+  print(cmd);system(cmd)
   return(bam_filename)
 }
 
-# SprayNPray: Binning based on tetranucleotide frequency, GC-content, codon usage bias, and read coverage.
-Binning=function(fna=fna,
+# Blastn
+Blastn=function(fna=fna,db=db,out=out,threads=threads){
+  threads=as.character(threads)
+  cmd=paste("blastn",
+            "-query",fna,
+            "-db",db,
+            "-out",out,
+            "-outfmt","'6 qseqid staxids bitscore std'",
+            "-max_target_seqs 10",
+            "-max_hsps 1",
+            "-evalue 1e-25",
+            "-num_threads",threads,sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+}
+
+# SprayNPray
+# SprayNPray is dependent on DIAMOND, Prodigal, Metabat, Python3, Biopython3, Joblib.
+SprayNPray=function(fna=fna,
                  bam=bam,
-                 out_basename=out_basename,
+                 ref=ref, # path to diamond database (.dmnd)
+                 blast="none",
+                 out_basename=out_basename, # cannot be path.
+                                            # output files are spitted into a directory named as out_basename
+                 out_dir=out_dir, # the directory out_basename are moved to out_dir
+                 threads=threads){
+  threads=as.character(threads)
+  out_dir=sub("/$","",out_dir)
+  
+  cmd=paste("spray-and-pray.py",
+            "-g",fna,
+            "-bam",bam,
+            "-out",out_basename,
+            "-lvl","Domain",
+            "-t",threads,
+            "-ref",ref,
+            sep=" ")
+  if (blast!="none"){cmd=paste(cmd,"-blast",blast,sep=" ")}
+  print(cmd);system(cmd,wait=TRUE)
+
+  cmd=paste("mv",out_basename,out_dir,sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  return(paste(out_dir,"/",out_basename,sep=""))
+}
+
+# Metabat2: Binning
+Metabat=function(fna=fna,
+                 bam=bam,
+                 MinContig=MinContig,
+                 out_prefix=out_prefix,
                  threads=threads){
   threads=as.character(threads)
   
-  cmd=paste("spray-and-pray.py","-g",fna,"-bam",bam,"-out",out_basename,"-t",threads,"--bin",sep=" ")
+  cmd=paste("jgi_summarize_bam_contig_depths",
+            "--outputDepth",paste(out_prefix,".depth.txt",sep=""),
+            bam,sep=" ")
   print(cmd);system(cmd,wait=TRUE)
-  return(out_basename)
+  
+  cmd=paste("metabat2",
+            "-i",fna, 
+            "-a",paste(out_prefix,".depth.txt",sep=""),
+            "-o",out_prefix,
+            "-m",as.character(MinContig),
+            "-t",threads,sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  return(out_prefix)
 }
+
+# Blobtools
+Blobtools=function(fna=fna,
+                   bam=bam,
+                   blast=blast,
+                   out_prefix=out_prefix){
+  cmd=paste("blobtools create",
+            "-i",fna,
+            "-b",bam,
+            "-t",blast,
+            "-o",out_prefix,
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  cmd=paste("blobtools view",
+            "-i", paste(out_prefix,".blobDB.json",sep=""),
+            "-o",out_prefix,
+            "-r","all",
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+}
+
+# Read output of Blobtools to R
+ReadBlob=function(file){
+  data=read.table(file,
+                  sep="\t",quote="",
+                  col.names=c("name","length","GC","N","coverage",
+                  "superkingdom","superkingdom.s.7%s","superkingdom.c.8",
+                  "phylum","phylum.s.10%s","phylum.c.11",
+                  "order","order.s.13%s","order.c.14",
+                  "family","family.s.16%s","family.c.17",
+                  "genus","genus.s.19%s","genus.c.20",
+                  "species","species.s.22%s","species.c.23"))
+  return(data)
+}
+
+# MetaBinner
+#Metabinner=function(fna=fna,){}
+
+#BinSanity
+
