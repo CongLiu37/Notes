@@ -5,3 +5,4 @@ Content:
 3. Rarefaction analysis
 4. Genome/Metagenome assembly, binning and assembly quality assessment
 5. Gene prediction
+6. Machine learning in scikit-learn, python
