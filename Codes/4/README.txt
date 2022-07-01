@@ -1,9 +1,5 @@
 Genome/Metagenome assembly, binning and assembly quality assessment
 
-Dependencies:
-   Softwares: PhyloFlash, FastQC, Trimmomatic, SPAdes, BUSCO, CheckM, Bowtie2, SAMtools, Metabat2, BLAST, Blobtools, DIAMOND, MEGAN, SprayNPray.
-   R packages: ape, Biostrings, ggplot2, stringr, ggExtra.
-
 (1) PhyloFlash
 Taxon profiling of reads/assembly via reconstructing the SSU rRNAs by PhyloFlash.
 Dependent on PhyloFlash. 
@@ -73,3 +69,19 @@ Dependent on R package ggplot2, stringr.
 (16) ContaminationPlot
 Evaluate contamination level of draft genome by GC-coverage plot, coverage distribution and GC distribution.
 Dependent on R package ggplot2, ggExtra.
+
+(17) Extract_fq
+Extract short reads mapped to an assembly.
+Dependent on Bowtie2, SAMtools.
+
+(18) kmc
+Compute kmer spectrum.
+Dependent on KMC.
+
+(19) Genomescope
+Estimate homozygous, heterozygous and haploid size.
+Dependent on GenomeScope.
+
+(20) Smudgeplot
+Estimate ploidity.
+Dependent on Smudgeplot.

@@ -1,8 +1,4 @@
 # Genome/Metagenome assembly, binning and assembly quality assessment
-# 
-# Dependencies:
-#   Softwares: PhyloFlash, FastQC, Trimmomatic, SPAdes, BUSCO, CheckM, Bowtie2, SAMtools, BLAST, SprayNPray, Metabat2, Blobtools.
-# R packages: ape, Biostrings, ggplot2, stringr
 
 # PhyloFlash: Taxon profiling of reads/assembly via reconstructing the SSU rRNAs.
 PhyloFlash=function(fq1=fq1,fq2=fq2, # Input fq files. Set fq2="none" if single-end.
@@ -75,6 +71,7 @@ SPAdes=function(fq1=fq1,fq2=fq2, # Input fq files. Set fq2="none" if single-end.
 ){
   threads=as.character(threads)
   
+  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "),wait=TRUE)}
   if (fq2!="none"){ # pair-end
     cmd=paste("spades.py","-t",threads,"-1",fq1,"-2",fq2,"-o",out_dir,sep=" ")
   }else{
@@ -139,7 +136,7 @@ BSG=function(fna=fna, # fna. Input DNA sequences.
   Min=min(ContigSizes);Max=max(ContigSizes);Median=median(ContigSizes);Mean=mean(ContigSizes)
   GapPercent=sum(GapSizes)/sum(ContigSizes)
   if (GenomeSize!="none"){LateralCoverage=sum(ContigSizes)/GenomeSize}else{LateralCoverage="none"}
-  GcContent=sum(GcSizes)/(sum(ContigSizes)-GapSizes)
+  GcContent=sum(GcSizes)/sum(ContigSizes-GapSizes)
   
   o=list(fna=fna,ThresholdSize=Threshold,
          SmallContigCount=SmallContigCount,TotalSmallContigSizes=TotalSmallContigSizes,
@@ -154,34 +151,36 @@ BSG=function(fna=fna, # fna. Input DNA sequences.
 
 # BUSCO: Assess genome completeness via searching universal single-copy orthologue genes by BUSCO.
 BUSCO=function(fna=fna, # Fasta file of nucleotide or protein.
-                        # Be consistent with Mode.
+               # Be consistent with Mode.
                Mode=Mode, # genome/proteins/transcriptome
                Lineage=Lineage, # Lineage dataset, e.g. insecta_odb10
-                                # Available datasets: https://busco-data.ezlab.org/v5/data/lineages/
-                                # BUSCO will download lineage dataset automatically.
+               # Available datasets: https://busco-data.ezlab.org/v5/data/lineages/
+               # BUSCO will download lineage dataset automatically.
                Out_prefix=Out_prefix, # Give the analysis run a recognisable short name.
-                                      # Output folders and files will be labelled with this name.
-                                      # Cannot be path
+               # Output folders and files will be labelled with this name.
+               # Cannot be path
                out_dir=out_dir,
                Threads=Threads){
   Threads=as.character(Threads)
+  out_dir=sub("/$","",out_dir)
   
-  cmd=paste("busco","--in",fna,"--lineage_dataset",Lineage,"--out",Out_prefix,"--mode",Mode,"--cpu",Threads,sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-
-  # Print result summary
-  cmd=paste("cat",paste(Out_prefix,"/short_summary.specific.",Lineage,".",Out_prefix,".txt",sep=""),sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
+  if (!file.exists(paste(out_dir,"/",Out_prefix,"/short_summary.specific.",Lineage,".",Out_prefix,".txt",sep=""))){
+    cmd=paste("busco",
+              "--in",fna,
+              "--lineage_dataset",Lineage,
+              "--out",Out_prefix,
+              "--mode",Mode,
+              "--cpu",Threads,
+              sep=" ")
+    print(cmd);system(cmd,wait=TRUE)
+    system(paste("mv",Out_prefix,out_dir,sep=" "),wait=TRUE)
+  }
   
   # BUSCO completeness
-  re=readLines(paste(Out_prefix,"/short_summary.specific.",Lineage,".",Out_prefix,".txt",sep=""))[9]
-  re=gsub("\t*C:","",re)
-  re=strsplit(re,"%")[[1]][1]
-  re=as.numeric(re)/100
-  print("BUSCO completeness:")
-  print(re)
-  system(paste("mv",Out_prefix,out_dir,sep=" "),wait=TRUE)
-  return(list(BuscoCompleteness=re,fna=fna,Database=Lineage))
+  re=readLines(paste(out_dir,"/",Out_prefix,"/short_summary.specific.",Lineage,".",Out_prefix,".txt",sep=""))[9]
+  re=sub("\t","",re);re=sub("\t   ","",re)
+  
+  return(re)
 }
 
 # CheckM: Assess completeness and contamination of genomic bins via using collocated sets of genes that are ubiquitous and single-copy within a phylogenetic lineage by CheckM.
@@ -419,4 +418,146 @@ ContaminationPlot=function(df, # Each row represents a scaffold.
              yparams=list(bins=100))
   pdf(out);print(p);dev.off()
   return(p)
+}
+
+# Extract short reads (fq) mapped to an assembly via SAMtools.
+Extract_fq=function(fq1=fq1,fq2=fq2, # Original fq. fq2="none" id single-end.
+                    fna=fna, # target assembly
+                    out_prefix=out_prefix,
+                    threads=threads
+){
+  threads=as.character(threads)
+  
+  cmd = paste("bowtie2-build",fna,paste(out_prefix,"_index",sep=""),sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  if (fq2!="none"){ # pair-end
+    cmd = paste("bowtie2","-x",paste(out_prefix,"_index",sep=""),
+                "-p",threads,"-1",fq1,"-2",fq2,"|",
+                "samtools fastq",
+                "-@",threads,"-G","12",
+                "-1",paste(out_prefix,".1.fq.gz",sep=""),
+                "-2",paste(out_prefix,".2.fq.gz",sep=""),
+                sep=" ")
+    print(cmd);system(cmd,wait=TRUE)
+  }else{ # single pair
+    cmd = paste("bowtie2","-x",paste(out_prefix,"_index",sep=""),
+                "-p",threads,"-U",fq1,"|",
+                "samtools fastq",
+                "-@",threads,"-G","4",
+                "-0",paste(out_prefix,".fq.gz",sep=""),
+                sep=" ")
+    print(cmd);system(cmd,wait=TRUE)
+  }
+  
+  return(0)
+}
+
+# k-mer spectrum via KMC.
+kmc=function(fq1=fq1, # Input fq1
+             fq2=fq2, # Input fq2. "none" if single-end.
+             kmer=21,
+             out_basename=out_basename,
+             out_dir=out_dir,
+             threads=threads){
+  threads=as.character(threads)
+  out_dir=gsub("/$","",out_dir)
+  kmer=as.character(kmer)
+  
+  cmd=paste("echo",fq1,">",paste(out_dir,"/",out_basename,".FILE",sep=""),sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  if (fq2!="none"){
+    cmd=paste("echo",fq2,">>",paste(out_dir,"/",out_basename,".FILE",sep=""),sep=" ")
+    print(cmd);system(cmd,wait=TRUE)
+  }
+  
+  cmd=paste("kmc",
+            paste("-k",kmer,sep=""),
+            paste("-t",threads,sep=""),
+            "-m64","-ci1 -cs10000",
+            paste("@",out_dir,"/",out_basename,".FILE",sep=""),
+            out_basename,".",sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  cmd=paste("mv","*.kmc_*",out_dir,sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  cmd=paste("kmc_tools transform",paste(out_dir,"/",out_basename,sep=""),
+            "histogram",paste(out_dir,"/",out_basename,".hist",sep=""),"-cx10000",
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  system(paste("rm",paste(out_dir,"/",out_basename,".FILE",sep=""),sep=" "))
+}
+
+# Genome survey via Genomescope.
+Genomescope=function(hist=hist, # kmer histogram from kmc.
+                     out_dir=out_dir,
+                     out_basename=out_basename,
+                     kmer=kmer){
+  kmer=as.character(kmer)
+  out_dir=sub("/$","",out_dir)
+  
+  if (!file.exists(paste(out_dir,"/",out_basename,"_summary.txt",sep=""))){
+    cmd=paste("genomescope.R",
+              "-i",hist,
+              "-o",out_dir,
+              "-n",out_basename,
+              "-k",kmer,sep=" ")
+    print(cmd);system(cmd,wait=TRUE)
+  }
+  
+  library(stringr)
+  res=readLines(paste(out_dir,"/",out_basename,"_summary.txt",sep=""))
+  Homozygous=unlist(str_extract_all(res[grepl("Homozygous",res)],"[0-9.]*%"))
+  Heterozygous=unlist(str_extract_all(res[grepl("Heterozygous",res)],"[0-9.]*%"))
+  HaploidLength=unlist(str_extract_all(res[grepl("Genome Haploid Length",res)],"[0-9,]* bp"))
+  o=list(Homozygous=Homozygous,Heterozygous=Heterozygous,HaploidLength=HaploidLength)
+  return(o)
+}
+
+# Genome survey via Sumdgeplot.
+Sumdgeplot=function(hist=hist, # kmer histogram from kmc.
+                    kmcdb=kmcdb, # kmc database.
+                    out_prefix=out_prefix
+){
+  L=system(paste("smudgeplot.py cutoff ",hist," L",sep=""),wait=TRUE,intern=TRUE)
+  U=system(paste("smudgeplot.py cutoff ",hist," U",sep=""),wait=TRUE,intern=TRUE)
+  
+  cmd=paste("kmc_tools transform",kmcdb,paste("-ci",L," ","-cx",U," dump",sep=""),
+            "-s",paste(kmcdb,"_L",L,"_U",U,".dump",sep=""),sep=" ")
+  print(cmd);system(cmd)
+  
+  cmd=paste("smudgeplot.py hetkmers -o",
+            out_prefix,
+            paste(kmcdb,"_L",L,"_U",U,".dump",sep=""),sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  cmd=paste("smudgeplot.py plot",
+            "-o",out_prefix,
+            paste(out_prefix,"_coverages.tsv",sep=""),
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+}
+
+# kmergenie
+kmergenie=function(fq1=fq1, # Input fq1
+                   fq2=fq2, # Input fq2. "none" if single-end.
+                   out_prefix=out_prefix,
+                   threads=threads){
+  threads=as.character(threads)
+  
+  cmd=paste("echo",fq1,">",paste(out_prefix,".FILE",sep=""),sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  if (fq2!="none"){
+    cmd=paste("echo",fq2,">>",paste(out_prefix,".FILE",sep=""),sep=" ")
+    print(cmd);system(cmd,wait=TRUE)
+  }
+  
+  cmd=paste("kmergenie",paste(out_prefix,".FILE",sep=""),
+            "-t",threads,
+            "-o",out_prefix)
+  print(cmd);system(cmd,wait=TRUE)
+  
+  return(out_prefix)
 }
