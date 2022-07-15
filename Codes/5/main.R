@@ -1,7 +1,28 @@
 # Genome annotation.
 
+# Simplify sequence ID in genome
+SimplifyID=function(fna=fna,
+                    common_pattern=common_pattern){
+  f1=function(i){
+    new_ID=paste(common_pattern,as.character(i),sep="")
+    return(new_ID)
+  }
+  library(ape)
+  data=read.dna(fna,format="fasta",as.character=TRUE)
+  old_IDs=names(data)
+  new_IDs=sapply(1:length(old_IDs),f1)
+  
+  names(data)=new_IDs
+  write.dna(data,paste(fna,"_SimpleIDs",sep=""),"fasta",colsep="")
+  
+  ID_convert=data.frame(old_IDs,new_IDs)
+  write.table(ID_convert,paste(fna,"_IDconvert.tsv",sep=""),
+              sep="\t",col.names=FALSE,row.names=FALSE,quote=FALSE)
+}
+
 # RepeatModeler & RepeatMasker: Genome mask
 # Masked genome: <file name of fna>.masked.masked
+# Dependencies: Singularity, RepeatMasker, RepeatModeler
 GenomeMask=function(fna=fna,# Fasta file of genome.
                     out_dir=out_dir,
                     out_prefix=out_prefix,
@@ -16,8 +37,10 @@ GenomeMask=function(fna=fna,# Fasta file of genome.
   fna_name=unlist(strsplit(fna,"/"));fna_name=fna_name[length(fna_name)]
   fna=paste(out_dir,"/",fna_name,sep="")
   
+  #####################################################################
   # RepeatModeler & RepeatMasker installed in Singularity container
   path="singularity run /home/c/c-liu/Softwares/dfam-tetools-latest.sif"
+  #####################################################################
   
   # RepeatModeler: de novo identification of repeats.
   cmd=paste(path,"BuildDatabase","-name",
@@ -58,60 +81,169 @@ GenomeMask=function(fna=fna,# Fasta file of genome.
   return(paste(out_dir,"/",fna,".masked.masked",sep=""))
 }
 
-# Protein based gene prediction with Braker, GenomeThreader
+# Protein based gene prediction with GenomeThreader (gff3)
+# gtf and GenBank format for AUGUSTUS training
+# Dependencies: GenomeThreader, scripts from AUGUSTUS
 GenePrediction_protein=function(fna=fna, # masked genome
                                 faa=faa,
                                 out_dir=out_dir){
+  out_dir=sub("/$","",out_dir)
   if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
   wd_begin=getwd();setwd(out_dir)
-
-  cmd=paste("startAlign.pl",
-            paste("--genome=",fna,sep=""),
-            paste("--prot=",faa,sep=""),
-            "--prg=gth",
-            sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
   
-  cmd=paste("gth2gtf.pl",
-            "align_gth/gth.concat.aln",
-            "bonafide.gtf",sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  
-  # cmd="computeFlankingRegion.pl bonafide.gtf"
-  # print(cmd);system(cmd,wait=TRUE)
-  # cmd="gff2gbSmallDNA.pl bonafide.gtf genome.fa 10000 bonafide.gb"
-  # print(cmd);system(cmd,wait=TRUE)
-  
-  setwd(wd_begin)
-}
-
-# GenomeThreader: Homology-based exon-intron prediction
-GenomeThreader=function(fna=fna, # Fasta genome, masked
-                        faa=faa, # proteins
-                        out_prefix=out_prefix,
-                        Threads=Threads){
-  Threads=as.character(Threads)
-
-  # Gene prediction
-  # gff3 output
   cmd=paste("gth",
             "-genomic",fna,
             "-protein",faa,
-            "-gff3out","-skipalignmentout","-paralogs",
-            "-gcmincoverage 80 -prseedlength 20 -prminmatchlen 20 -prhdist 2",
-            "-o",paste(out_prefix,".gff3",sep=""),
+            "-gff3out -skipalignmentout -paralogs",
+            "-o","bonafide.gff3",
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   
-  # Remove temporaries
-  cmd=paste("rm",paste(out_prefix,"_seed.faa",sep=""),sep=" ")
+  cmd=paste("gth2gtf.pl", # AUGUSTUS Remove alternative splicement
+            "bonafide.gff3",
+            "training_AUGUSTUS.gtf",sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   
-  print("Output:")
-  print(paste(out_prefix,".gff3"))
+  cmd="computeFlankingRegion.pl training_AUGUSTUS.gtf" # AUGUSTUS
+  print(cmd);library(stringr)
+  flanking_DNA=system(cmd,wait=TRUE,intern=TRUE)[4]
+  flanking_DNA=str_extract(flanking_DNA,": [0-9]*")
+  flanking_DNA=sub(": ","",flanking_DNA)
+  cmd=paste("gff2gbSmallDNA.pl training_AUGUSTUS.gtf",
+            fna,flanking_DNA,"training_AUGUSTUS.gb",sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
   
-  return(paste(out_prefix,".gff3"))
+  setwd(wd_begin)
+  return(0)
 }
+
+# Remove redundant gene structures in training data of AUGUSTUS
+# Dependencies: blast+
+non_redundant=function(training_AUGUSTUS.gb=training_AUGUSTUS.gb, # GenBank
+                       training_AUGUSTUS.gtf=training_AUGUSTUS.gtf, # bonafide
+                       genome=genome,
+                       out_dir=out_dir){
+  library(stringr)
+  out_dir=sub("/$","",out_dir)
+  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
+  wd_begin=getwd();setwd(out_dir)
+  
+  # Extract gene ID
+  GenBank=readLines(training_AUGUSTUS.gb)
+  gb=GenBank[grepl("/gene=",GenBank)]
+  gb=sub("                     /gene=\"","",gb)
+  gb=sub("\"","",gb)
+  gb=unique(gb)
+  write.table(gb,"traingenes.lst",sep="\t",col.names=FALSE,row.names=FALSE,quote=TRUE)
+  
+  # Gene ID to locus ID
+  LOCUS=GenBank[grepl("LOCUS",GenBank)]
+  LOCUS=sub("LOCUS       ","",LOCUS)
+  LOCUS=sub("   [0-9]* bp  DNA","",LOCUS)
+  write.table(data.frame(gb,LOCUS),"loci.lst",sep="\t",col.names=FALSE,row.names=FALSE,quote=FALSE)
+  
+  # remove genes share >80% similarity at protein level
+  cmd=paste("grep",
+            "-f","traingenes.lst",
+            "-F",training_AUGUSTUS.gtf,
+            ">",
+            "bonafide.f.gtf",sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  cmd=paste("gtf2aa.pl", # AUGUSTUS
+            genome,
+            "bonafide.f.gtf",
+            "prot.aa",sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  cmd=paste("aa2nonred.pl","prot.aa","prot.nr.aa",
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  # non-redundant gene ID and locus ID
+  cmd="grep '>' prot.nr.aa | perl -pe 's/>//' > nonred.lst"
+  print(cmd);system(cmd,wait=TRUE)
+  cmd="grep -f nonred.lst loci.lst | cut -f2 > nonred.loci.lst"
+  print(cmd);system(cmd,wait=TRUE)
+  
+  # non-redundant training set for AUGUSTUS
+  cmd=paste("filterGenesIn.pl",
+            "nonred.loci.lst",
+            training_AUGUSTUS.gb,
+            ">",
+            "training_AUGUSTUS_nr.gb",
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  setwd(wd_begin)
+  return(paste(out_dir,"/training_AUGUSTUS_nr.gb",sep=""))
+}
+
+augustus=function(fna=fna,
+                  species=species,
+                  training.gb=training.gb,
+                  out_dir=out_dir){
+  out_dir=sub("/$","",out_dir)
+  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
+  wd=getwd();setwd(out_dir)
+  
+  cmd=paste("autoAug.pl",
+            paste("--workingdir=",out_dir,sep=""),
+            paste("--species=",species,sep=""),
+            paste("--genome=",fna,sep=""),
+            paste("--trainingset=",training.gb,sep=""),
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  setwd(wd)
+}
+
+# # Training AUGUSTUS
+# AUGUSTUS_training=function(training.gb=training.gb,
+#                            species=species,
+#                            out_dir=out_dir){
+#   out_dir=sub("/$","",out_dir)
+#   if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "),wait=TRUE)}
+#   wd=getwd();setwd(out_dir)
+# 
+#   cmd=paste("new_species.pl"," ",
+#             "--species=",species,
+#             sep="")
+#   print(cmd);system(cmd,wait=TRUE)
+# 
+#   cmd=paste("etraining"," ",
+#             "--species=",species," ",
+#             training.gb,
+#             " &> ",
+#             "training.out",
+#             sep="")
+#   print(cmd);system(cmd,wait=TRUE)
+# 
+#   error=system("grep -c 'Variable stopCodonExcludedFromCDS set right' training.out",intern=TRUE)
+#   total=system(paste("grep -c 'LOCUS'",training.gb,sep=" "),intern=TRUE)
+#   percent=as.numeric(error)/as.numeric(total)
+#   print(paste("stopCodonExcludedFromCDS error percent:",as.character(percent),sep=" "))
+#   if (percent>0.5){
+#     cmd=paste("sed",
+#               "-i",
+#               "'s/stopCodonExcludedFromCDS false/stopCodonExcludedFromCDS true/g'",
+#               paste(species,"_parameters.cfg",sep=""),
+#               sep=" ")
+#     print(cmd);system(cmd,wait=TRUE)
+#   }
+#   
+#   cmd=paste("etraining --species=",species," ",training.gb,
+#             " 2>&1 | grep 'in sequence' | perl -pe 's/.*n sequence (\S+):.*/$1/' | sort -u > bad.lst",
+#             sep="")
+#   print(cmd);system(cmd,wait=TRUE)
+#   
+#   cmd=paste("filterGenes.pl",
+#             "bad.lst",
+#             training.gb,
+#             ">",
+#             "training.f.gb",
+#             sep=" ")
+#   print(cmd);system(cmd,wait=TRUE)
+#   setwd(wd)
+# }
 
 # ProtHint: Homology-based prediction of hints in the form of introns, start and stop codons.
 prothint=function(fna=fna, # Fasta genome, masked
@@ -132,26 +264,7 @@ prothint=function(fna=fna, # Fasta genome, masked
 }
 
 # Augustus
-augustus=function(fna=fna,
-                  species=species,
-                  training_gff=training_gff,
-                  hints_gff=hints_gff,
-                  out_dir=out_dir,
-                  threads=threads){
-  threads=as.character(threads)
-  out_dir=sub("/$","",threads)
-  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
-  
-  cmd=paste("autoAug.pl",
-            paste("--workingdir=",out_dir,sep=""),
-            paste("--cpus=",threads,sep=""),
-            paste("--species=",species,sep=""),
-            paste("--genome=",fna,sep=""),
-            paste("--trainingset=",training_gff,sep=""),
-            paste("--hints=",hints_gff,sep=""),
-            sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-}
+
 
 # Hisat2; Build hisat2 index of genome.
 Hisat2Build = function(fna=fna, # FASTA of reference genome
@@ -267,7 +380,7 @@ gffread=function(gff=gff,
                  exons="none",
                  cds="none",
                  pep="none"){
-  cmd=paste("gffread",
+  cmd=paste("gffread","-O",
             gff,
             "-g",fna,
             sep=" ")
@@ -278,3 +391,15 @@ gffread=function(gff=gff,
 }
 
 # OrthoFinder
+# By default OrthoFinder creates a results directory called ‘OrthoFinder’ inside the 
+# input proteome directory and puts the results here.
+Orthofinder=function(in_dir=in_dir, # Input proteome directory. 
+                                    # One file per species with extension '.faa'
+                     threads=threads){
+  threads=as.character(threads)
+  
+  cmd=paste("orthofinder",
+            "-f",in_dir,
+            "-t",threads,sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+}

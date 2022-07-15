@@ -1,36 +1,41 @@
 # Genome/Metagenome assembly, binning and assembly quality assessment
 
 # PhyloFlash: Taxon profiling of reads/assembly via reconstructing the SSU rRNAs.
+# Dependencies: PhyloFlash
 PhyloFlash=function(fq1=fq1,fq2=fq2, # Input fq files. Set fq2="none" if single-end.
-                    contigs.fa=contigs.fa, # If not "none", SSU rRNA will be called from contigs to screen vs reads
+                    contigs.fa="none", # If provided, SSU rRNA will be called from contigs to screen vs reads
                     out_prefix=out_prefix,
                     threads=threads){
   threads=as.character(threads)
-  if (contigs.fa=="none"){
-    if (fq2!="none"){ # pair-end
-      cmd=paste("phyloFlash.pl","-almosteverything","-lib",out_prefix,"-read1",fq1,"-read2",fq2,"-CPUs",threads,sep=" ")
-    }else{ # single-end
-      cmd=paste("phyloFlash.pl","-almosteverything","-lib",out_prefix,"-read1",fq1,"-CPUs",threads,sep=" ")
-    }
-  }else{
-    if (fq2!="none"){ # pair-end + contigs
-      cmd=paste("phyloFlash.pl","-almosteverything","-lib",out_prefix,"-read1",fq1,"-read2",fq2,"-trusted",contigs.fa,"-CPUs",threads,sep=" ")
-    }else{ # single-end + contigs
-      cmd=paste("phyloFlash.pl","-almosteverything","-lib",out_prefix,"-read1",fq1,"-trusted",contigs.fa,"-CPUs",threads,sep=" ")
-    }
-  }
   
+  cmd=paste("phyloFlash.pl",
+            "-almosteverything",
+            "-lib",out_prefix,
+            "-CPUs",threads,
+            "-read1",fq1,
+            sep=" ")
+  if (fq2!="none"){
+    cmd=paste(cmd,
+              "-read2",fq2,
+              sep=" ")
+  }
+  if (contigs.fa!="none"){
+    cmd=paste(cmd,
+              "-trusted",contigs.fa,
+              sep=" ")
+  }
   print(cmd);system(cmd,wait=TRUE)
   return(out_prefix)
 }
 
 # FastQC: Check quality of sequencing data.
+# Dependencies: FastQC
 QualityCheck=function(fq1=fq1, # Input fq file.
-                      fq2=fq2, # Input fq file. Set "None" if single-end.
+                      fq2=fq2, # Input fq file. Set "none" if single-end.
                       out_dir=out_dir, # directory in which quality check reports are saved.
                       threads=threads){
   threads = as.character(threads)
-  if (fq2!="None"){ # pair-end
+  if (fq2!="none"){ # pair-end
     cmd = paste("fastqc","-o",out_dir,"-t",threads,fq1,fq2,sep=" ")
   }else{ # single-end
     cmd = paste("fastqc","-o",out_dir,"-t",threads,fq1,sep=" ")
@@ -40,7 +45,8 @@ QualityCheck=function(fq1=fq1, # Input fq file.
 }
 
 # Trimmomatic: Quality control of sequencing data.
-QualityFilter = function(fq1=fq1,fq2=fq2, # Input fq files. Set fq2="None" if single-end.
+# Dependencies: Trimmomatic
+QualityFilter = function(fq1=fq1,fq2=fq2, # Input fq files. Set fq2="none" if single-end.
                          clean_fq1=clean_fq1,clean_fq2=clean_fq2,# Names of clean fq files. clean_fq2 not used if single-end.
                          unpaired_fq1=unpaired_fq1,unpaired_fq2=unpaired_fq2, # Names of fq files for unpaired clean reads. unpaired_fq2 not used if single-end.
                          QualityFilter=QualityFilter, # String of step options of Trimmomatic.
@@ -49,7 +55,7 @@ QualityFilter = function(fq1=fq1,fq2=fq2, # Input fq files. Set fq2="None" if si
                          threads=threads){
   threads = as.character(threads)
   
-  if (fq2!="None"){ # pair-end
+  if (fq2!="none"){ # pair-end
     cmd = paste("trimmomatic","PE","-threads",threads,"-phred33",fq1,fq2,clean_fq1,unpaired_fq1,clean_fq2,unpaired_fq2,QualityFilter,sep=" ")
   }else{ # single-end
     cmd = paste("trimmomatic","SE","-threads",threads,"-phred33",fq1,clean_fq1,QualityFilter,sep=" ")
@@ -60,10 +66,11 @@ QualityFilter = function(fq1=fq1,fq2=fq2, # Input fq files. Set fq2="None" if si
 }
 
 # SPAdes: Genome/Metagenome assembly.
+# Dependencies: SPAdes
 SPAdes=function(fq1=fq1,fq2=fq2, # Input fq files. Set fq2="none" if single-end.
                                  # PacBio CCS reads should be treated as fq1.
-                contigs.fa=contigs.fa, # Reliable contigs of the same genome. Set "none" if unavailable.
-                pacbio_clr=pacbio_clr,nanopore=nanopore,sanger=sanger, # File of long reads. set "none" if unavailable.
+                contigs.fa="none", # Reliable contigs of the same genome. Set "none" if unavailable.
+                pacbio_clr="none",nanopore="none",sanger="none", # File of long reads. set "none" if unavailable.
                 meta=meta, # Logical. If TRUE, run metaSPAdes.
                            # metaSPAdes supports only a single short-read library which has to be paired-end.
                 out_dir=out_dir,
@@ -89,6 +96,7 @@ SPAdes=function(fq1=fq1,fq2=fq2, # Input fq files. Set fq2="none" if single-end.
 }
 
 # Filter sequences that are too small.
+# Dependencies: ape (R)
 LengthFilter=function(fna=fna, # FASTA. Input sequences.
                       threshold=threshold, # Integer. Sequences not longer than it are removed.
                       out=out # FASTA. Output sequences.
@@ -101,70 +109,60 @@ LengthFilter=function(fna=fna, # FASTA. Input sequences.
   return(out)
 }
 
-# Basic statistics of assembly.
-# N50, min/max/median contig size, gap percent, GC content
-BSG=function(fna=fna, # fna. Input DNA sequences.
-             GenomeSize=GenomeSize, # Genome size estimated by cytological technique
-                                    # Set "none" if unavailable.
-             Threshold=Threshold # Contigs below this threshold are defined as small contigs. 
-                                 # Small contigs are not considered, and their statistics are reported separatedly.
-){
-  Threshold=as.numeric(Threshold)
+# Quast: Quality of assembly.
+# Dependencies: QUAST
+Quast=function(fna=fna, # FASTA of genome assembly.
+               out_dir=out_dir,
+               threads=threads){
+  threads=as.character(threads)
+  out_dir=sub("/$","",out_dir)
   
-  library(ape)
-  data=read.dna(fna,format="fasta",as.character=TRUE)
-  ContigSizes=sapply(data,length)
+  if (!file.exists(paste(out_dir,"/report.tsv",sep=""))){
+    if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
   
-  # Statistics of contigs smaller than Threshold
-  SmallContigSizes=ContigSizes[which(ContigSizes<=Threshold)]
-  SmallContigCount=length(SmallContigSizes)
-  TotalSmallContigSizes=sum(SmallContigSizes)
+    cmd=paste("quast --min-contig 0",
+              "-o",out_dir,
+              "-t",threads,
+              fna,
+              sep=" ")
+    print(cmd);system(cmd,wait=TRUE)
+  }
   
-  data=data[which(ContigSizes>Threshold)] # Remove contigs smaller than Threshold
-  ContigSizes=sapply(data,length)
-  
-  f1=function(sequ){return(length(sequ[which(sequ%in%c("N","n"))]))}
-  GapSizes=sapply(data,f1)
-  
-  f2=function(sequ){return(length(sequ[which(sequ%in%c("G","C","g","c"))]))}
-  GcSizes=sapply(data,f2)
-  
-  library(Biostrings)
-  AssemblySize=sum(ContigSizes)
-  ContigCount=length(ContigSizes)
-  N50=N50(ContigSizes)
-  Min=min(ContigSizes);Max=max(ContigSizes);Median=median(ContigSizes);Mean=mean(ContigSizes)
-  GapPercent=sum(GapSizes)/sum(ContigSizes)
-  if (GenomeSize!="none"){LateralCoverage=sum(ContigSizes)/GenomeSize}else{LateralCoverage="none"}
-  GcContent=sum(GcSizes)/sum(ContigSizes-GapSizes)
-  
-  o=list(fna=fna,ThresholdSize=Threshold,
-         SmallContigCount=SmallContigCount,TotalSmallContigSizes=TotalSmallContigSizes,
-         AssemblySize=AssemblySize,
-         ContigCount=ContigCount,
-         N50=N50,MinContig=Min,MaxContig=Max,MedianContig=Median,MeanContig=Mean,
-         GapPercent=GapPercent,
-         LateralCoverage=LateralCoverage,
-         GC=GcContent)
+  res=read.table(paste(out_dir,"/report.tsv",sep=""),
+                 header=FALSE,row.names=1,sep="\t",quote="",comment.char="")
+  o=list(Assembly=fna,
+         ContigCount=res["# contigs",],
+         MaxContig=res["Largest contig",],
+         TotalSize=res["Total length",],
+         GCpercent=res["GC (%)",],
+         N50=res["N50",],
+         N90=res["N90",],
+         auN=res["auN",],
+         L50=res["L50",],
+         L90=res["L90",],
+         GapPer100kb=res["# N's per 100 kbp",])
   return(o)
 }
 
 # BUSCO: Assess genome completeness via searching universal single-copy orthologue genes by BUSCO.
+# Dependencies: BUSCO
 BUSCO=function(fna=fna, # Fasta file of nucleotide or protein.
-               # Be consistent with Mode.
+                        # Be consistent with Mode.
                Mode=Mode, # genome/proteins/transcriptome
                Lineage=Lineage, # Lineage dataset, e.g. insecta_odb10
-               # Available datasets: https://busco-data.ezlab.org/v5/data/lineages/
-               # BUSCO will download lineage dataset automatically.
+                                # Available datasets: https://busco-data.ezlab.org/v5/data/lineages/
+                                # BUSCO will download lineage dataset automatically.
                Out_prefix=Out_prefix, # Give the analysis run a recognisable short name.
-               # Output folders and files will be labelled with this name.
-               # Cannot be path
+                                      # Output folders and files will be labelled with this name.
+                                      # Cannot be path
                out_dir=out_dir,
                Threads=Threads){
   Threads=as.character(Threads)
   out_dir=sub("/$","",out_dir)
+  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
   
   if (!file.exists(paste(out_dir,"/",Out_prefix,"/short_summary.specific.",Lineage,".",Out_prefix,".txt",sep=""))){
+    wd_begin=getwd();setwd(out_dir)
     cmd=paste("busco",
               "--in",fna,
               "--lineage_dataset",Lineage,
@@ -173,10 +171,10 @@ BUSCO=function(fna=fna, # Fasta file of nucleotide or protein.
               "--cpu",Threads,
               sep=" ")
     print(cmd);system(cmd,wait=TRUE)
-    system(paste("mv",Out_prefix,out_dir,sep=" "),wait=TRUE)
+    setwd(wd_begin)
   }
   
-  # BUSCO completeness
+  # BUSCO results
   re=readLines(paste(out_dir,"/",Out_prefix,"/short_summary.specific.",Lineage,".",Out_prefix,".txt",sep=""))[9]
   re=sub("\t","",re);re=sub("\t   ","",re)
   
@@ -197,22 +195,19 @@ checkm=function(bin_dir=bin_dir, # the directory in which bins are located.
   return(out_dir)
 }
 
-# Bowtie2; Build bowtie2 index of genome.
-Bowtie2Build = function(fna=fna, # FASTA of genome
-                        index_prefix=index_prefix){
-  cmd = paste("bowtie2-build",fna,index_prefix,sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  return(index_prefix)
-}
-
 # Bowtie2: Map reads to genome. 
 # SAMtools: Compress SAM to BAM, sort BAM, index BAM.
+# Dependencies: Bowtie2, SAMtools
 Bowtie2 = function(fq1=fq1,fq2=fq2, # Input fq files. Make fq2="none" if single-end.
                                     # Can be comma-separated list of files if multiple libraries used
+                   fna=fna, # FASTA of genome
                    index=index, # Basename of Bowtie2 index of reference genome.
                    out_prefix=out_prefix, # Prefix of output BAM file.
                    threads=threads){
   threads = as.character(threads)
+  
+  cmd = paste("bowtie2-build",fna,index,sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
   
   bam_filename=paste(out_prefix,".bam",sep="")
   if (fq2!="none"){ # pair-end
@@ -232,6 +227,7 @@ Bowtie2 = function(fq1=fq1,fq2=fq2, # Input fq files. Make fq2="none" if single-
 }
 
 # Metabat2: Unsupervised binning by Metabat2.
+# Dependencies: Metabat2
 Metabat=function(fna=fna, # fna. Input DNA sequences.
                  bam=bam, # BAM. For coverage computation.
                  MinContig=MinContig, # Integer. Input DNA sequences shorter than MinContig are removed.
@@ -251,11 +247,13 @@ Metabat=function(fna=fna, # fna. Input DNA sequences.
             "-m",as.character(MinContig),
             "-t",threads,sep=" ")
   print(cmd);system(cmd,wait=TRUE)
+  
   return(out_prefix)
 }
 
 # DNA-DNA search by blastn.
 # Compute contig length, coverage, GC-content, taxonomy at major ranks by blobtools.
+# Dependencies: blast, blobtools
 blastn_blobtools=function(fna=fna, # fna. Input DNA sequences.
                           bam=bam, # BAM. For coverage computation.
                           out_basename=out_basename,
@@ -297,6 +295,7 @@ blastn_blobtools=function(fna=fna, # fna. Input DNA sequences.
 # DNA-protein search by diamond.
 # Compute taxonomy at major ranks by Megan.
 # Diamond and Megan in long-read mode.
+# Dependencies: DIAMOND, MEGAN
 Diamond_Megan=function(fna, # fna. Input DNA sequences.
                        out_basename=out_basename,
                        blast_dir=blast_dir, # Directory for diamond output.
@@ -353,11 +352,13 @@ SprayNPray=function(fna=fna, # fna. Input DNA sequences.
                     ref=ref, # Diamond database.
                     blast="none",
                     out_basename=out_basename, # cannot be path.
-                                               # output files are spitted into a directory named as out_basename
+                                               # output files are stored a directory named as out_basename
                     out_dir=out_dir, # the directory where out_basename are moved to.
                     threads=threads){
   threads=as.character(threads)
   out_dir=sub("/$","",out_dir)
+  wd=getwd()
+  setwd(out_dir)
   
   cmd=paste("spray-and-pray.py",
             "-g",fna,
@@ -369,20 +370,20 @@ SprayNPray=function(fna=fna, # fna. Input DNA sequences.
             sep=" ")
   if (blast!="none"){cmd=paste(cmd,"-blast",blast,sep=" ")}
   print(cmd);system(cmd,wait=TRUE)
-
-  cmd=paste("mv",out_basename,out_dir,sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
   
+  setwd(wd)
   return(paste(out_dir,"/",out_basename,sep=""))
 }
 
 # TAGC plot
+# Dependencies: ggplot2 (R), stringr (R)
 TAGC=function(df, # Each row represents a scaffold.
-                  # Columns include cov, GC.content, taxon (e.g. [D] Bacteria; [P] Proteobacteria)
+                  # Columns include cov, GC.content (e.g. 38.1), taxon (e.g. [D] Bacteria; [P] Proteobacteria)
               rank=rank, # Major taxonomy rank to be included in plot.
               title="", # title of plot.
               out=out){
   library(ggplot2);library(stringr)
+  
   d=df;d[is.na(d)]="none";d[d==""]="none"
   r=substr(rank,1,1);r=toupper(r)
   
@@ -403,8 +404,9 @@ TAGC=function(df, # Each row represents a scaffold.
 }
 
 # Evaluate contamination level of draft genome by GC-coverage plot, coverage distribution and GC distribution.
+# Dependencies: ggplot2 (R), ggExtra (R)
 ContaminationPlot=function(df, # Each row represents a scaffold.
-                               # Columns include cov, GC.content
+                               # Columns include cov, GC.content (e.g. 38.1)
                           title="", # plot title
                           out=out){
   library(ggplot2);library(ggExtra)
@@ -421,6 +423,7 @@ ContaminationPlot=function(df, # Each row represents a scaffold.
 }
 
 # Extract short reads (fq) mapped to an assembly via SAMtools.
+# Dependencies: Bowtie2, SAMtools
 Extract_fq=function(fq1=fq1,fq2=fq2, # Original fq. fq2="none" id single-end.
                     fna=fna, # target assembly
                     out_prefix=out_prefix,
@@ -454,6 +457,7 @@ Extract_fq=function(fq1=fq1,fq2=fq2, # Original fq. fq2="none" id single-end.
 }
 
 # k-mer spectrum via KMC.
+# Dependencies: KMC
 kmc=function(fq1=fq1, # Input fq1
              fq2=fq2, # Input fq2. "none" if single-end.
              kmer=21,
@@ -463,6 +467,8 @@ kmc=function(fq1=fq1, # Input fq1
   threads=as.character(threads)
   out_dir=gsub("/$","",out_dir)
   kmer=as.character(kmer)
+  wd=getwd()
+  setwd(out_dir)
   
   cmd=paste("echo",fq1,">",paste(out_dir,"/",out_basename,".FILE",sep=""),sep=" ")
   print(cmd);system(cmd,wait=TRUE)
@@ -479,18 +485,18 @@ kmc=function(fq1=fq1, # Input fq1
             out_basename,".",sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   
-  cmd=paste("mv","*.kmc_*",out_dir,sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  
   cmd=paste("kmc_tools transform",paste(out_dir,"/",out_basename,sep=""),
             "histogram",paste(out_dir,"/",out_basename,".hist",sep=""),"-cx10000",
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   
   system(paste("rm",paste(out_dir,"/",out_basename,".FILE",sep=""),sep=" "))
+  
+  setwd(wd)
 }
 
 # Genome survey via Genomescope.
+# Dependencies: GenomeScope, stringr (R)
 Genomescope=function(hist=hist, # kmer histogram from kmc.
                      out_dir=out_dir,
                      out_basename=out_basename,
@@ -517,6 +523,7 @@ Genomescope=function(hist=hist, # kmer histogram from kmc.
 }
 
 # Genome survey via Sumdgeplot.
+# Dependencies: Smudgeplot
 Sumdgeplot=function(hist=hist, # kmer histogram from kmc.
                     kmcdb=kmcdb, # kmc database.
                     out_prefix=out_prefix
@@ -541,6 +548,7 @@ Sumdgeplot=function(hist=hist, # kmer histogram from kmc.
 }
 
 # kmergenie
+# Dependencies: kmergenie
 kmergenie=function(fq1=fq1, # Input fq1
                    fq2=fq2, # Input fq2. "none" if single-end.
                    out_prefix=out_prefix,
