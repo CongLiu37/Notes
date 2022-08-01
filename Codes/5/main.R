@@ -3,21 +3,13 @@
 # Simplify sequence ID in genome
 SimplifyID=function(fna=fna,
                     common_pattern=common_pattern){
-  f1=function(i){
-    new_ID=paste(common_pattern,as.character(i),sep="")
-    return(new_ID)
-  }
-  library(ape)
-  data=read.dna(fna,format="fasta",as.character=TRUE)
-  old_IDs=names(data)
-  new_IDs=sapply(1:length(old_IDs),f1)
-  
-  names(data)=new_IDs
-  write.dna(data,paste(fna,"_SimpleIDs",sep=""),"fasta",colsep="")
-  
-  ID_convert=data.frame(old_IDs,new_IDs)
-  write.table(ID_convert,paste(fna,"_IDconvert.tsv",sep=""),
-              sep="\t",col.names=FALSE,row.names=FALSE,quote=FALSE)
+  cmd=paste("simplifyFastaHeaders.pl", # AUGUSTUS
+            fna,
+            common_pattern,
+            paste(fna,"_SimpleIDs",sep=""),
+            paste(fna,"_IDconvert.tsv",sep=""))
+  print(cmd);system(cmd,wait=TRUE)
+  return(paste(fna,"_SimpleIDs",sep=""))
 }
 
 # RepeatModeler & RepeatMasker: Genome mask
@@ -95,7 +87,7 @@ GenePrediction_protein=function(fna=fna, # masked genome
             "-genomic",fna,
             "-protein",faa,
             "-gff3out -skipalignmentout -paralogs",
-            "-o","bonafide.gff3",
+            "-o","GenomeThreader.gff3",
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   
@@ -177,15 +169,19 @@ non_redundant=function(training_AUGUSTUS.gb=training_AUGUSTUS.gb, # GenBank
   return(paste(out_dir,"/training_AUGUSTUS_nr.gb",sep=""))
 }
 
+# AUGUSTUS training and gene prediction.
 augustus=function(fna=fna,
-                  species=species,
-                  training.gb=training.gb,
-                  out_dir=out_dir){
+                  species=species, # Species name for the trained model
+                  training.gb=training.gb, # training genes in GenBank format
+                  out_dir=out_dir,
+                  threads=threads){
+  threads=as.character(threads)
   out_dir=sub("/$","",out_dir)
   if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
   wd=getwd();setwd(out_dir)
   
   cmd=paste("autoAug.pl",
+            paste("--cpus=",threads,sep=""),
             paste("--workingdir=",out_dir,sep=""),
             paste("--species=",species,sep=""),
             paste("--genome=",fna,sep=""),
@@ -193,78 +189,26 @@ augustus=function(fna=fna,
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   
+  library(parallel)
+  clus=makeCluster(as.numeric(threads))
+  parSapply(clus,
+            1:(as.numeric(threads)-1),
+            function(i){
+              cmd=paste("sed -i 's/augustus/augustus --gff3=on/' autoAug/autoAugPred_abinitio/shells/aug",
+                        as.character(i),sep="")
+              print(cmd);system(cmd,wait=TRUE)
+              cmd=paste("autoAug/autoAugPred_abinitio/shells/aug",
+                        as.character(i),sep="")
+              print(cmd);system(cmd,wait=TRUE)
+            })
+  cmd=paste("cat",
+            "autoAug/autoAugPred_abinitio/shells/aug*.out",
+            ">",
+            "AUGUSTUS.gff3")
+  print(cmd);system(cmd)
+  
   setwd(wd)
 }
-
-# # Training AUGUSTUS
-# AUGUSTUS_training=function(training.gb=training.gb,
-#                            species=species,
-#                            out_dir=out_dir){
-#   out_dir=sub("/$","",out_dir)
-#   if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "),wait=TRUE)}
-#   wd=getwd();setwd(out_dir)
-# 
-#   cmd=paste("new_species.pl"," ",
-#             "--species=",species,
-#             sep="")
-#   print(cmd);system(cmd,wait=TRUE)
-# 
-#   cmd=paste("etraining"," ",
-#             "--species=",species," ",
-#             training.gb,
-#             " &> ",
-#             "training.out",
-#             sep="")
-#   print(cmd);system(cmd,wait=TRUE)
-# 
-#   error=system("grep -c 'Variable stopCodonExcludedFromCDS set right' training.out",intern=TRUE)
-#   total=system(paste("grep -c 'LOCUS'",training.gb,sep=" "),intern=TRUE)
-#   percent=as.numeric(error)/as.numeric(total)
-#   print(paste("stopCodonExcludedFromCDS error percent:",as.character(percent),sep=" "))
-#   if (percent>0.5){
-#     cmd=paste("sed",
-#               "-i",
-#               "'s/stopCodonExcludedFromCDS false/stopCodonExcludedFromCDS true/g'",
-#               paste(species,"_parameters.cfg",sep=""),
-#               sep=" ")
-#     print(cmd);system(cmd,wait=TRUE)
-#   }
-#   
-#   cmd=paste("etraining --species=",species," ",training.gb,
-#             " 2>&1 | grep 'in sequence' | perl -pe 's/.*n sequence (\S+):.*/$1/' | sort -u > bad.lst",
-#             sep="")
-#   print(cmd);system(cmd,wait=TRUE)
-#   
-#   cmd=paste("filterGenes.pl",
-#             "bad.lst",
-#             training.gb,
-#             ">",
-#             "training.f.gb",
-#             sep=" ")
-#   print(cmd);system(cmd,wait=TRUE)
-#   setwd(wd)
-# }
-
-# ProtHint: Homology-based prediction of hints in the form of introns, start and stop codons.
-prothint=function(fna=fna, # Fasta genome, masked
-                  faa=faa, # proteins
-                  out_dir=out_dir,
-                  threads=threads){
-  threads=as.character(threads)
-  out_dir=sub("/$","",out_dir)
-  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
-  
-  cmd=paste("prothint.py",
-            "--workdir",out_dir,
-            "--threads",threads,
-            fna,
-            faa,
-            sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-}
-
-# Augustus
-
 
 # Hisat2; Build hisat2 index of genome.
 Hisat2Build = function(fna=fna, # FASTA of reference genome
@@ -367,11 +311,92 @@ TransDecoder=function(gtf=gtf, # gtf from StringTie
   return(paste(out_prefix,"_TransDecoder.gff3",sep=""))
 }
 
-# gff3toolkit: Merge gff3 files
-MergeGff3=function(gff3_1=gff3_1,gff3_2=gff3_2,fna=fna,out=out){
-  cmd=paste("gff3_merge","-g1",gff3_1,"-g2",gff3_2,"-f",fna,"-og",out,"-r merged_report.txt",sep=" ")
+# EvidenceModeler
+evm=function(protein_alignments.gff3="none", # GFF3 from homology-search gene prediction
+             gene_predictions.gff3="none", # GFF3 from ab initio gene prediction
+             transcript_alignments.gff3="none", # GFF3 from RNA-seq
+             evm_weights=evm_weights, # Absolute path
+             genome=genome,
+             out_dir=out_dir,
+             threads=threads){
+  threads=as.character(threads)
+  out_dir=sub("/$","",out_dir)
+  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
+  wd=getwd();setwd(out_dir)
+  system("mkdir temp_dir")
+  setwd("temp_dir")
+  
+  cmd_part=""
+  if (protein_alignments.gff3!="none"){cmd_part=paste(cmd_part,
+                                                      "--protein_alignments"," ",
+                                                      protein_alignments.gff3,
+                                                      sep="")}
+  if (gene_predictions.gff3!="none"){cmd_part=paste(cmd_part," ",
+                                                    "--gene_predictions"," ",
+                                                    gene_predictions.gff3,
+                                                    sep="")}
+  if (transcript_alignments.gff3!="none"){cmd_part=paste(cmd_part," ",
+                                                         "--transcript_alignments"," ",
+                                                         transcript_alignments.gff3,
+                                                         sep="")}
+  
+  cmd=paste("partition_EVM_inputs.pl",
+            "--genome",genome,
+            cmd_part,
+            "--segmentSize 100000 --overlapSize 10000 --partition_listing partitions_list.out",
+            sep=" ")
   print(cmd);system(cmd,wait=TRUE)
-  return(out)
+  
+  cmd=paste("write_EVM_commands.pl",
+            "--genome",genome,
+            "--weights",evm_weights,
+            cmd_part,
+            "--output_file_name evm.out  --partitions partitions_list.out >  commands.list",
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  cmd=paste("split",
+            "-d",
+            "-n",paste("l/",as.character(as.numeric(threads)-1),sep=""),
+            "commands.list",
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  library(parallel)
+  clus=makeCluster(as.numeric(threads))
+  parSapply(clus,
+            1:(as.numeric(threads)-1),
+            function(i){
+              scr=system("ls x*",wait=TRUE,intern=TRUE)[i]
+              cmd=paste("bash"," ",scr,sep="")
+              print(cmd);system(cmd,wait=TRUE)})
+  
+  cmd="recombine_EVM_partial_outputs.pl --partitions partitions_list.out --output_file_name evm.out"
+  print(cmd);system(cmd,wait=TRUE)
+  
+  cmd=paste("convert_EVM_outputs_to_GFF3.pl",
+            "--partitions partitions_list.out --output evm.out",
+            "--genome",genome,
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  cmd="find . -regex '.*evm.out.gff3' -exec cat {} \\; > EvidenceModeler.gff3"
+  cat(cmd,file="merge_gff3.sh")
+  system("bash merge_gff3.sh",wait=TRUE)
+  
+  cmd="mv evm.out ../"
+  print(cmd);system(cmd,wait=TRUE)
+  cmd="mv partitions_list.out ../"
+  print(cmd);system(cmd,wait=TRUE)
+  cmd="mv commands.list ../"
+  print(cmd);system(cmd,wait=TRUE)
+  cmd="mv EvidenceModeler.gff3 ../"
+  print(cmd);system(cmd,wait=TRUE)
+  
+  setwd(out_dir)
+  system("rm -r temp_dir")
+  
+  setwd(wd)
 }
 
 # gffread: Extract sequences from gff.
@@ -398,7 +423,7 @@ Orthofinder=function(in_dir=in_dir, # Input proteome directory.
                      threads=threads){
   threads=as.character(threads)
   
-  cmd=paste("orthofinder",
+  cmd=paste("orthofinder.py",
             "-f",in_dir,
             "-t",threads,sep=" ")
   print(cmd);system(cmd,wait=TRUE)
