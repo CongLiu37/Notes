@@ -1,8 +1,8 @@
 # Fdb version 3
-["pdflatex"] 1658931627 "/home/cong/Notes/Symbiosis/Abstracts.tex" "/home/cong/Notes/Symbiosis/Abstracts.pdf" "Abstracts" 1658931726
+["pdflatex"] 1659504941 "/home/cong/Notes/Symbiosis/Abstracts.tex" "/home/cong/Notes/Symbiosis/Abstracts.pdf" "Abstracts" 1659504980
   "/etc/texmf/web2c/texmf.cnf" 1602154028 475 c0e671620eb5563b2130f56340a5fde8 ""
-  "/home/cong/Notes/Symbiosis/Abstracts.aux" 1658931627 8 a94a2480d3289e625eea47cd1b285758 ""
-  "/home/cong/Notes/Symbiosis/Abstracts.tex" 1658931726 5387 7643e5d5f4943f33ee1c1f7e3d11a349 ""
+  "/home/cong/Notes/Symbiosis/Abstracts.aux" 1659504941 8 a94a2480d3289e625eea47cd1b285758 ""
+  "/home/cong/Notes/Symbiosis/Abstracts.tex" 1659504980 10157 d265c7ada2763d2386bcee59cd7137db ""
   "/usr/share/texlive/texmf-dist/fonts/map/fontname/texfonts.map" 1511824771 3332 103109f5612ad95229751940c61aada0 ""
   "/usr/share/texlive/texmf-dist/fonts/tfm/public/cm/cmr10.tfm" 1480098701 1296 45809c5a464d5f32c8f98ba97c1bb47f ""
   "/usr/share/texlive/texmf-dist/tex/generic/ifxetex/ifxetex.sty" 1480098815 1458 43ab4710dc82f3edeabecd0d099626b2 ""
@@ -42,9 +42,9 @@
   "/usr/share/texlive/texmf-dist/web2c/texmf.cnf" 1520210507 32485 c64754543d8ac501bea6e75e209ea521 ""
   "/usr/share/texmf/web2c/texmf.cnf" 1520210507 32485 c64754543d8ac501bea6e75e209ea521 ""
   "/var/lib/texmf/web2c/pdftex/pdflatex.fmt" 1602154112 4127010 99ec9c449a9572e65d11d875f61676f6 ""
-  "Abstracts.tex" 1658931726 5387 7643e5d5f4943f33ee1c1f7e3d11a349 ""
+  "Abstracts.tex" 1659504980 10157 d265c7ada2763d2386bcee59cd7137db ""
   "natbibspacing.sty" 0 -1 0 ""
   (generated)
+  "/home/cong/Notes/Symbiosis/Abstracts.log"
   "/home/cong/Notes/Symbiosis/Abstracts.pdf"
   "Abstracts.log"
-  "/home/cong/Notes/Symbiosis/Abstracts.log"

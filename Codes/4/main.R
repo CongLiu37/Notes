@@ -1,4 +1,4 @@
-# Genome/Metagenome assembly, binning and assembly quality assessment
+# Get genome from sequenced reads
 
 # PhyloFlash: Taxon profiling of reads/assembly via reconstructing the SSU rRNAs.
 # Dependencies: PhyloFlash
@@ -14,12 +14,12 @@ PhyloFlash=function(fq1=fq1,fq2=fq2, # Input fq files. Set fq2="none" if single-
             "-CPUs",threads,
             "-read1",fq1,
             sep=" ")
-  if (fq2!="none"){
+  if (fq2!="none"){ # pair-end
     cmd=paste(cmd,
               "-read2",fq2,
               sep=" ")
   }
-  if (contigs.fa!="none"){
+  if (contigs.fa!="none"){ # contigs provided
     cmd=paste(cmd,
               "-trusted",contigs.fa,
               sep=" ")
@@ -36,9 +36,17 @@ QualityCheck=function(fq1=fq1, # Input fq file.
                       threads=threads){
   threads = as.character(threads)
   if (fq2!="none"){ # pair-end
-    cmd = paste("fastqc","-o",out_dir,"-t",threads,fq1,fq2,sep=" ")
+    cmd = paste("fastqc",
+                "-o",out_dir,
+                "-t",threads,
+                fq1,fq2,
+                sep=" ")
   }else{ # single-end
-    cmd = paste("fastqc","-o",out_dir,"-t",threads,fq1,sep=" ")
+    cmd = paste("fastqc",
+                "-o",out_dir,
+                "-t",threads,
+                fq1,
+                sep=" ")
   }
   print(cmd);system(cmd,wait=TRUE)
   return(0)
@@ -56,9 +64,24 @@ QualityFilter = function(fq1=fq1,fq2=fq2, # Input fq files. Set fq2="none" if si
   threads = as.character(threads)
   
   if (fq2!="none"){ # pair-end
-    cmd = paste("trimmomatic","PE","-threads",threads,"-phred33",fq1,fq2,clean_fq1,unpaired_fq1,clean_fq2,unpaired_fq2,QualityFilter,sep=" ")
+    cmd = paste("trimmomatic",
+                "PE",
+                "-threads",threads,
+                "-phred33",
+                fq1,fq2,
+                clean_fq1,unpaired_fq1,
+                clean_fq2,unpaired_fq2,
+                QualityFilter,
+                sep=" ")
   }else{ # single-end
-    cmd = paste("trimmomatic","SE","-threads",threads,"-phred33",fq1,clean_fq1,QualityFilter,sep=" ")
+    cmd = paste("trimmomatic",
+                "SE",
+                "-threads",threads,
+                "-phred33",
+                fq1,
+                clean_fq1,
+                QualityFilter,
+                sep=" ")
   }
   print(cmd);system(cmd,wait=TRUE)
   
@@ -79,17 +102,27 @@ SPAdes=function(fq1=fq1,fq2=fq2, # Input fq files. Set fq2="none" if single-end.
   threads=as.character(threads)
   
   if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "),wait=TRUE)}
+  
   if (fq2!="none"){ # pair-end
-    cmd=paste("spades.py","-t",threads,"-1",fq1,"-2",fq2,"-o",out_dir,sep=" ")
+    cmd=paste("spades.py",
+              "-t",threads,
+              "-1",fq1,
+              "-2",fq2,
+              "-o",out_dir,
+              sep=" ")
   }else{
-    cmd=paste("spades.py","-t",threads,"-s",fq1,"-o",out_dir,sep=" ")
+    cmd=paste("spades.py",
+              "-t",threads,
+              "-s",fq1,
+              "-o",out_dir,
+              sep=" ")
   }
   
   if (contigs.fa!="none"){cmd=paste(cmd,"--trusted-contigs",contigs.fa,sep=" ")}
   if (pacbio_clr!="none"){cmd=paste(cmd,"--pacbio",pacbio_clr,sep=" ")}
   if (nanopore!="none"){cmd=paste(cmd,"--nanopore",nanopore,sep=" ")}
   if (sanger!="none"){cmd=paste(cmd,"--sanger",sanger,sep=" ")}
-  if (meta){cmd=pastes(cmd,"--meta")}
+  if (meta){cmd=pastes(cmd,"--meta",sep=" ")}
   
   print(cmd);system(cmd,wait=TRUE)
   return(out_dir)
@@ -118,7 +151,8 @@ Quast=function(fna=fna, # FASTA of genome assembly.
   out_dir=sub("/$","",out_dir)
   
   if (!file.exists(paste(out_dir,"/report.tsv",sep=""))){
-    if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
+    if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))
+  }
   
     cmd=paste("quast --min-contig 0",
               "-o",out_dir,
@@ -189,7 +223,13 @@ checkm=function(bin_dir=bin_dir, # the directory in which bins are located.
                 threads=threads){
   threads=as.character(threads)
   
-  cmd=paste("checkm","lineage_wf","-x",bin_basename,"-t",threads,bin_dir,out_dir,sep=" ")
+  cmd=paste("checkm",
+            "lineage_wf",
+            "-x",bin_basename,
+            "-t",threads,
+            bin_dir,
+            out_dir,
+            sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   
   return(out_dir)
@@ -206,23 +246,49 @@ Bowtie2 = function(fq1=fq1,fq2=fq2, # Input fq files. Make fq2="none" if single-
                    threads=threads){
   threads = as.character(threads)
   
-  cmd = paste("bowtie2-build",fna,index,sep=" ")
+  cmd = paste("bowtie2-build",
+              fna,
+              index,
+              sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   
   bam_filename=paste(out_prefix,".bam",sep="")
   if (fq2!="none"){ # pair-end
-    cmd = paste("bowtie2","-x",index,"-p",threads,"-1",fq1,"-2",fq2,"|",
-                "samtools","view","-@",threads,"-bS","|",
-                "samtools","sort","-@",threads,"-o",bam_filename,sep=" ")
+    cmd = paste("bowtie2",
+                "-x",index,
+                "-p",threads,
+                "-1",fq1,
+                "-2",fq2,
+                "|",
+                "samtools","view",
+                "-@",threads,"-bS",
+                "|",
+                "samtools","sort",
+                "-@",threads,
+                "-o",bam_filename,
+                sep=" ")
   }else{ # single pair
-    cmd = paste("bowtie2","-x",index,"-p",threads,"-U",fq1,"|",
-                "samtools","view","-@",threads,"-bS","|",
-                "samtools","sort","-@",threads,"-o",bam_filename,sep=" ")
+    cmd = paste("bowtie2",
+                "-x",index,
+                "-p",threads,
+                "-U",fq1,
+                "|",
+                "samtools","view",
+                "-@",threads,"-bS",
+                "|",
+                "samtools","sort",
+                "-@",threads,
+                "-o",bam_filename,
+                sep=" ")
   }
   print(cmd);system(cmd,wait=TRUE)
   
-  cmd=paste("samtools","index",bam_filename,"-@",threads,sep=" ")
+  cmd=paste("samtools","index",
+            bam_filename,
+            "-@",threads,
+            sep=" ")
   print(cmd);system(cmd)
+  
   return(bam_filename)
 }
 
@@ -273,7 +339,8 @@ blastn_blobtools=function(fna=fna, # fna. Input DNA sequences.
             "-max_target_seqs 10",
             "-max_hsps 1",
             "-evalue 1e-25",
-            "-num_threads",threads,sep=" ")
+            "-num_threads",threads,
+            sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   
   cmd=paste("blobtools create",
@@ -376,12 +443,13 @@ SprayNPray=function(fna=fna, # fna. Input DNA sequences.
 }
 
 # TAGC plot
+# Taxa supported less than 0.1% of total scaffolds are removed as false positives.
 # Dependencies: ggplot2 (R), stringr (R)
 TAGC=function(df, # Each row represents a scaffold.
                   # Columns include cov, GC.content (e.g. 38.1), taxon (e.g. [D] Bacteria; [P] Proteobacteria)
               rank=rank, # Major taxonomy rank to be included in plot.
               title="", # title of plot.
-              out=out){
+              out.pdf=out.pdf){
   library(ggplot2);library(stringr)
   
   d=df;d[is.na(d)]="none";d[d==""]="none"
@@ -399,7 +467,7 @@ TAGC=function(df, # Each row represents a scaffold.
                aes(x=log10(cov),y=GC.content,
                    color=str_extract(data[,"taxon"],pattern)))+
     theme_classic()+labs(title=title,color="taxonomy",x="log10(coverage)",y="GC%")
-  pdf(out);print(p);dev.off()
+  pdf(out.pdf);print(p);dev.off()
   return(p)
 }
 
@@ -408,7 +476,7 @@ TAGC=function(df, # Each row represents a scaffold.
 ContaminationPlot=function(df, # Each row represents a scaffold.
                                # Columns include cov, GC.content (e.g. 38.1)
                           title="", # plot title
-                          out=out){
+                          out.pdf=out.pdf){
   library(ggplot2);library(ggExtra)
   p1=ggplot(df)+geom_point(size=0.2,aes(x=cov,y=GC.content))+
     theme_classic()+
@@ -418,7 +486,7 @@ ContaminationPlot=function(df, # Each row represents a scaffold.
   p=ggMarginal(p1,type="histogram",size=10,
              xparams=list(bins=100),
              yparams=list(bins=100))
-  pdf(out);print(p);dev.off()
+  pdf(out.pdf);print(p);dev.off()
   return(p)
 }
 
@@ -431,23 +499,35 @@ Extract_fq=function(fq1=fq1,fq2=fq2, # Original fq. fq2="none" id single-end.
 ){
   threads=as.character(threads)
   
-  cmd = paste("bowtie2-build",fna,paste(out_prefix,"_index",sep=""),sep=" ")
+  cmd = paste("bowtie2-build",
+              fna,
+              paste(out_prefix,"_index",sep=""),
+              sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   
   if (fq2!="none"){ # pair-end
-    cmd = paste("bowtie2","-x",paste(out_prefix,"_index",sep=""),
-                "-p",threads,"-1",fq1,"-2",fq2,"|",
+    cmd = paste("bowtie2",
+                "-x",paste(out_prefix,"_index",sep=""),
+                "-p",threads,
+                "-1",fq1,
+                "-2",fq2,
+                "|",
                 "samtools fastq",
-                "-@",threads,"-G","12",
+                "-@",threads,
+                "-G","12",
                 "-1",paste(out_prefix,".1.fq.gz",sep=""),
                 "-2",paste(out_prefix,".2.fq.gz",sep=""),
                 sep=" ")
     print(cmd);system(cmd,wait=TRUE)
   }else{ # single pair
-    cmd = paste("bowtie2","-x",paste(out_prefix,"_index",sep=""),
-                "-p",threads,"-U",fq1,"|",
+    cmd = paste("bowtie2",
+                "-x",paste(out_prefix,"_index",sep=""),
+                "-p",threads,
+                "-U",fq1,
+                "|",
                 "samtools fastq",
-                "-@",threads,"-G","4",
+                "-@",threads,
+                "-G","4",
                 "-0",paste(out_prefix,".fq.gz",sep=""),
                 sep=" ")
     print(cmd);system(cmd,wait=TRUE)
@@ -470,10 +550,18 @@ kmc=function(fq1=fq1, # Input fq1
   wd=getwd()
   setwd(out_dir)
   
-  cmd=paste("echo",fq1,">",paste(out_dir,"/",out_basename,".FILE",sep=""),sep=" ")
+  cmd=paste("echo",
+            fq1,
+            ">",
+            paste(out_dir,"/",out_basename,".FILE",sep=""),
+            sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   if (fq2!="none"){
-    cmd=paste("echo",fq2,">>",paste(out_dir,"/",out_basename,".FILE",sep=""),sep=" ")
+    cmd=paste("echo",
+              fq2,
+              ">>",
+              paste(out_dir,"/",out_basename,".FILE",sep=""),
+              sep=" ")
     print(cmd);system(cmd,wait=TRUE)
   }
   
@@ -482,11 +570,15 @@ kmc=function(fq1=fq1, # Input fq1
             paste("-t",threads,sep=""),
             "-m64","-ci1 -cs10000",
             paste("@",out_dir,"/",out_basename,".FILE",sep=""),
-            out_basename,".",sep=" ")
+            out_basename,
+            ".",
+            sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   
-  cmd=paste("kmc_tools transform",paste(out_dir,"/",out_basename,sep=""),
-            "histogram",paste(out_dir,"/",out_basename,".hist",sep=""),"-cx10000",
+  cmd=paste("kmc_tools transform",
+            paste(out_dir,"/",out_basename,sep=""),
+            "histogram",paste(out_dir,"/",out_basename,".hist",sep=""),
+            "-cx10000",
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   
@@ -509,7 +601,8 @@ Genomescope=function(hist=hist, # kmer histogram from kmc.
               "-i",hist,
               "-o",out_dir,
               "-n",out_basename,
-              "-k",kmer,sep=" ")
+              "-k",kmer,
+              sep=" ")
     print(cmd);system(cmd,wait=TRUE)
   }
   
@@ -518,12 +611,13 @@ Genomescope=function(hist=hist, # kmer histogram from kmc.
   Homozygous=unlist(str_extract_all(res[grepl("Homozygous",res)],"[0-9.]*%"))
   Heterozygous=unlist(str_extract_all(res[grepl("Heterozygous",res)],"[0-9.]*%"))
   HaploidLength=unlist(str_extract_all(res[grepl("Genome Haploid Length",res)],"[0-9,]* bp"))
+  
   o=list(Homozygous=Homozygous,Heterozygous=Heterozygous,HaploidLength=HaploidLength)
   return(o)
 }
 
 # Genome survey via Sumdgeplot.
-# Dependencies: Smudgeplot
+# Dependencies: Smudgeplot, KMC
 Sumdgeplot=function(hist=hist, # kmer histogram from kmc.
                     kmcdb=kmcdb, # kmc database.
                     out_prefix=out_prefix
@@ -531,17 +625,18 @@ Sumdgeplot=function(hist=hist, # kmer histogram from kmc.
   L=system(paste("smudgeplot.py cutoff ",hist," L",sep=""),wait=TRUE,intern=TRUE)
   U=system(paste("smudgeplot.py cutoff ",hist," U",sep=""),wait=TRUE,intern=TRUE)
   
-  cmd=paste("kmc_tools transform",kmcdb,paste("-ci",L," ","-cx",U," dump",sep=""),
-            "-s",paste(kmcdb,"_L",L,"_U",U,".dump",sep=""),sep=" ")
+  cmd=paste("kmc_tools transform",
+            kmcdb,
+            paste("-ci",L," ","-cx",U," dump",sep=""),
+            "-s",paste(kmcdb,"_L",L,"_U",U,".dump",sep=""),
+            sep=" ")
   print(cmd);system(cmd)
   
-  cmd=paste("smudgeplot.py hetkmers -o",
-            out_prefix,
+  cmd=paste("smudgeplot.py hetkmers -o",out_prefix,
             paste(kmcdb,"_L",L,"_U",U,".dump",sep=""),sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   
-  cmd=paste("smudgeplot.py plot",
-            "-o",out_prefix,
+  cmd=paste("smudgeplot.py plot","-o",out_prefix,
             paste(out_prefix,"_coverages.tsv",sep=""),
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
@@ -562,7 +657,8 @@ kmergenie=function(fq1=fq1, # Input fq1
     print(cmd);system(cmd,wait=TRUE)
   }
   
-  cmd=paste("kmergenie",paste(out_prefix,".FILE",sep=""),
+  cmd=paste("kmergenie",
+            paste(out_prefix,".FILE",sep=""),
             "-t",threads,
             "-o",out_prefix)
   print(cmd);system(cmd,wait=TRUE)

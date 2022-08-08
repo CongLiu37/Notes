@@ -1,8 +1,10 @@
-# Genome annotation.
+# Gene prediction
 
 # Simplify sequence ID in genome
+# Dependencies: simplifyFastaHeaders.pl from AUGUSTUS
 SimplifyID=function(fna=fna,
-                    common_pattern=common_pattern){
+                    common_pattern=common_pattern # common pattern in simplified sequence IDs
+                    ){
   cmd=paste("simplifyFastaHeaders.pl", # AUGUSTUS
             fna,
             common_pattern,
@@ -35,13 +37,17 @@ GenomeMask=function(fna=fna,# Fasta file of genome.
   #####################################################################
   
   # RepeatModeler: de novo identification of repeats.
-  cmd=paste(path,"BuildDatabase","-name",
-            paste(out_prefix,"_RepeatModeler.db",sep=""),
-            "-engine","ncbi",fna,sep=" ")
+  cmd=paste(path,"BuildDatabase",
+            "-name",paste(out_prefix,"_RepeatModeler.db",sep=""),
+            "-engine","ncbi",
+            fna,
+            sep=" ")
   print(cmd);system(cmd,wait=TRUE)
-  cmd=paste(path,"RepeatModeler","-database",
-            paste(out_prefix,"_RepeatModeler.db",sep=""),
-            "-engine","ncbi","-pa",Threads,"-LTRStruct",
+  cmd=paste(path,"RepeatModeler",
+            "-database",paste(out_prefix,"_RepeatModeler.db",sep=""),
+            "-engine","ncbi",
+            "-pa",Threads,
+            "-LTRStruct",
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   
@@ -92,7 +98,7 @@ GenePrediction_protein=function(fna=fna, # masked genome
   print(cmd);system(cmd,wait=TRUE)
   
   cmd=paste("gth2gtf.pl", # AUGUSTUS Remove alternative splicement
-            "bonafide.gff3",
+            "GenomeThreader.gff3",
             "training_AUGUSTUS.gtf",sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   
@@ -110,7 +116,7 @@ GenePrediction_protein=function(fna=fna, # masked genome
 }
 
 # Remove redundant gene structures in training data of AUGUSTUS
-# Dependencies: blast+
+# Dependencies: blast+, scripts from AUGUSTUS
 non_redundant=function(training_AUGUSTUS.gb=training_AUGUSTUS.gb, # GenBank
                        training_AUGUSTUS.gtf=training_AUGUSTUS.gtf, # bonafide
                        genome=genome,
@@ -139,12 +145,14 @@ non_redundant=function(training_AUGUSTUS.gb=training_AUGUSTUS.gb, # GenBank
             "-f","traingenes.lst",
             "-F",training_AUGUSTUS.gtf,
             ">",
-            "bonafide.f.gtf",sep=" ")
+            "bonafide.f.gtf",
+            sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   cmd=paste("gtf2aa.pl", # AUGUSTUS
             genome,
             "bonafide.f.gtf",
-            "prot.aa",sep=" ")
+            "prot.aa",
+            sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   cmd=paste("aa2nonred.pl","prot.aa","prot.nr.aa",
             sep=" ")
@@ -170,9 +178,9 @@ non_redundant=function(training_AUGUSTUS.gb=training_AUGUSTUS.gb, # GenBank
 }
 
 # AUGUSTUS training and gene prediction.
-augustus=function(fna=fna,
+augustus=function(fna=fna, # genome
                   species=species, # Species name for the trained model
-                  training.gb=training.gb, # training genes in GenBank format
+                  training.gb=training.gb, # non-redundant training genes in GenBank format
                   out_dir=out_dir,
                   threads=threads){
   threads=as.character(threads)
@@ -211,9 +219,11 @@ augustus=function(fna=fna,
 }
 
 # Hisat2; Build hisat2 index of genome.
-Hisat2Build = function(fna=fna, # FASTA of reference genome
+Hisat2Build = function(fna=fna, # FASTA of genome
                        index_prefix=index_prefix){
-  cmd = paste("hisat2-build",fna,index_prefix,sep=" ")
+  cmd = paste("hisat2-build",
+              fna,
+              index_prefix,sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   return(0)
 }
@@ -230,13 +240,36 @@ Hisat = function(fq1=fq1,fq2=fq2, # Input fq files. Make fq2="None" if single-en
   bam_filename=paste(out_prefix,".bam",sep="")
   
   if (fq2!="None"){ # pair-end
-    cmd = paste("hisat2","--dta","-x",index,"-p",threads,"-1",fq1,"-2",fq2,"|",
-                "samtools","view","-@",threads,"-bS","|",
-                "samtools","sort","-@",threads,"-o",bam_filename,sep=" ")
+    cmd = paste("hisat2",
+                "--dta",
+                "-x",index,
+                "-p",threads,
+                "-1",fq1,
+                "-2",fq2,
+                "|",
+                "samtools","view",
+                "-@",threads,
+                "-bS",
+                "|",
+                "samtools","sort",
+                "-@",threads,
+                "-o",bam_filename,
+                sep=" ")
   }else{ # single pair
-    cmd = paste("hisat2","--dta","-x",index,"-p",threads,"-U",fq1,"|",
-                "samtools","view","-@",threads,"-bS","|",
-                "samtools","sort","-@",threads,"-o",bam_filename,sep=" ")
+    cmd = paste("hisat2",
+                "--dta",
+                "-x",index,
+                "-p",threads,
+                "-U",fq1,
+                "|",
+                "samtools","view",
+                "-@",threads,
+                "-bS",
+                "|",
+                "samtools","sort",
+                "-@",threads,
+                "-o",bam_filename,
+                sep=" ")
   }
   print(cmd);system(cmd,wait=TRUE)
   
@@ -268,7 +301,11 @@ StringTie = function(input_bam=input_bam, # Input BAM.
   threads = as.character(threads)
   gtf_filename = paste(output_prefix,".gtf",sep="")
   
-  cmd = paste("stringtie","-p", threads,"-o", gtf_filename,input_bam,sep=" ")
+  cmd = paste("stringtie",
+              "-p", threads,
+              "-o", gtf_filename,
+              input_bam,
+              sep=" ")
   print(cmd);system(cmd,wait = T)
   
   return(gtf_filename)
@@ -415,16 +452,3 @@ gffread=function(gff=gff,
   print(cmd);system(cmd,wait=TRUE)
 }
 
-# OrthoFinder
-# By default OrthoFinder creates a results directory called ‘OrthoFinder’ inside the 
-# input proteome directory and puts the results here.
-Orthofinder=function(in_dir=in_dir, # Input proteome directory. 
-                                    # One file per species with extension '.faa'
-                     threads=threads){
-  threads=as.character(threads)
-  
-  cmd=paste("orthofinder.py",
-            "-f",in_dir,
-            "-t",threads,sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-}
