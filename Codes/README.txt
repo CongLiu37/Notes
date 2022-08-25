@@ -7,3 +7,23 @@ Content:
 5. Gene prediction
 6. Machine learning in scikit-learn, python
 7. Downstream analysis of gene prediction
+
+Mode of README for projects:
+###############################################################################################
+###############################################################################################
+VI:
+Input: \textit{Input provided to this module}
+Description:
+Directories: \textit{or output of this module}
+(1) \textit{Dir1}/
+	\textit{description of the directory}
+	\textit{files: description of files}
+(2) \textit{Dir2}/
+R function:
+"""
+\textit{functions to generate files described in this module}
+"""
+Python function:
+"""
+\textit{functions to generate files described in this module}
+"""

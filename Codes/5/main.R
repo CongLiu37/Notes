@@ -8,8 +8,8 @@ SimplifyID=function(fna=fna,
   cmd=paste("simplifyFastaHeaders.pl", # AUGUSTUS
             fna,
             common_pattern,
-            paste(fna,"_SimpleIDs",sep=""),
-            paste(fna,"_IDconvert.tsv",sep=""))
+            paste(fna,"_SimpleIDs",sep=""), # FASTA with simplified IDs
+            paste(fna,"_IDconvert.tsv",sep="")) # old ID to new ID (tabular)
   print(cmd);system(cmd,wait=TRUE)
   return(paste(fna,"_SimpleIDs",sep=""))
 }
@@ -36,7 +36,7 @@ GenomeMask=function(fna=fna,# Fasta file of genome.
   path="singularity run /home/c/c-liu/Softwares/dfam-tetools-latest.sif"
   #####################################################################
   
-  # RepeatModeler: de novo identification of repeats.
+  # RepeatModeler: de novo repeat library
   cmd=paste(path,"BuildDatabase",
             "-name",paste(out_prefix,"_RepeatModeler.db",sep=""),
             "-engine","ncbi",
@@ -51,7 +51,7 @@ GenomeMask=function(fna=fna,# Fasta file of genome.
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   
-  # RepeatMasker: Mask repeats find by RepeatModeler
+  # RepeatMasker: Mask repeats in de novo repeat library
   cmd=paste(path,"RepeatMasker",
             "-xsmall", # soft masking
             "-lib",paste(out_prefix,"_RepeatModeler.db-families.fa",sep=""),
@@ -60,7 +60,7 @@ GenomeMask=function(fna=fna,# Fasta file of genome.
             fna,
             "-dir",out_dir)
   print(cmd);system(cmd,wait=TRUE)
-  # RepeatMasker: Mask repeats by homology search
+  # RepeatMasker: Mask repeats in RepBase
   cmd=paste(path,"RepeatMasker",
             "-xsmall", # soft masking
             "-pa",Threads,
@@ -71,8 +71,7 @@ GenomeMask=function(fna=fna,# Fasta file of genome.
   print(cmd);system(cmd,wait=TRUE)
   
   # Remove temporaries
-  cmd=paste("rm",fna,sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
+  system(paste("rm",fna,sep=" "),wait=TRUE)
   
   setwd(pwd_begin)
   
@@ -83,7 +82,7 @@ GenomeMask=function(fna=fna,# Fasta file of genome.
 # gtf and GenBank format for AUGUSTUS training
 # Dependencies: GenomeThreader, scripts from AUGUSTUS
 GenePrediction_protein=function(fna=fna, # masked genome
-                                faa=faa,
+                                faa=faa, # reference proteins
                                 out_dir=out_dir){
   out_dir=sub("/$","",out_dir)
   if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}

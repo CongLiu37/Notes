@@ -1,7 +1,14 @@
-# Downstream analysis of gene prediction
+# Downstream analysis in genomics
 
-# Retain the longest protein isoform
-# Dependencies: seqkit, parrell (R)
+# Retain the longest protein isoform of each gene by header lines of fasta.
+# Proteins are considered as isoforms only when the header line declares isoform.
+# e.g. these are the same gene as they declare isoform and share same name "pyruvate decarboxylase 2-like"
+# >XP_024356342.1 pyruvate decarboxylase 2-like isoform X1 [Physcomitrella patens]
+# >XP_024356343.1 pyruvate decarboxylase 2-like isoform X1 [Physcomitrella patens]
+# these are different genes:
+# >XP_024390255.1 40S ribosomal protein S12-like [Physcomitrella patens]
+# >XP_024399722.1 40S ribosomal protein S12-like [Physcomitrella patens]
+# Dependencies: seqkit
 Isoform_filter=function(faa_in=faa_in,
                         faa_out=faa_out,
                         threads=threads){
@@ -9,34 +16,29 @@ Isoform_filter=function(faa_in=faa_in,
   tmp=paste(faa_out,"_tmp",sep="")
   system(paste("mkdir",tmp,sep=" "))
   
-  # remove line breakers in sequences
-  cmd=paste("seqkit","seq","--threads",threads,"-w 0",faa_in,
-            ">",
-            paste(tmp,"/no_wrap.faa",sep=""),
-            sep=" ")
-  system(cmd,wait=TRUE)
-  
   # Sequence header (everything except >) to length (tabular)
-  cmd=paste("seqkit","fx2tab","--threads",threads,"--length --name --header-line",faa_in,
+  cmd=paste("seqkit","fx2tab",
+            "--threads",threads,
+            "--length --name --header-line",
+            faa_in,
             ">",
             paste(tmp,"/Header2Length",sep=""))
   system(cmd,wait=TRUE)
   
-  Header2Length=read.table(paste(tmp,"/Header2Length",sep=""),
-                           sep="\t",header=FALSE,quote="",
+  Header2Length=read.table(paste(tmp,"/Header2Length",sep=""),sep="\t",header=FALSE,quote="",
                            col.names=c("Header","Length"))
   Header2Length[,"ID"]=sapply(Header2Length[,"Header"],
                               function(Header){
                                 Header=unlist(strsplit(Header," "))
                                 return(Header[1])
                               })
-  
+
   # Select longest isoform
-  Isoforms=Header2Length[grepl("[Ii]soform",Header2Length[,"Header"]),]
+  Isoforms=Header2Length[grepl("[Ii]soform",Header2Length[,"Header"]),] # Protein records that declare isoform
   Isoforms[,"Header"]=sub("[Ii]soform [0-9, A-Z]*","",Isoforms[,"Header"])
   if (nrow(Isoforms)!=0){
   Isoforms[,"Header"]=sapply(1:nrow(Isoforms),
-                             function(i){
+                             function(i){ # convert header to name
                                return(sub(Isoforms[i,"ID"],"",Isoforms[i,"Header"]))
                              })
   IDs_LongestIso=sapply(names(table(Isoforms[,"Header"])),
@@ -48,53 +50,63 @@ Isoform_filter=function(faa_in=faa_in,
                         })
   IDs_LongestIso=unname(IDs_LongestIso)
   }else{IDs_LongestIso=c()}
-  IDs_noIso=Header2Length[!grepl("[Ii]soform",Header2Length[,"Header"]),][,"ID"]
-  target_IDs=c(IDs_noIso,IDs_LongestIso)
+  IDs_noIso=Header2Length[!grepl("[Ii]soform",Header2Length[,"Header"]),][,"ID"] # Protein IDs that do not declare isoform
   
-  library(parallel)
-  clus=makeCluster(as.numeric(threads)-1)
-  clusterExport(cl=clus,c("target_IDs","tmp"),envir=environment())
-  parSapply(cl=clus,target_IDs,
-         function(ID){
-           cmd=paste("grep","-A1",ID,paste(tmp,"/no_wrap.faa",sep=""),
-                     ">>",
-                     paste(faa_out,";",sep=""),sep=" ")
-           system(paste("echo",paste("'",cmd,"'",sep=""),
-                        ">>",
-                        paste(tmp,"/commands.sh",sep=""),sep=" "))
-         })
-  system(paste("bash",paste(tmp,"/commands.sh",sep=""),sep=" "),wait=TRUE)
-  #system(paste("rm","-r",tmp,sep=" "),wait=TRUE)
+  target_IDs=c(IDs_noIso,IDs_LongestIso)
+  target_IDs=data.frame(target_IDs)
+  write.table(target_IDs,paste(tmp,"/target_IDs",sep=""),
+              sep="\t",col.names=FALSE,row.names=FALSE,quote=FALSE)
+  
+  # Extract fasta by IDs
+  cmd=paste("seqkit","grep",
+            "--threads",threads,
+            "-f",paste(tmp,"/target_IDs",sep=""),
+            faa_in,
+            ">",
+            faa_out,
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  system(paste("rm","-r",tmp,sep=" "),wait=TRUE)
 }
 
-# species=readLines("/flash/HusnikU/Cong/Orthofinder_noIsoforms/SpeciesList.txt")
-# for (line in species){
-#   name=unlist(strsplit(line,"/"))
-#   name=name[length(name)]
-#   faa_in=line
-#   faa_out=paste("/flash/HusnikU/Cong/Orthofinder_noIsoforms/",name,sep="")
-#   print(faa_out)
-#   Isoform_filter(faa_in=faa_in,faa_out=faa_out,threads=64)
-# }
-
 # OrthoFinder
-# By default OrthoFinder creates a results directory called ‘OrthoFinder’ inside the 
-# input proteome directory and puts the results here.
+# OrthoFinder creates a results directory called ‘OrthoFinder’ inside the input proteome directory and puts the results here.
+# Orthofinder with "-M msa" infers phylogeny by mafft & fasttree
 # Dependencies: Orthofinder, mafft, fasttree
 Orthofinder=function(in_dir=in_dir, # Input proteome directory. 
-                     # One file per species with extension '.faa'
+                                    # One file per species with extension '.faa'
                      threads=threads){
   threads=as.character(threads)
   
   cmd=paste("orthofinder.py",
             "-f",in_dir,
             "-M msa",
-            "-t",threads,sep=" ")
+            "-t",threads,
+            "-a",threads,
+            sep=" ")
   print(cmd);system(cmd,wait=TRUE)
 }
 
+# Re-run orthofinder with designated phylogenetic tree
+Re_orthofinder=function(previous_orthofinder_result_dir=previous_orthofinder_result_dir,
+                        tree=tree,
+                        threads=threads){
+  threads=as.character(threads)
+  
+  cmd=paste("orthofinder",
+            "-t",threads,
+            "-a",threads,
+            "-ft",previous_orthofinder_result_dir,
+            "-s",tree,
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+}
+
+# Incomplete
 # AvP
 # Detect horizontal gene transfer (HGT)
+# Dependencies: AvP
 Avp=function(query.faa=query.faa,
              blast_filename=blast_filename,
              dmbd=dmbd,
@@ -147,8 +159,6 @@ Avp=function(query.faa=query.faa,
   
   setwd(wd)
 }
-
-
 
 
 
