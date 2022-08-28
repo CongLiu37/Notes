@@ -15,3 +15,6 @@ rm $1.fls
 rm $1.nav
 rm $1.snm
 rm $1.toc
+rm $1.bcf
+rm $1.run.xml
+rm $1-blx.bib

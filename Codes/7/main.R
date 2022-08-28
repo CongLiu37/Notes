@@ -1,6 +1,6 @@
-# Downstream analysis in genomics
+# Genomic analysis based on peptide set
 
-# Retain the longest protein isoform of each gene by header lines of fasta.
+# Retain the longest protein isoform of each gene by header lines of faa.
 # Proteins are considered as isoforms only when the header line declares isoform.
 # e.g. these are the same gene as they declare isoform and share same name "pyruvate decarboxylase 2-like"
 # >XP_024356342.1 pyruvate decarboxylase 2-like isoform X1 [Physcomitrella patens]
@@ -34,7 +34,7 @@ Isoform_filter=function(faa_in=faa_in,
                               })
 
   # Select longest isoform
-  Isoforms=Header2Length[grepl("[Ii]soform",Header2Length[,"Header"]),] # Protein records that declare isoform
+  Isoforms=Header2Length[grepl("[Ii]soform",Header2Length[,"Header"]),] # Proteins that declare isoform
   Isoforms[,"Header"]=sub("[Ii]soform [0-9, A-Z]*","",Isoforms[,"Header"])
   if (nrow(Isoforms)!=0){
   Isoforms[,"Header"]=sapply(1:nrow(Isoforms),
@@ -47,7 +47,7 @@ Isoform_filter=function(faa_in=faa_in,
                           d=d[d[,"Length"]==max(d[,"Length"]),]
                           ID=sample(d[,"ID"],1)
                           return(ID)
-                        })
+                        }) # IDs of longest isoforms
   IDs_LongestIso=unname(IDs_LongestIso)
   }else{IDs_LongestIso=c()}
   IDs_noIso=Header2Length[!grepl("[Ii]soform",Header2Length[,"Header"]),][,"ID"] # Protein IDs that do not declare isoform

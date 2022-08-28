@@ -5,7 +5,7 @@
 SimplifyID=function(fna=fna,
                     common_pattern=common_pattern # common pattern in simplified sequence IDs
                     ){
-  cmd=paste("simplifyFastaHeaders.pl", # AUGUSTUS
+  cmd=paste("simplifyFastaHeaders.pl",
             fna,
             common_pattern,
             paste(fna,"_SimpleIDs",sep=""), # FASTA with simplified IDs
@@ -37,13 +37,15 @@ GenomeMask=function(fna=fna,# Fasta file of genome.
   #####################################################################
   
   # RepeatModeler: de novo repeat library
-  cmd=paste(path,"BuildDatabase",
+  cmd=paste(path,
+            "BuildDatabase",
             "-name",paste(out_prefix,"_RepeatModeler.db",sep=""),
             "-engine","ncbi",
             fna,
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
-  cmd=paste(path,"RepeatModeler",
+  cmd=paste(path,
+            "RepeatModeler",
             "-database",paste(out_prefix,"_RepeatModeler.db",sep=""),
             "-engine","ncbi",
             "-pa",Threads,
@@ -51,8 +53,9 @@ GenomeMask=function(fna=fna,# Fasta file of genome.
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   
-  # RepeatMasker: Mask repeats in de novo repeat library
-  cmd=paste(path,"RepeatMasker",
+  # RepeatMasker: Mask repeats in de novo repeat library from RepeatModeler
+  cmd=paste(path,
+            "RepeatMasker",
             "-xsmall", # soft masking
             "-lib",paste(out_prefix,"_RepeatModeler.db-families.fa",sep=""),
             "-pa",Threads,
@@ -60,8 +63,10 @@ GenomeMask=function(fna=fna,# Fasta file of genome.
             fna,
             "-dir",out_dir)
   print(cmd);system(cmd,wait=TRUE)
+  
   # RepeatMasker: Mask repeats in RepBase
-  cmd=paste(path,"RepeatMasker",
+  cmd=paste(path,
+            "RepeatMasker",
             "-xsmall", # soft masking
             "-pa",Threads,
             "-gff",
@@ -79,8 +84,9 @@ GenomeMask=function(fna=fna,# Fasta file of genome.
 }
 
 # Protein based gene prediction with GenomeThreader (gff3)
-# gtf and GenBank format for AUGUSTUS training
-# Dependencies: GenomeThreader, scripts from AUGUSTUS
+# GenomeThreader gives consensus gene models
+# Provide gtf and GenBank dataset (redundant) for AUGUSTUS training
+# Dependencies: GenomeThreader, scripts from AUGUSTUS, stringr (R)
 GenePrediction_protein=function(fna=fna, # masked genome
                                 faa=faa, # reference proteins
                                 out_dir=out_dir){
@@ -115,7 +121,7 @@ GenePrediction_protein=function(fna=fna, # masked genome
 }
 
 # Remove redundant gene structures in training data of AUGUSTUS
-# Dependencies: blast+, scripts from AUGUSTUS
+# Dependencies: blast+, scripts from AUGUSTUS, stringr (R)
 non_redundant=function(training_AUGUSTUS.gb=training_AUGUSTUS.gb, # GenBank
                        training_AUGUSTUS.gtf=training_AUGUSTUS.gtf, # bonafide
                        genome=genome,
@@ -177,6 +183,7 @@ non_redundant=function(training_AUGUSTUS.gb=training_AUGUSTUS.gb, # GenBank
 }
 
 # AUGUSTUS training and gene prediction.
+# Dependencies: AUGUSTUS, parallel (R)
 augustus=function(fna=fna, # genome
                   species=species, # Species name for the trained model
                   training.gb=training.gb, # non-redundant training genes in GenBank format
@@ -235,6 +242,11 @@ Hisat = function(fq1=fq1,fq2=fq2, # Input fq files. Make fq2="None" if single-en
                  out_prefix=out_prefix, # Prefix of output BAM file.
                  threads=threads){
   threads = as.character(threads)
+  
+  cmd = paste("hisat2-build",
+              fna,
+              index,sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
   
   bam_filename=paste(out_prefix,".bam",sep="")
   

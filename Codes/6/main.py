@@ -5,17 +5,19 @@ Dependencies:
 python module: numpy, pandas, sklearn
 """
 ################################################################################
-# Classifiers
-# Functions with name *_classifier takes arguments:
-#   training_sample: Array-like of shape (n_samples, n_features).
-#                    The training input samples.
-#   training_results: Array-like of shape (1, n_samples).
-#                     The target labels, real numbers or strings.
-#   testing: Array-like of shape (m_samples, n_features).
-#            The input samples.
-# and returns:
-#   Array-like of shape (1, m_samples).
-#   The predicted labels for samples defined by rows in argument "testing".
+"""
+Classifiers
+Functions with name *_classifier takes arguments:
+  training_sample: Array-like of shape (n_samples, n_features).
+                   The training input samples.
+  training_results: Array-like of shape (1, n_samples).
+                    The target labels, real numbers or strings.
+  testing: Array-like of shape (m_samples, n_features).
+           The input samples.
+and returns:
+  Array-like of shape (1, m_samples).
+  The predicted labels for samples defined by rows in argument "testing".
+"""
 def decision_tree_classifier(training_sample,training_results,testing):
   """Decision tree"""
   import numpy as np
@@ -65,23 +67,25 @@ def k_neighbors_classifier(training_sample,training_results,testing):
   value=classifier.predict(testing)
   return value
 ################################################################################
-# Outlier detectors
-# The training data contains outliers, i.e. observations that are far from the others. 
-# Outlier detectors try to fit the regions where the training data is the most 
-# concentrated, ignoring the deviant observations.
+"""
+Outlier detectors
+The training data contains outliers, i.e. observations that are far from the others. 
+Outlier detectors try to fit the regions where the training data is the most 
+concentrated, ignoring the deviant observations.
 
-# Functions with name *_outlier_detector takes arguments:
-#   training: Array-like of shape (n_samples, n_features).
-#             The training input samples.
-#   contamination: float in (0, 0.5]
-#                  The proportion of outliers in training. 
-#                  It defines the threshold on the scores of the samples.
-#   testing: Array-like of shape (m_samples, n_features).
-#            The input samples.
-# and returns:
-#   Array-like of shape (1, m_samples).
-#   Tell whether samples defined by rows in argument "testing" are inliers/outliers 
-#   of "training". -1 for outliers and 1 for inliers.
+Functions with name *_outlier_detector takes arguments:
+  training: Array-like of shape (n_samples, n_features).
+            The training input samples.
+  contamination: float in (0, 0.5]
+                 The proportion of outliers in training. 
+                 It defines the threshold on the scores of the samples.
+  testing: Array-like of shape (m_samples, n_features).
+           The input samples.
+and returns:
+  Array-like of shape (1, m_samples).
+  Tell whether samples defined by rows in argument "testing" are inliers/outliers 
+  of "training". -1 for outliers and 1 for inliers.
+"""
 def isolation_forest_outlier_detector(training,contamination,testing):
   """Isolation forest"""
   import numpy as np
@@ -99,13 +103,15 @@ def lof_outlier_detector(training,contamination,testing):
   value=outlier_detector.predict(testing)
   return value
 ################################################################################
-# Clustering
-# Functions with name *_clustering takes arguments:
-#   samples: Array-like of shape (n_samples, n_features).
-#            The samples to be clustered.
-# and returns
-#   Array-like of shape (1, m_samples).
-#   Index of the cluster each sample belongs to.
+"""
+Clustering
+Functions with name *_clustering takes arguments:
+  samples: Array-like of shape (n_samples, n_features).
+           The samples to be clustered.
+and returns
+  Array-like of shape (1, m_samples).
+  Index of the cluster each sample belongs to.
+"""
 def kmean_clustering(samples,k):
   """kmean clustering"""
   import numpy as np
@@ -115,12 +121,14 @@ def kmean_clustering(samples,k):
   values=clustering.predict(samples)
   return values
 ################################################################################
-# Clustering evaluation
-# Functions with name *_clustering_evaluator takes argument:
-#   samples: Array-like of shape (n_samples, n_features).
-#            Samples clustered.
-#   clusters: array-like of shape (1, n_samples).
-#             Predicted cluster indexes for samples.
+"""
+Clustering evaluation
+Functions with name *_clustering_evaluator takes argument:
+  samples: Array-like of shape (n_samples, n_features).
+           Samples clustered.
+  clusters: array-like of shape (1, n_samples).
+            Predicted cluster indexes for samples.
+"""
 def SC(samples,clusters):
   """mean Silhouette Coefficient
      The best value is 1 and the worst value is -1. 

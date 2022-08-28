@@ -1,6 +1,6 @@
 \documentclass[11pt]{article}
 
-\usepackage[UTF8]{ctex} % for Chinese 
+% \usepackage[UTF8]{ctex} % for Chinese 
 
 \usepackage{setspace}
 \usepackage[colorlinks,linkcolor=blue,anchorcolor=red,citecolor=black]{hyperref}
@@ -24,7 +24,7 @@
 \usepackage{amsfonts}
  \usepackage{amsmath}
 
-\title{Insect and vertebrate immunity: key similarities versus differences}
+\title{Microbiota, gut physiology and insect immunity}
 \author{}
 \date{}
 
@@ -35,52 +35,155 @@
   \maketitle
 
   \linenumbers
-\section{Abbreviations}
-PAMP: pathogen-associated molecular pattern.\newline
-PRR: pattern-recognition receptors.\newline
-LPS: lipopolysaccharide.\newline
-PGN: peptidoglycan.\newline
-LTA: lipoteichoic acid.\newline
+\section{Gut structure and function}
+Adult \textit{Drosophila} contains three distinct domains: foregut, midgut and hindgut. 
+Foregut is at the anteriormost region and is originated from ectoderm. 
+It includes pharynx and oesophagus for passage of ingested food and crop for food storage. 
+Midgut is the region from cardia to midgut-hindgut junction where Malpighian tubules are attached. 
+It is originated from endoderm and functions for food digestion and nutrient absorption. 
+Cardia serves as a valve for food passage regulation. 
+Hindgut is ectoderm-derived, extending to the rectum, and is responsible for absorption of water and ions.
 
-\section{Similarities}
-\subsection{Sensing mechanims}
-\subsubsection{Recognition of pathogen-associated molecular patterns}
-Distinction between self and non-self relies on pattern-recognition receptors (PRRs) that bind to diagnostic sites for potential pathogens, or pathogen-associated molecular patterns (PAMPs). 
-One precondition for sensing non-self by PAMP recognition is that these molecular patterns are conserved enough to allow the host to evolve binding proteins before the pathogen is able to eliminate or modify the target site. 
-Common PAMPs include bacterial lipopolysaccharide (LPS), peptidoglycan (PGN), lipoteichoic acid (LTA) and fungal beta-1, 3-glucans.
+\newline
 
-\subsubsection{Extracellular sensor particles}
-Extracellular lipid particles are involved in systemic immune response to pathogens. 
-Apolipoprotein III is sensitive to both particle lipid composition and immune elicitors. 
-Moreover, lipid particles are associated with typical immune proteins including prophenoloxidase and its upstream proteins, such as LPS- and PGN-binding proteins. 
+Midgut is a single layer of epithelium and a visceral of muscle layer. 
+The midgut epithelium contains four cell types: enterocytes (ECs), enteroendocrine cells (EECs), ISCs and enteroblasts (EBs). 
+ECs are large polypoid cells secreting digestive enzymes and absorbing nutrients. 
+They are the most abundant in midgut epithelium. 
+EECs secrets hormones. 
+ISCs are dividing progenitor cells. 
+EBs are restricted progenitor cells produced by ISCs differentiation, and further differentiates into ECs or EECs. 
+The lumenal side of midgut is covered by peritrophic matrix, a chitin polymer layer. 
+A mucus layer fills between the epithelium and peritrophic matrix. 
+The peritrophic matrix, mucus layer and epithelium act as physical barrier for immunity. 
 
-\subsubsection{Recognition of self (histocompatibility and self-incompatibility) and altered-self (apoptotic and tumor cells)}
+\newline
 
-\subsection{Effector mechanisms}
-\subsubsection{Antimicrobial peptide response}
-Antimicrobial peptides are defense molecules against microbes by permeation and disruption of target membranes. 
-They often kill microorganism via non-receptor-mediated mechanisms, although some bind to bacterial cell wall components (\textit{e.g.} nisin Z). 
+The midgut is further regionalized into anterior region, copper cell region (CCR) and posterior region. 
+Anterior region functions for food breakdown by secreting enzymes. 
+CCR is for further digestion with its low pH. 
+Posterior region is for absorption of nutrients. 
+When radius of gut is measured, midgut can be divided into six regions (R0-R5). 
+R0 is cardia, R1-R2 is anterior region, R3 is CCR, and R4-R5 is posterior region. 
 
-\subsubsection{Phagocytosis (clearance of damaging objects)}
-Phagocytosis is the cellular uptake of particular substrate. 
-It is a fundamental cellular process in eukaryotes and essential for the clearance of damaging objects in multicellular organisms. 
-In many animals, specialized cells engage in phagocytosis, such as phagocytes in vertebrates and macrophage-like hemocytes in insects.
+\section{Gut immunity}
+The primary immune systems in midgut of \textit{Drosophila} are DUOX pathway (Ha \textit{et al.}, 2009) and IMD pathway (Tzou \textit{et al.}, 2000). 
+Toll pathway is dispensable in gut epithelium.
 
-\subsubsection{Endocytosis}
+\subsection{IMD pathway}
+IMD pathway includes: 
+(1) recognition of bacterial peptidoglycans; 
+(2) intracellular cascade activating Relish, a member of NF-$\kappa$B transcription factor family; 
+(3) expression of antimicrobial peptides; 
+(4) negative regulation of IMD pathway. 
 
-\section{Differences}
-\subsection{Adaptive immune system in higher vertebrates and immunological memory involving clonally selected antibody-producing cells}
-Adaptive immunity of vertebrates is fundamentally different from innate immunity. 
-In adaptive immunity, the anticipatory nature of antibody repertoires is capable of binding epitopes never encountered by the organism or its predecessors using direct antibody-epitope specific binding. 
-Self-recognizing antibody-producing cells are removed by clonal selection during ontogeny. 
-The specific propagation of antibody-producing immune cells provides the basis for an immunological memory. 
-Instead, in innate immunity, PRRs are acquired through evolutionary processes resulting from exposure to pathogens over generations. 
-Retaining pathogen-binding proteins and removing self-recognizing proteins are facilitated at population level. 
+\newline
 
-\subsection{Inducible tolerance and memory in invertebrates}
-Although lack of adaptive immunity, insects are able to induce immune activity after sub-lethal encounters with pathogens. 
-Exposure to sub-lethal concentration of damaging objects enables latter survival under lethal level. 
-This immune induction and protection comes with fitness cost, which is often expressed as a delay in development. 
-Moreover, the induction of immune defense can be maternally transmitted to subsequent generations, occurring by potential epigenetic mechanisms or the incorporation of female-derived immune-inducible material into oocytes.
+IMD pathway begins with PGRPs that recognize peptidoglycans. 
+PGRP-LC is a transmembrane receptor recognizes DAP-type peptidoglycan characterized by meso-diaminopimelic acid in peptide chain (Choe \textit{et al.}, 2002; Gottar \textit{et al.}, 2002; Ramet \textit{et al.}, 2002). 
+PGRP-LE resides in cytoplasm and recognizes DAP-type peptidoglycan, and thus activates IMD pathway (Bosco-Drayon \textit{et al.}, 2012). 
+
+\newline
+
+After binding to peptidoglycan, PGRP-LC recruits IMD, Dredd and FADD to form a signaling complex (Georgel \textit{et al.}, 2001; Naitza \textit{et al.}, 2002). 
+Dreed cleaves IMD and Relish for their activation. 
+Ultimately, N-terminal cleaved Relish translocates into nucleus for target gene expression (Khush \textit{et al.}, 2001). 
+
+\newline
+
+Ubquitination and phosphorylation is required for IMD activation. 
+Dredd activation requires K63-ubiquitination by IAP2, a E3-ligase (Meinander \textit{et al.}, 2012). 
+Dredd cleaves IMD, enabling its binding with IAP2. 
+IAP2 generates K63-polyubiquitination, which is required for recruitment of TAK1/TAB2 complex (Vidal \textit{et al.}, 2001). 
+TAB2 binds to K63-polyubiquitination of IMD, and TAK1 is a MAPKKK kinase for activation of IKK complex. 
+IKK complex is composed of IRD5 (catalytic activity) and Kenny (regulatory subunit). 
+Activated IKK complex phosphorylates Relish on multiple sites, which activates its transcription factor activity (Erturk-Hasdemir \textit{et al.}, 2009; Silverman \textit{et al.}, 2000). 
+Relish induces expression of genes involved in non-self recognition, signaling pathways, proteolysis and antimicrobial peptides. 
+
+\newline
+
+IMD pathway is inhibited by several mechanisms. 
+PGRP amidase (PGRP-LB, -SC1a, -SC1b, -SC2) degrades peptidoglycan and thus inhibits IMD pathway (Bischoff \textit{et al.}, 2006; Guo \textit{et al.}, 2014; Paredes \textit{et al.}, 2011). 
+PIRK is a transcriptional target of IMD pathway and inhibits IMD pathway (Aggarwal \textit{et al.}, 2008; Kleino \textit{et al.}, 2008; Lhocine \textit{et al.}, 2008). 
+It may disrupt IMD signaling as it interacts with PGRP-LC, PGRP-LE and IMD (Aggarwal \textit{et al.}, 2008). 
+Other inhibitors of IMD pathway including 
+Dnr1 for Dredd inhibition (Foley and O'Farrell, 2004; Guntermann \textit{et al.}, 2009); 
+Caspar for Dredd-dependent Relish cleavage inhibition (Kim \textit{et al.}, 2006); 
+Trabid targeting TAK1 (Fernando \textit{et al.}, 2014); 
+CYLD, a deubiquitinating enzyme (Tsichritzis \textit{et al.}, 2007); 
+SkpA, a subunit of SCF-E3 ubquitin ligase targeting Relish (Khush \textit{et al.}, 2002); 
+and transcription inhibitors such as caudal (Ryu \textit{et al.}, 2008) and Nubbin (Dantoft \textit{et al.}, 2013).
+
+\newline
+
+IMD pathway is inhibited in gut, and its activation leads to pathologic symptoms including mocrobiota dysbiosis and dysplasia (Bosco-Drayon \textit{et al.}, 2012; Guo \textit{et al.}, 2014; Lhocine \textit{et al.}, 2008; Ryu \textit{et al.}, 2008). 
+For instance, caudal is gut-specific inhibitor of IMD pathway and its knockdown causes gut cell apoptosis, decreased survival rate and change of microbiome (Ryu \textit{et al.}, 2008). 
+Knockdown of PGRP-SC2, an inhibitor of IMD pathway, also leads to mocrobiota dysbiosis and dysplasia (Guo \textit{et al.}, 2014). 
+
+\subsection{DUOX pathway}
+DUOX is a member of nicotinamide adenine dinucleotide phosphate oxidase (NOX) family and is responsibe for bacterial-induced reactive oxygen species (ROS) generation. 
+ROS plays an important role in gut immunity, and is degraded by secretory immune-related catalase (IRC) (Ha \textit{et al.}, 2005).
+
+\newline
+
+NOX/DUOX family proteins share a catalytic gp91phox domain, and DUOX contains an additional peroxidase homology domain (PHD). 
+Generally, NOX generates superoxide anion in extracellular space by electron transfer from NADPH in cytoplasm to oxygen across the membrane. 
+Superoxide anion is subsequently converted to H$_2$O$_2$, which can be further converted to HClO by myeloperoxidase. 
+
+\newline
+
+In \textit{Drosophila}, there are one NOX and one DUOX (Ha \textit{et al.}, 2005). 
+The produce of HClO is DUOX-dependent (Ha \textit{et al.}, 2005). 
+DUOX is essential for gut immunity (Ha \textit{et al}, 2005; Ha \textit{et al}, 2009). 
+It is activated only with transient microorganisms, but not with commensals. 
+Uracil acts as a ligand for DUOX activation (Lee \textit{et al.}, 2013). 
+It is secreted by several pathogens, but not by commensals.
+
+\newline
+
+DUOX enzymatic activity requires calcium released from ER, and thus is regulated by PLC$\beta$ and G$\alpha$q (Ha \textit{et al.}, 2005; Ha \textit{et al.}, 2009). 
+At downstream of G$\alpha$q, PLC$\beta$ is required for generation of 1,4,5-triphosphate, which is recognized by corresponding receptor and enables release of calcium from ER. 
+Transcription of DUOX is up-regulated by (Ha \textit{et al.}, 2009) 
+(1) peptidoglycan-dependent cascade composed of PGRP-LC, IMD, MEKK1, MKK3, p38 and ATF2; 
+(2) uracil-dependent cascade including PLC$\beta$, MEKK1, MKK3, p38 and ATF2. 
+ATF2 is a transcription factor. 
+
+\newline
+
+Negative regulation of DUOX transcription is mediated by inhibition of peptidoglycan-dependent p38 activation, which requires PLC$\beta$, calcineurin B and MAP kinase phosphatase 3 (MKP3) (Ha \textit{et al.}, 2009). 
+It indicates that activation of DUOX requires certain amount of peptidoglycan, and therefore, DUOX remains inactivated under commensals.
+
+\section{Gut renewal}
+Mid gut is dynamic. 
+Adult \textit{Drosophila} intestinal epithelium is renewed every 1 week (Micchelli and Perrimon, 2006). 
+This gut renewal is dependent on asymmetric division of ISC. 
+The two daughter cells of ISC division, one becomes self-renewed ISC and another one differentiates into EB, which further differentiates into EC or EEC. 
+The fate decision of ISCs after division is dependent on the antagonism of Delta-Notch signaling and BMP signaling (Tian and Jiang \textit{et al.}, 2014). 
+Delta-Notch signaling also plays an important role in differentiation into EC/EEC (Ohlstein and Spradling, 2007; Perdigoto \textit{et al.}, 2011). 
+
+\newline
+
+Proliferation of ISC is under tightly control to maintain gut homeostasis. 
+Low rate of ISC proliferation leading to reduced replacement of damaged cells, destroying gut integrity and leads to originasm death. 
+High rate of ISC proliferation leads to accumulation of unwanted cells, causing pathology (Biteau \textit{et al.}, 2008). 
+Several signaling pathways are involved in ISC proliferation activation, including JAK/STAT, EGFR, Hippo, JNK and Wingless (Biteau \textit{et al.}, 2008; Cordero \textit{et al.}, 2012; Jiang \textit{et al.}, 2011; Karpowicz \textit{et al.}, 2010; Lee \textit{et al.}, 2009). 
+Myc may be a common downstream of JAK/STAT, EGFR, Hippo and Wingless (Ren \textit{et al.}, 2013). 
+Insulin receptor signaling in ISC is required for ISC proliferation (Amcheslavsky \textit{et al.}, 2009). 
+
+\newline
+
+Ligands from nearby injured cells are responsible for activation of ISC proliferation. 
+In stressed ECs, JAK/STAT ligand Upd3 and EGFR ligand Keren are expressed under control of JNK and Hippo signaling (Jiang \textit{et al.}, 2009; Ren \textit{et al.}, 2010; Jiang \textit{et al.}, 2011). 
+EGFR ligands vein and spitz are produced by visceral muscles and progenitors respectively (Jiang \textit{et al.}, 2011). 
+Stressed EBs produce Upd2 through activation of Hedgehog pathway (Tian \textit{et al.}, 2015), and Wingless ligand under control of JNK signaling (Cordero \textit{et al.}, 2012). 
+Hippo signaling in ISC is controled by intracellular interactions of two cadherins, Fat in ISC and Dachsous (DS) in EC (Karpowicz \textit{et al.}, 2010). 
+
+\newline 
+
+IMD pathway may regulate ISC proliferation via controling number of gut bacteria (Buchon \textit{et al.}, 2009). 
+ROS induced by DUOX signaling also accerlates ISC proliferation. 
+ROS may induce ISC proliferation by tissue damaging (Buchon \textit{et al.}, 2009; Karpowicz \textit{et al.}, 2010; Ren \textit{et al.}, 2010; Ren \textit{et al.}, 2013; Shaw \textit{et al.}, 2010; Staley and Irvine, 2010). 
+ROS may also activates ISC proliferation directly by targeting redox-sensitive components of signalings. 
+ROS activates JAK/STAT by redox-sensitive tyrosine phosphatase (Liu \textit{et al.}, 2004), JNK by thioredoxin (Junn \textit{et al.}, 2000) and Wnt by nucleoredoxin (Funato \textit{et al.}, 2006).
 
 \end{document}

@@ -6,7 +6,7 @@ Content:
 4. Get genome from sequenced reads
 5. Gene prediction
 6. Machine learning in scikit-learn, python
-7. Downstream analysis of gene prediction
+7. Genomic analysis based on peptide set
 
 Mode of README for projects:
 ###############################################################################################
