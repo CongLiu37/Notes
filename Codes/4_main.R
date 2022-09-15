@@ -286,7 +286,7 @@ hypo=function(assembly=assembly, # draft assembly of long reads
               "-o","NGS.bam",
               sep=" ")
     print(cmd);system(cmd,wait=TRUE)
-    cmd=paste("samtools","index","NGS.bam","-@",threads,sep=" ")
+    cmd=paste("samtools","index","NGS.bam",sep=" ")
     print(cmd);system(cmd,wait=TRUE)
     cmd=paste("echo"," ",fq1,"\n",fq2," > ","fq.file",sep="")
     print(cmd);system(cmd,wait=TRUE)
@@ -306,7 +306,7 @@ hypo=function(assembly=assembly, # draft assembly of long reads
               "-o","HIFI.bam",
               sep=" ")
     print(cmd);system(cmd,wait=TRUE)
-    cmd=paste("samtools","index","HIFI.bam","-@",threads,sep=" ")
+    cmd=paste("samtools","index","HIFI.bam",sep=" ")
     print(cmd);system(cmd,wait=TRUE)
     cmd_tmp=paste(cmd_tmp,
                   "-r",hifi,
@@ -324,7 +324,7 @@ hypo=function(assembly=assembly, # draft assembly of long reads
               "-o","LR.bam",
               sep=" ")
     print(cmd);system(cmd,wait=TRUE)
-    cmd=paste("samtools","index","LR.bam","-@",threads,sep=" ")
+    cmd=paste("samtools","index","LR.bam",sep=" ")
     print(cmd);system(cmd,wait=TRUE)
     cmd_tmp=paste(cmd_tmp,
                   "-B","LR.bam",
@@ -368,6 +368,28 @@ salsa=function(assembly=assembly,
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   setwd(wd)
+}
+
+# Map long reads to assembly
+# Dependencies: Minimap2, SAMtools
+minimap2=function(long_reads=long_reads,
+                  lr_type=lr_type, # long read type. "map-pb" for PacBio and "map-ont" for ONT reads.
+                  assembly=assembly,
+                  out_prefix=out_prefix,
+                  threads=threads){
+  cmd=paste("minimap2","--secondary=no","--MD",
+            "-ax",lr_type,
+            "-t",threads,
+            assembly,long_reads,"|",
+            "samtools","view","-@",threads,"-bS","|",
+            "samtools","sort",
+            "-@",threads,
+            "-o",paste(out_prefix,".bam",sep=""),
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  cmd=paste("samtools","index",paste(out_prefix,".bam",sep=""),sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
 }
 
 # Quast: Quality of assembly.
@@ -512,12 +534,48 @@ Bowtie2 = function(fq1=fq1,fq2=fq2, # Input fq files. Make fq2="none" if single-
   print(cmd);system(cmd,wait=TRUE)
   
   cmd=paste("samtools","index",
-            bam_filename,
             "-@",threads,
+            bam_filename,
             sep=" ")
   print(cmd);system(cmd)
   
   return(bam_filename)
+}
+
+# Compute coverage of each scaffold
+# Dependencies: SAMtools
+coverage=function(bam=bam,
+                  output=output){
+  # tabular
+  # #rname  Reference name / chromosome
+  # startpos	Start position
+  # endpos	End position (or sequence length)
+  # numreads	Number reads aligned to the region (after filtering)
+  # covbases	Number of covered bases with depth >= 1
+  # coverage	Percentage of covered bases [0..100]
+  # meandepth	Mean depth of coverage
+  # meanbaseq	Mean baseQ in covered region
+  # meanmapq	Mean mapQ of selected reads
+  
+  cmd=paste("samtools","coverage",
+            "-o",output,
+            bam,
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+}
+
+# GC content & length of each sequence
+# Dependencies: seqkit
+GC_length=function(fna=fna,out=out,threads=threads){
+  cmd=paste("printf","'rname\tlength\tGC.content'",">",out)
+  system(cmd,wait=TRUE)
+  
+  cmd=paste("seqkit","fx2tab",
+            "--name --only-id --gc --length",
+            "--threads",as.character(threads),
+            fna,">>",out,
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
 }
 
 # Metabat2: Unsupervised binning by Metabat2.
@@ -655,6 +713,9 @@ SprayNPray=function(fna=fna, # fna. Input DNA sequences.
   wd=getwd()
   setwd(out_dir)
   
+  system(paste("cp",fna,".",sep=" "),wait=TRUE)
+  fna=unlist(strsplit(fna,"/"))[length(unlist(strsplit(fna,"/")))]
+  fna=paste(out_dir,"/",fna,sep="")
   cmd=paste("spray-and-pray.py",
             "-g",fna,
             "-bam",bam,
@@ -665,7 +726,7 @@ SprayNPray=function(fna=fna, # fna. Input DNA sequences.
             sep=" ")
   if (blast!="none"){cmd=paste(cmd,"-blast",blast,sep=" ")}
   print(cmd);system(cmd,wait=TRUE)
-  
+  system(paste("rm",fna,sep=" "),wait=TRUE)
   setwd(wd)
   return(paste(out_dir,"/",out_basename,sep=""))
 }
@@ -687,7 +748,7 @@ TAGC=function(df, # Each row represents a scaffold.
   plot_taxa=str_extract(d[,"taxon"],pattern)
   plot_taxa=plot_taxa[!is.na(plot_taxa)]
   t=table(plot_taxa)
-  plot_taxa=names(t[which(t>0.001*sum(t))])
+  plot_taxa=names(t[which(t>0.0001*sum(t))])
   data=d[str_extract(d[,"taxon"],pattern)%in%plot_taxa,]
   
   p=ggplot()+

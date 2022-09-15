@@ -1,0 +1,53 @@
+\documentclass[11pt]{article}
+
+% \usepackage[UTF8]{ctex} % for Chinese 
+
+\usepackage{setspace}
+\usepackage[colorlinks,linkcolor=blue,anchorcolor=red,citecolor=black]{hyperref}
+\usepackage{lineno}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{floatrow}
+\usepackage{subfigure}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{geometry}
+\usepackage{multirow}
+\usepackage{longtable}
+\usepackage{lscape}
+\usepackage{booktabs}
+\usepackage{natbibspacing}
+\usepackage[toc,page]{appendix}
+\usepackage{makecell}
+\usepackage{amsfonts}
+ \usepackage{amsmath}
+
+\usepackage[backend=bibtex,style=authoryear,sorting=nyt,maxnames=1]{biblatex}
+\bibliography{} %Reference bib
+
+\title{Abstracts: Blattodea}
+\author{}
+\date{}
+
+\linespread{1.5}
+\geometry{left=2cm,right=2cm,top=2cm,bottom=2cm}
+
+\setlength\bibitemsep{0pt}
+
+\begin{document}
+\begin{sloppypar}
+  \maketitle
+
+  \linenumbers
+\textbf{Yang \textit{et al.}, 2019, NCBI’s Conserved Domain Database andTools for Protein Domain Analysis.} \newline
+Use Standalone RPS-BLAST and rpsbproc to compute and retrieve domain annotation programmatically.
+\textbf{Qu \textit{et al.}, 2020, Effect of sequence depth and length in long-read assembly of the maize inbred NC358.}
+We have documented how both the completeness and contiguity of assemblies improve with increasing depth and read length. 
+With long-read sequencing (PacBio), the low-copy gene space (including tandem gene arrays) can be well assembled with as low as 30x genomic coverage across a range of read lengths. 
+Complete characterization of transposon elements in complex genomes such as maize will require a greater depth of sequence (~40×) and should employ library preparation protocols that maximize read-length N50. 
+Finally, complete assembly of highly repetitive genomic features such as heterochromatic knobs, telomeres, and centromeres will require substantially more data. 
+In fact, complete assembly of these latter highly repetitive sequences will likely require innovations beyond current sequencing technology.
+
+\end{sloppypar}
+\end{document}

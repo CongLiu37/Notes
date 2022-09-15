@@ -23,7 +23,9 @@ def decision_tree_classifier(training_sample,training_results,testing):
   import numpy as np
   import pandas as pd
   from sklearn.tree import DecisionTreeClassifier
-  classifier=DecisionTreeClassifier().fit(training_sample,training_results)
+  weight=pd.DataFrame({"class":training_results}).groupby("class",as_index=False).value_counts()
+  weight=dict(weight.values)
+  classifier=DecisionTreeClassifier(class_weight=weight).fit(training_sample,training_results)
   value=classifier.predict(testing)
   return value
 def random_forest_classifier(training_sample,training_results,testing):
@@ -31,7 +33,9 @@ def random_forest_classifier(training_sample,training_results,testing):
   import numpy as np
   import pandas as pd
   from sklearn.ensemble import RandomForestClassifier
-  classifier=RandomForestClassifier().fit(training_sample,training_results)
+  weight=pd.DataFrame({"class":training_results}).groupby("class",as_index=False).value_counts()
+  weight=dict(weight.values)
+  classifier=RandomForestClassifier(class_weight=weight).fit(training_sample,training_results)
   value=classifier.predict(testing)
   return value
 def bagging_classifier(training_sample,training_results,testing):
@@ -47,7 +51,9 @@ def linear_SV_classifier(training_sample,training_results,testing):
   import numpy as np
   import pandas as pd
   from sklearn.svm import LinearSVC
-  classifier=LinearSVC(max_iter=10000).fit(training_sample,training_results)
+  weight=pd.DataFrame({"class":training_results}).groupby("class",as_index=False).value_counts()
+  weight=dict(weight.values)
+  classifier=LinearSVC(max_iter=10000,class_weight=weight).fit(training_sample,training_results)
   value=classifier.predict(testing)
   return value
 def nu_SV_classifier(training_sample,training_results,testing):
@@ -55,7 +61,9 @@ def nu_SV_classifier(training_sample,training_results,testing):
   import numpy as np
   import pandas as pd
   from sklearn.svm import NuSVC
-  classifier=NuSVC().fit(training_sample,training_results)
+  weight=pd.DataFrame({"class":training_results}).groupby("class",as_index=False).value_counts()
+  weight=dict(weight.values)
+  classifier=NuSVC(class_weight=weight).fit(training_sample,training_results)
   value=classifier.predict(testing)
   return value
 def k_neighbors_classifier(training_sample,training_results,testing):

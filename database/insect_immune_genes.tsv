@@ -1,0 +1,9 @@
+Family_symbol	Family_name	Family_description	Domain_symbol	Domain_name	Domain_description	CDD
+PGRP	peptidoglycan recognition protein	binds to peptidoglycan, and in some cases, degrade peptidoglycan as ZN-dependent amidase.	PGRP	
+
+
+
+Family_symbol	Family	Category	Family_description	Drosophila_melanogaster_genes	Domain	Domain_description	Motifs	CDD	Pfam
+PGRP	peptidoglycan recognition protein	Recognition	Pattern recogntion receptors that binds to peptidoglycans, and in certain cases, degrade peptidoglycan as Zn-dependent amidase.	PGRP-LA: Peptidoglycan recognition protein LE;PGRP-LB: Peptidoglycan recognition protein LB;PGRP-LC: Peptidoglycan recognition protein LC;PGRP-LE: Peptidoglycan recognition protein LE;PGRP-LF: Peptidoglycan recognition protein LF;PGRP-LB: Peptidoglycan recognition protein LB;PGRP-SA: Peptidoglycan recognition protein SA;PGRP-SB1: Peptidoglycan recognition protein SB1;PGRP-SB2: Peptidoglycan recognition protein SB2;PGRP-SC1a: Peptidoglycan recognition protein SC1a;PGRP-SC1b: Peptidoglycan recognition protein SC1b;PGRP-SC2: Peptidoglycan recognition protein SC2;PGRP-SD: Peptidoglycan recognition protein SD	PGRP	peptidoglycan-binding	substrate binding site;Zn-binding site (H2-C/D);amidase	cd06583	PF01510
+GNBP	Gram-negative bacteria-binding protein/beta-1,3-glucan binding protein	Recognition	Pattern recognition receptors that binds to lipopolysaccharide/beta-1,3-glucan.	GNBP1: Gram-negative bacteria binding protein 1;GNBP2: Gram-negative bacteria binding protein 2;GNBP3: Gram-negative bacteria binding protein 3	GH16_beta_GRP	binds to lipopolysaccharide/beta-1,3-glucan	cd08023	none
+FREP	fibrinogen-related protein	Recognition	Playing roles in immunity, e.g. agglutination, antimicrobial properties.	
