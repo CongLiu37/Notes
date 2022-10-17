@@ -1,4 +1,4 @@
-# Differentail expression analysis using NGS RNA-seq (SE/PE) and reference genome.
+# Genome-based comparative transcriptome analysis
 
 # Download fastq from NCBI SRA.
 # Dependencies: SRA-toolkit

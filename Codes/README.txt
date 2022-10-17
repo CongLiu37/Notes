@@ -1,12 +1,12 @@
 Content:
 
-1. Differential expression analysis of RNA-seq with reference genome
-2. Search for specific motif in promoters
-3. Rarefaction analysis
-4. Prepare genome assembly
-5. Prepare genome annotation
-6. Machine learning in scikit-learn, python
-7. Genomic analysis based on genome annotation
+1. Genome-based comparative transcriptome analysis
+2. Rarefaction analysis
+3. Genome assembly
+4. Genome curation
+5. Genome annotation
+6. Phylogenomics
+7. Machine learning in scikit-learn, python
 
 Mode of README for projects:
 ###############################################################################################

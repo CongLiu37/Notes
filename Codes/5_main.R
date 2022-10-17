@@ -1,4 +1,4 @@
-# Gene prediction
+# Genome annotation
 
 # Simplify sequence ID in genome
 # Dependencies: simplifyFastaHeaders.pl from AUGUSTUS
@@ -103,41 +103,41 @@ gth=function(fna=fna, # masked genome
   return(out_dir)
 }
 
-# Prepare AUGUSTUS training set with proteins
-# Dependencies: GenomeThreader, scripts from AUGUSTUS, stringr (R)
-trainAUGUSTUS_protein=function(fna=fna, # masked genome
-                                faa=faa, # reference proteins
-                                out_dir=out_dir){
-  library(stringr)
-  out_dir=sub("/$","",out_dir)
-  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
-  wd_begin=getwd();setwd(out_dir)
-  
-  cmd=paste("gth",
-            "-genomic",fna,
-            "-protein",faa,
-            "-gff3out -skipalignmentout -paralogs",
-            "-o","GenomeThreader.gff3",
-            sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  
-  cmd=paste("gth2gtf.pl", # AUGUSTUS Remove alternative splicement
-            "GenomeThreader.gff3",
-            "training_AUGUSTUS.gtf",sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  
-  cmd="computeFlankingRegion.pl training_AUGUSTUS.gtf" # AUGUSTUS
-  print(cmd)
-  flanking_DNA=system(cmd,wait=TRUE,intern=TRUE)[4]
-  flanking_DNA=str_extract(flanking_DNA,": [0-9]*")
-  flanking_DNA=sub(": ","",flanking_DNA)
-  cmd=paste("gff2gbSmallDNA.pl training_AUGUSTUS.gtf",
-            fna,flanking_DNA,"training_AUGUSTUS.gb",sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  
-  setwd(wd_begin)
-  return(0)
-}
+# # Prepare AUGUSTUS training set with proteins
+# # Dependencies: GenomeThreader, scripts from AUGUSTUS, stringr (R)
+# trainAUGUSTUS_protein=function(fna=fna, # masked genome
+#                                faa=faa, # reference proteins
+#                                out_dir=out_dir){
+#   library(stringr)
+#   out_dir=sub("/$","",out_dir)
+#   if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
+#   wd_begin=getwd();setwd(out_dir)
+#   
+#   cmd=paste("gth",
+#             "-genomic",fna,
+#             "-protein",faa,
+#             "-gff3out -skipalignmentout -paralogs",
+#             "-o","GenomeThreader.gff3",
+#             sep=" ")
+#   print(cmd);system(cmd,wait=TRUE)
+#   
+#   cmd=paste("gth2gtf.pl", # AUGUSTUS Remove alternative splicement
+#             "GenomeThreader.gff3",
+#             "training_AUGUSTUS.gtf",sep=" ")
+#   print(cmd);system(cmd,wait=TRUE)
+#   
+#   cmd="computeFlankingRegion.pl training_AUGUSTUS.gtf" # AUGUSTUS
+#   print(cmd)
+#   flanking_DNA=system(cmd,wait=TRUE,intern=TRUE)[4]
+#   flanking_DNA=str_extract(flanking_DNA,": [0-9]*")
+#   flanking_DNA=sub(": ","",flanking_DNA)
+#   cmd=paste("gff2gbSmallDNA.pl training_AUGUSTUS.gtf",
+#             fna,flanking_DNA,"training_AUGUSTUS.gb",sep=" ")
+#   print(cmd);system(cmd,wait=TRUE)
+#   
+#   setwd(wd_begin)
+#   return(0)
+# }
 
 # Hisat2: Map short RNA reads to reference genome. 
 # SAMtools: Compress SAM to BAM, sort BAM, index BAM.
@@ -197,6 +197,97 @@ Hisat = function(fq1=fq1,fq2=fq2, # Input fq files. Make fq2="None" if single-en
   return(paste(out_prefix,".bam",sep=""))
 }
 
+# Compute coverage of each scaffold
+# Dependencies: SAMtools
+coverage=function(bam=bam,
+                  output=output){
+  # tabular
+  # #rname  Reference name / chromosome
+  # startpos	Start position
+  # endpos	End position (or sequence length)
+  # numreads	Number reads aligned to the region (after filtering)
+  # covbases	Number of covered bases with depth >= 1
+  # coverage	Percentage of covered bases [0..100]
+  # meandepth	Mean depth of coverage
+  # meanbaseq	Mean baseQ in covered region
+  # meanmapq	Mean mapQ of selected reads
+  
+  cmd=paste("samtools","coverage",
+            "-o",output,
+            bam,
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+}
+
+# Assemble transcripts from BAM.
+# Dependencies: StringTie, script from EvidenceModeler
+StringTie = function(input_bam=input_bam, # Input BAM.
+                     output_prefix=out_prefix,
+                     threads=threads){
+  threads = as.character(threads)
+  
+  cmd = paste("stringtie",
+              "-p", threads,
+              "-o", paste(output_prefix,".gtf",sep=""),
+              input_bam,
+              sep=" ")
+  print(cmd);system(cmd,wait = T)
+  
+  cmd=paste("cufflinks_gtf_to_alignment_gff3.pl", # evidencemodeler
+            paste(output_prefix,".gtf",sep=""),">",
+            paste(output_prefix,"_tmp.gff3",sep=""),
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  cmd=paste("awk '{if ($2==\"Cufflinks\")  $2=\"StringTie\";print$0}'",
+            paste(output_prefix,"_tmp.gff3",sep=""),">",
+            paste(output_prefix,".gff3",sep=""),
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  system(paste("rm"," ",output_prefix,"_tmp.gff3",sep=""),wait=TRUE)
+  return(paste(output_prefix,".gtf",sep=""))
+}
+
+# TransDecoder: Find Coding Regions within Transcripts
+TransDecoder=function(gtf=gtf, # gtf from StringTie
+                      out_dir=out_dir,
+                      fna=fna){
+  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
+  wd=getwd();setwd(out_dir)
+  
+  cmd=paste("gtf_genome_to_cdna_fasta.pl",
+            gtf,
+            fna,
+            ">",
+            "transcripts.fna",
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  cmd=paste("gtf_to_alignment_gff3.pl",
+            gtf,
+            ">",
+            "temp.gff3",
+            sep=" ")
+  print(cmd);system(cmd=TRUE)
+  
+  cmd=paste("TransDecoder.LongOrfs",
+            "-t","transcripts.fna",
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  cmd=paste("cdna_alignment_orf_to_genome_orf.pl",
+            "transcripts.fna.transdecoder.gff3",
+            "temp.gff3",
+            "transcripts.fna",
+            ">",
+            "TransDecoder.gff3",
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  setwd(wd)
+  return("TransDecoder.gff3")
+}
+
 # Prepare AUGUSTUS training set with BAM (short RNA read to genome)
 # Dependencies: GeneMark-ET, scripts from BRAKER, AUGUSTUS
 trainAUGUSTUS_shortRNA=function(genome=genome, # soft masked
@@ -221,9 +312,9 @@ trainAUGUSTUS_shortRNA=function(genome=genome, # soft masked
   print(cmd);system(cmd,wait=TRUE)
   
   cmd=paste("gmes_petap.pl","--verbose", # GeneMark-ET
-            paste("--sequence=",genome,sep=""),
-            "--ET=introns.f.gff",
-            paste("--cores=",threads,sep=""),
+            "--sequence",genome,         # gmhmm.mod
+            "--ET","introns.f.gff",
+            "--cores",threads,
             "--soft_mask 1000",
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
@@ -250,6 +341,59 @@ trainAUGUSTUS_shortRNA=function(genome=genome, # soft masked
             "training_AUGUSTUS.gtf",
             "tmp.gb",">","training_AUGUSTUS.gb")
   print(cmd);system(cmd,wait=TRUE)
+  
+  setwd(wd_begin)
+}
+
+# GeneMarker-hmm for gene prediction
+gmhmm=function(genome=genome,
+               model_file=model_file,
+               out_dir=out_dir){
+  out_dir=sub("/$","",out_dir)
+  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
+  wd_begin=getwd();setwd(out_dir)
+  
+  cmd=paste("gmhmme3",
+            "-m",model_file,
+            "-f","gff3",
+            genome,sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  setwd(wd_begin)
+}
+
+# Train glimmerhmm with gff3 from stringtie+EvidenceModeler and gene prediction
+# Dependencies: glimmerhmm, scripts from EvidenceModeler
+glimmerhmm=function(transcript_align.gff3=transcript_align.gff3,
+                    genome=genome,
+                    out_dir=out_dir){
+  out_dir=sub("/$","",out_dir)
+  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
+  wd_begin=getwd();setwd(out_dir)
+  
+  transcript_align=readLines(transcript_align.gff3)
+  training=sapply(transcript_align,
+                  function(st){
+                    st=unlist(strsplit(st," "))
+                    if (length(st)==2){
+                      return("")
+                    }else{
+                      seq=st[1];strand=st[7]
+                      if (strand=="+"){start=st[4];end=st[5]}
+                      if (strand=="-"){start=st[5];end=st[4]}
+                      return(paste(seq,start,end,sep=" "))
+                    }
+                  })
+  writeLines(training,"exon_file")
+  
+  cmd=paste("trainGlimmerHMM",genome,"exon_file",sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  cmd=paste("glimmerhmm",genome,".","-g",sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  #cmd=paste("glimmerHMM_to_GFF3.pl","glimmerHMM.output",sep=" ") # EvidenceModeler
+  #print(cmd);system(cmd,wait=TRUE)
   
   setwd(wd_begin)
 }
@@ -371,74 +515,6 @@ MergeBAM=function(BAMs=BAMs,# space-separated list of bam files.
   print(cmd);system(cmd,wait=TRUE)
   
   return(0)
-}
-
-# StringTie: Assemble transcripts.
-StringTie = function(input_bam=input_bam, # Input BAM.
-                     output_prefix=out_prefix,
-                     threads=threads){
-  threads = as.character(threads)
-  
-  cmd = paste("stringtie",
-              "-p", threads,
-              "-o", paste(output_prefix,".gtf",sep=""),
-              input_bam,
-              sep=" ")
-  print(cmd);system(cmd,wait = T)
-
-  cmd=paste("cufflinks_gtf_to_alignment_gff3.pl", # evidencemodeler
-            paste(output_prefix,".gtf",sep=""),">",
-            paste(output_prefix,"_tmp.gff3",sep=""),
-            sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  
-  cmd=paste("awk '{$2=\"StringTie\";print$0}'",
-            paste(output_prefix,"_tmp.gff3",sep=""),">",
-            paste(output_prefix,".gff3",sep=""),
-            sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  system(paste("rm"," ",output_prefix,"_tmp.gff3",sep=""),wait=TRUE)
-  return(paste(output_prefix,".gtf",sep=""))
-}
-
-# TransDecoder: Find Coding Regions within Transcripts
-TransDecoder=function(gtf=gtf, # gtf from StringTie
-                      out_dir=out_dir,
-                      fna=fna){
-  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
-  wd=getwd();setwd(out_dir)
-  
-  cmd=paste("gtf_genome_to_cdna_fasta.pl",
-            gtf,
-            fna,
-            ">",
-            "transcripts.fna",
-            sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  
-  cmd=paste("gtf_to_alignment_gff3.pl",
-            gtf,
-            ">",
-            "temp.gff3",
-            sep=" ")
-  print(cmd);system(cmd=TRUE)
-  
-  cmd=paste("TransDecoder.LongOrfs",
-            "-t","transcripts.fna",
-            sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  
-  cmd=paste("cdna_alignment_orf_to_genome_orf.pl",
-            "transcripts.fna.transdecoder.gff3",
-            "temp.gff3",
-            "transcripts.fna",
-            ">",
-            "TransDecoder.gff3",
-            sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  
-  setwd(wd)
-  return("TransDecoder.gff3")
 }
 
 # EvidenceModeler
