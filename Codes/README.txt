@@ -3,8 +3,8 @@ Content:
 1. Genome-based comparative transcriptome analysis
 2. Rarefaction analysis
 3. Genome assembly
-4. Genome curation
-5. Genome annotation
+4. Genome annotation
+5. Genome curation and evaluation
 6. Phylogenomics
 7. Machine learning in scikit-learn, python
 

@@ -60,6 +60,38 @@ QualityFilter = function(fq1=fq1,fq2=fq2, # Input fq files. Set fq2="none" if si
   return(0)
 }
 
+# BBduk: trimming NGS reads
+bbduk=function(fq1=fq1,fq2=fq2, # Input fq files. Set fq2="none" if single-end.
+               clean_fq1=clean_fq1,clean_fq2=clean_fq2,
+               adaptor.fa=adaptor.fa,
+               threads=threads){
+  if (fq2!="none"){
+    cmd=paste("bbduk.sh",
+              paste("-t=",threads,sep=""),
+              paste("in1=",fq1,sep=""),
+              paste("in2=",fq2,sep=""),
+              paste("out1=",clean_fq1,sep=""),
+              paste("out2=",clean_fq2,sep=""),
+              "ktrim=r",
+              paste("ref=",adaptor.fa,sep=""),
+              "k=23 mink=7 hdist=1 tpe tbo maq=10",
+              "qtrim=rl trimq=15 minlength=35",
+              sep=" ")
+  }else{
+    cmd=paste("bbduk.sh",
+              paste("-t=",threads,sep=""),
+              paste("in=",fq1,sep=""),
+              paste("out=",clean_fq1,sep=""),
+              "ktrim=r",
+              paste("ref=",adaptor.fa,sep=""),
+              "k=23 mink=7 hdist=1",
+              "tpe tbo maq=10 qtrim=rl trimq=15 minlength=35",
+              sep=" ")
+  }
+
+  print(cmd);system(cmd,wait=TRUE)
+}
+
 # FMLRC2: long read error correction with NGS short reads
 # It corrects long reads based on short read assembly
 # Dependencies: repobwt2, FMLRC2
@@ -119,193 +151,30 @@ proovframe=function(long_reads=long_reads, # can be assemblies
   print(cmd);system(cmd,wait=TRUE)
 }
 
-# Build kmc database
-# Dependencies: KMC
-kmc=function(fq1=fq1, # Input fq1
-             fq2=fq2, # Input fq2. "none" if single-end.
-             input_format=input_format, # "-fa" for FASTA, "-fq" for FASTQ
-             # "-fm" for multiple FASTA
-             # "-fbam" for BAM
-             kmer=31,
-             out_basename=out_basename, # kmc database
-             out_dir=out_dir,
-             threads=threads){
-  threads=as.character(threads)
-  out_dir=gsub("/$","",out_dir)
-  kmer=as.character(kmer)
-  wd=getwd()
-  setwd(out_dir)
-  
-  cmd=paste("echo",fq1,">",
-            paste(out_dir,"/",out_basename,".FILE",sep=""),
-            sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  if (fq2!="none"){
-    cmd=paste("echo",fq2,">>",
-              paste(out_dir,"/",out_basename,".FILE",sep=""),
-              sep=" ")
-    print(cmd);system(cmd,wait=TRUE)
-  }
-  
-  cmd=paste("kmc",
-            input_format,
-            paste("-k",kmer,sep=""),
-            paste("-t",threads,sep=""),
-            "-m64","-ci1 -cs10000",
-            paste("@",out_dir,"/",out_basename,".FILE",sep=""),
-            out_basename, # kmc database
-            ".",
-            sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  
-  system(paste("rm",paste(out_dir,"/",out_basename,".FILE",sep=""),sep=" "))
-  
-  setwd(wd)
-}
-
-# Merge kmc database
-merge_kmc=function(kmcdb1=kmcdb1,kmcdb2=kmcdb2,
-                   out_prefix=out_prefix){
-  cmd=paste("kmc_tools simple",
-            kmcdb1,kmcdb2,
-            "union",out_prefix,
-            sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-}
-
-# kmc database to kmer hist
-# Dependencies: kmc
-kmc_hist=function(kmcdb=kmcdb,
-                  out_prefix=out_prefix){
-  cmd=paste("kmc_tools transform",
-            kmcdb,
-            "histogram",
-            paste(out_prefix,".hist",sep=""),
-            "-cx10000",
-            sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-}
-
-# Genome survey via Genomescope.
-# Dependencies: GenomeScope, stringr (R)
-Genomescope=function(hist=hist, # kmer histogram from kmc.
-                     ploidy="none", # 1-6
-                     out_dir=out_dir,
-                     out_basename=out_basename,
-                     kmer=31){
-  kmer=as.character(kmer)
-  out_dir=sub("/$","",out_dir)
-  
-  if (!file.exists(paste(out_dir,"/",out_basename,"_summary.txt",sep=""))){
-    if (ploidy!="none"){
-      out_basename=paste(out_basename,"_p",as.character(ploidy),sep="")
-    }
-    cmd=paste("genomescope.R",
-              "-i",hist,
-              "-o",out_dir,
-              "-n",out_basename,
-              "-k",kmer,
-              sep=" ")
-    if (ploidy!="none"){
-      cmd=paste(cmd,"-p",as.character(ploidy))
-    }
-    print(cmd);system(cmd,wait=TRUE)
-  }
-  
-  library(stringr)
-  res=readLines(paste(out_dir,"/",out_basename,"_summary.txt",sep=""))
-  Homozygous=unlist(str_extract_all(res[grepl("Homozygous",res)],"[0-9.]*%"))
-  Heterozygous=unlist(str_extract_all(res[grepl("Heterozygous",res)],"[0-9.]*%"))
-  HaploidLength=unlist(str_extract_all(res[grepl("Genome Haploid Length",res)],"[0-9,]* bp"))
-  
-  o=list(Homozygous=Homozygous,Heterozygous=Heterozygous,HaploidLength=HaploidLength)
-  return(o)
-}
-
-# Genome survey via Smudgeplot.
-# Dependencies: Smudgeplot, KMC
-Smudgeplot=function(hist=hist, # kmer histogram from kmc.
-                    kmcdb=kmcdb, # kmc database.
-                    L="none",U="none", # integers estimated from kmer profile (Genomescope)
-                    # L should be chosen so it cuts out majority of the error kmers
-                    # U should be so it does contain all the k-mers that are at least in four genomic copies (but you might want to increase this number for genomes that might have higher ploidy levels).      
-                    out_prefix=out_prefix){
-  L=as.character(L);U=as.character(U)
-  
-  if (L=="none"){
-    L=system(paste("smudgeplot.py cutoff ",hist," L",sep=""),wait=TRUE,intern=TRUE)
-  }
-  if (U=="none"){
-    U=system(paste("smudgeplot.py cutoff ",hist," U",sep=""),wait=TRUE,intern=TRUE)
-  }
-  
-  cmd=paste("kmc_tools transform",
-            kmcdb,
-            paste("-ci",L," ","-cx",U," ","dump",sep=""),
-            "-s",paste(kmcdb,"_L",L,"_U",U,".dump",sep=""),
-            sep=" ")
-  print(cmd);system(cmd)
-  
-  cmd=paste("smudgeplot.py hetkmers -o",paste(out_prefix,"_L",L,"_U",U,sep=""),
-            paste(kmcdb,"_L",L,"_U",U,".dump",sep=""),sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  
-  cmd=paste("smudgeplot.py plot","-o",paste(out_prefix,"_L",L,"_U",U,sep=""),
-            paste(out_prefix,"_L",L,"_U",U,"_coverages.tsv",sep=""),
-            sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-}
-
-# kmergenie: analyze NGS reads
-# Dependencies: kmergenie
-kmergenie=function(reads=reads, # vector of paths
-                   out_prefix=out_prefix,
-                   threads=threads){
-  threads=as.character(threads)
-  
-  if (file.exists(paste(out_prefix,".FILE",sep=""))){
-    system(paste("rm"," ",out_prefix,".FILE",sep=""),wait=TRUE)
-  }
-  
-  for (i in reads){
-    cmd=paste("echo",i,">>",paste(out_prefix,".FILE",sep=""),sep=" ")
-    print(cmd);system(cmd,wait=TRUE)
-  }
-  
-  cmd=paste("kmergenie",
-            paste(out_prefix,".FILE",sep=""),
-            "-t",threads,
-            "-o",out_prefix)
-  print(cmd);system(cmd,wait=TRUE)
-  
-  return(out_prefix)
-}
-
 # Assemble organelle genome from WGS NGS reads
 # Dependencies: GetOrganelle
 getorganelle=function(fq1=fq1,
                       fq2=fq2,
-                      target_organelle_type=target_organelle_type, # embplant_pt, embplant_mt, embplant_nr, fungus_mt, fungus_nr, animal_mt, and/or other_pt
+                      target_organelle_type="none", # embplant_pt, embplant_mt, embplant_nr, fungus_mt, fungus_nr, animal_mt, and/or other_pt
                       seed.fna="none",
                       out_dir=out_dir,
                       threads=threads){
   threads=as.character(threads)
   out_dir=sub("/$","",out_dir)
   # GetOrganelle will make the out_dir
-  
   cmd="get_organelle_from_reads.py"
   if (fq2!="none"){
     cmd=paste(cmd,"-1",fq1,"-2",fq2,sep=" ")
   }else{
     cmd=paste(cmd,"-u",fq1,sep=" ")
   }
-  
   cmd=paste(cmd,
             "-t",threads,
             "-o",out_dir,
-            "-F",target_organelle_type,
             sep=" ")
-  
+  if (target_organelle_type!="none"){
+    cmd=paste(cmd,"-F",target_organelle_type,sep=" ")
+  }
   if (seed.fna!="none"){
     cmd=paste(cmd,"-s",seed.fna,sep=" ")
   }

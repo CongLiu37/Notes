@@ -1,33 +1,6 @@
 # Genomic analysis based on genome annotation
 
-# Convert genbank to gff
-# Dependencies: biocode
-genbank2gff=function(genbank=genbank,
-                     gff=gff){
-  cmd=paste("convert_genbank_to_gff3.py",
-            "-i",genbank,
-            "-o",gff,
-            sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  return(gff)
-}
-
-# gffread: Extract sequences from gff.
-gffread=function(gff=gff,
-                 fna=fna, # genome
-                 exons="none",
-                 cds="none",
-                 pep="none"){
-  cmd=paste("gffread","-O",
-            gff,
-            "-g",fna,
-            sep=" ")
-  if (exons!="none"){cmd=paste(cmd,"-w",exons,sep=" ")}
-  if (cds!="none"){cmd=paste(cmd,"-x",cds,sep=" ")}
-  if (pep!="none"){cmd=paste(cmd,"-y",pep,sep=" ")}
-  print(cmd);system(cmd,wait=TRUE)
-}
-
+# For peptide sets from NCBI
 # Retain the longest protein isoform of each gene by header lines of faa.
 # Proteins are considered as isoforms only when the header line declares isoform.
 # e.g. these are the same gene as they declare isoform and share same name "pyruvate decarboxylase 2-like"

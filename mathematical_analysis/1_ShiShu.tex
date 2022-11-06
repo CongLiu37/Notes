@@ -95,14 +95,17 @@ $\forall x \in X, \forall y \in Y \Rightarrow x \le c \le y$ \newline
 \section{实数公理之推论}
 \textbf{加法公理(I)之推论} \newline
 (1) 中性元素$0$唯一 \newline
-\textit{假设有$0_1, 0_2$为$\mathbb{R}$中两个不同的零元素，则
-$0_1=0_1+0_2=0_2+0_1=0_2$} \newline
+\begin{proof}
+  假设有$0_1, 0_2$为$\mathbb{R}$中两个不同的零元素，则$0_1=0_1+0_2=0_2+0_1=0_2$  
+\end{proof}
 (2) 任意实数$x$有且仅有一个逆元素$-x$ \newline
-\textit{假设$x_1, x_2$为$x \in \mathbb{R}$的两个不同的逆元素，则
-$x_1=x_1+0=x_1+x+x_2=0+x_2=x_2$} \newline
+\begin{proof}
+  假设$x_1, x_2$为$x \in \mathbb{R}$的两个不同的逆元素，则$x_1=x_1+0=x_1+x+x_2=0+x_2=x_2$
+\end{proof}
 (3)关于$x$的方程$a+x=b$在$\mathbb{R}$中有唯一解$x=b+(-a)$ \newline
-\textit{$a$有唯一逆元素$-a$，使得$a+(-a)=0$，故$b+(-a)$唯一。且有
-$x=x+0=a+x+(-a)=b+(-a)$} \newline
+\begin{proof}
+  $a$有唯一逆元素$-a$，使得$a+(-a)=0$，故$b+(-a)$唯一。且有$x=x+0=a+x+(-a)=b+(-a)$
+\end{proof}
 
 \textbf{乘法公理(II)之推论} \newline
 (1)中性元素$1$唯一 \newline
@@ -111,11 +114,17 @@ $x=x+0=a+x+(-a)=b+(-a)$} \newline
 
 \textbf{(I,II)之推论} \newline
 (1) $\forall x \in \mathbb{R} \Rightarrow x \bullet 0 = 0 \bullet x = 0$ \newline
-\textit{$x \bullet 0=x \bullet (0+0) = x \bullet 0+x \bullet 0 \Rightarrow -(x \bullet 0)+x \bullet 0 = x \bullet 0 = 0}$} \newline
+\begin{proof}
+  $x \bullet 0=x \bullet (0+0) = x \bullet 0+x \bullet 0 \Rightarrow -(x \bullet 0)+x \bullet 0 = x \bullet 0 = 0$
+\end{proof}
 (2) $x \bullet y=0 \Rightarrow x=0 \lor y=0$ \newline
-\textit{假设$x\not =0$，方程$x\bullet y=0$有唯一解$y=0\bullet x^{-1}=0$；假设$y\not =0$同理} \newline
+\begin{proof}
+  假设$x\not =0$，方程$x\bullet y=0$有唯一解$y=0\bullet x^{-1}=0$；假设$y\not =0$同理
+\end{proof}
 (3) $\forall x \in \mathbb{R} \Rightarrow (-1) \bullet x=-x$ \newline
-\textit{给定$x \in \mathbb{R}$，$-x$唯一，且$x+(-1)\bullet x=x\bullet(1+(-1))=x\bullet 0=0$} \newline
+\begin{proof}
+  给定$x \in \mathbb{R}$，$-x$唯一，且$x+(-1)\bullet x=x\bullet(1+(-1))=x\bullet 0=0$
+\end{proof}
 (4)$\forall x \in \mathbb{R} \Rightarrow (-1)\bullet(-x)=x$ \newline
 (5)$\forall x \in \mathbb{R} \Rightarrow (-x) \bullet (-x)=x\bullet x$ \newline
 
@@ -145,7 +154,7 @@ $x<y \land z<0 \Rightarrow xz<yz$ \newline
 集合$X \subset \mathbb{R}$，若$\exists c \in \mathbb{R}$，使得$\forall x \in X, x \le c (x \ge c)$，则$c$为$X$之上（下）界 \newline
 
 \textbf{有界集} \newline
-既有上确界又有下确界的集合为有界集 \newline
+既有上界又有下界的集合为有界集 \newline
 
 \textbf{最值} \newline
 集合$X \subset \mathbb{R}$，数$a \in X$，若$\forall x \in X, x \le a (x \ge a)$，则$a$为$X$之最大值（最小值），记作$\max\limits_{x\in X}x (\min\limits_{x\in X}x)$ \newline
@@ -155,11 +164,13 @@ $x<y \land z<0 \Rightarrow xz<yz$ \newline
 
 \textbf{确界定理} \newline
 实数集任何有上（下）界的子集有唯一上（下）确界 \newline
-\textit{记上有界集$X\in\mathbb{R}$，其上界集合$Y=\{y\in\mathbb{R}:\forall x \in X, x\le y\}$ \newline
-则根据连续性公理，$\exists c, \forall x \in X, \forall y \in Y, x \le c \le y$ \newline
-$\therefore$$c$为$X$之上界，亦为$Y$之下界，且$c \in Y$ \newline
-$\therefore c=\min Y$ \newline
-$\therefore$$c$唯一，且$c=\sup X$}
+\begin{proof}
+  记上有界集$X\in\mathbb{R}$，其上界集合$Y=\{y\in\mathbb{R}:\forall x \in X, x\le y\}$ \newline
+  则根据连续性公理，$\exists c, \forall x \in X, \forall y \in Y, x \le c \le y$ \newline
+  $\therefore$$c$为$X$之上界，亦为$Y$之下界，且$c \in Y$ \newline
+  $\therefore c=\min Y$ \newline
+  $\therefore$$c$唯一，且$c=\sup X$
+\end{proof}
 
 \section{实数类}
 \textbf{自然数$\mathbb{N}$}\newline
@@ -176,39 +187,47 @@ $E \subset \mathbb{N}, 1 \in E$，且有$x \in E \Rightarrow x+1 \in E$，则$E=
 
 \textbf{数学归纳原理之推论} \newline
 (1)两自然数之和与积为自然数 \newline
-\textit{任取$n \in \mathbb{N}$，则$n+1 \in \mathbb{N}$ \newline
-假设$n+m \in \mathbb{N}, m \in \mathbb{N}$，则$n+m+1 \in \mathbb{N}$ \newline
-$\therefore$两自然数之和与积为自然数 \newline
-对自然数$n$，有$n \bullet 1 \in \mathbb{N}$ \newline
-假设$n \bullet m \in \mathbb{N}, m \in \mathbb{N}$，则$n\bullet(m+1)=n\bullet m+n \in \mathbb{N}$ \newline
-$\therefore$两自然数之积为自然数} \newline
+\begin{proof}
+  任取$n \in \mathbb{N}$，则$n+1 \in \mathbb{N}$ \newline
+  假设$n+m \in \mathbb{N}, m \in \mathbb{N}$，则$n+m+1 \in \mathbb{N}$ \newline
+  $\therefore$两自然数之和为自然数 \newline
+  对自然数$n$，有$n \bullet 1 \in \mathbb{N}$ \newline
+  假设$n \bullet m \in \mathbb{N}, m \in \mathbb{N}$，则$n\bullet(m+1)=n\bullet m+n \in \mathbb{N}$ \newline
+  $\therefore$两自然数之积为自然数
+\end{proof}
 (2)$n \in \mathbb{N}-\{1\} \Rightarrow n-1 \in \mathbb{N}$ \newline
-\textit{记$E=\{n-1:n\in \mathbb{N}-{1}\}$ \newline
-$\therefore 1=2-1 \in E$ \newline
-任取$m \in E, m=n-1$，则$m+1=n=(n+1)-1 \in E$ \newline
-$\therefore E=\mathbb{N}$} \newline
+\begin{proof}
+  记$E=\{n-1:n\in \mathbb{N}-{1}\}$ \newline
+  $\therefore 1=2-1 \in E$ \newline
+  任取$m \in E, m=n-1$，则$m+1=n=(n+1)-1 \in E$ \newline
+  $\therefore E=\mathbb{N}$
+\end{proof}
 (3)$\forall n \in \mathbb{N}, \{x\in\mathbb{N}:x>n\}$有最小元素$n+1$ \newline
-\textit{$n=1$时 \newline
-记 $M=\{x\in\mathbb{N}: x=1 \lor x\ge2\}$ \newline
-假设 $x\in M$，则$x=1\in M\Rightarrow x+1=2\in M$或$x\ge2\Rightarrow x+1\ge2\Rightarrow x+1\in M$ \newline
-$\therefore M=\mathbb{N}$ \newline
-$\therefore x\not = 1\land x\in\mathbb{N}\Rightarrow x\ge2$ \newline
-$\therefore n=1, \min\{x\in\mathbb{N}:n<x\}=n+1=2$ \newline
-假设 自然数$n$使得命题成立，即$\min\{y\in\mathbb{N}:n<y\}=n+1$ \newline
-取 $x\in\{x\in\mathbb{N}:x>n+1\}$ \newline
-有 $x-1>n$ \newline
-$\therefore x-1\ge n+1\Rightarrow x\ge n+2$ \newline
-$\therefore$$n+1$使得命题成立} \newline
+\begin{proof}
+  $n=1$时 \newline
+  记 $M=\{x\in\mathbb{N}: x=1 \lor x\ge2\}$ \newline
+  假设 $x\in M$，则$x=1\in M\Rightarrow x+1=2\in M$或$x\ge2\Rightarrow x+1\ge2\Rightarrow x+1\in M$ \newline
+  $\therefore M=\mathbb{N}$ \newline
+  $\therefore x\not = 1\land x\in\mathbb{N}\Rightarrow x\ge2$ \newline
+  $\therefore n=1, \min\{x\in\mathbb{N}:n<x\}=n+1=2$ \newline
+  假设 自然数$n$使得命题成立，即$\min\{y\in\mathbb{N}:n<y\}=n+1$ \newline
+  取 $x\in\{x\in\mathbb{N}:x>n+1\}$ \newline
+  有 $x-1>n$ \newline
+  $\therefore x-1\ge n+1\Rightarrow x\ge n+2$ \newline
+  $\therefore$$n+1$使得命题成立
+\end{proof}
 (4)$m\in\mathbb{N} \land m\in\mathbb{N} \land n<m \Rightarrow n+1\le m$ \newline
 (5)自然数$n$，不存在自然数$x\in (n,n+1)$ \newline
 (6)自然数$n$，$n\not = 1$，不存在自然数$x\in (n-1,n)$ \newline
 (7)自然数集之非空子集有最小元素 \newline
-\textit{记$M\subset\mathbb{N}, M\not = \emptyset$ \newline
-若 $1\in M$，则$\min M=1$ \newline
-若 $1\not\in M$，则$1\in\mathbb{N}-M$ \newline
-则有自然数$n$，使得所有小于等与$n$的自然数属于$\mathbb{N}-M$，且$n+1\in M$ \newline
-否则 $1\in\mathbb{N}-M$ 且 $\forall n\in\mathbb{N}, n\in M\land n+1\in M \Rightarrow M=\mathbb{N}$ \newline
-$\therefore \min M=n+1$} \newline
+\begin{proof}
+  记$M\subset\mathbb{N}, M\not = \emptyset$ \newline
+  若 $1\in M$，则$\min M=1$ \newline
+  若 $1\not\in M$，则$1\in\mathbb{N}-M$ \newline
+  则有自然数$n$，使得所有小于等与$n$的自然数属于$\mathbb{N}-M$，且$n+1\in M$ \newline
+  否则 $1\in\mathbb{N}-M$ 且 $\forall n\in\mathbb{N}, n\in M\land n+1\in M \Rightarrow M=\mathbb{N}$ \newline
+  $\therefore \min M=n+1$
+\end{proof}
 
 \textbf{整数集}\newline
 自然数集、自然数的相反数集、0的并集为整数集$\mathbb{Z}$ \newline
@@ -225,10 +244,12 @@ $\therefore \min M=n+1$} \newline
 
 \section{Archimedes原理}
 (1)自然数集的任何非空上有界子集有最大值 \newline
-\textit{任意$E\subset\mathbb{N}, E\not =\emptyset$有唯一上确界$s=\sup E$ \newline
-$\therefore \exists n\in E, s-1<n\le s$ \newline
-$\therefore n+1>s\Rightarrow n+1\notin E$ \newline
-$\therefore n=\max E$} \newline
+\begin{proof}
+  任意$E\subset\mathbb{N}, E\not =\emptyset$有唯一上确界$s=\sup E$ \newline
+  $\therefore \exists n\in E, s-1<n\le s$ \newline
+  $\therefore n+1>s\Rightarrow n+1\notin E$ \newline
+  $\therefore n=\max E$
+\end{proof}
 (2)自然数集无上界 \newline
 (3)整数集的任何非空上有界子集有最大值 \newline
 (4)整数集的任何非空下有界子集有最小值 \newline
@@ -236,22 +257,30 @@ $\therefore n=\max E$} \newline
 
 \textbf{Archimedes原理} \newline
 任意固定正数$h$，则$\forall x\in\mathbb{R}, \exists! k\in\mathbb{Z}, (k-1)h\le x<kh$ \newline
-\textit{考虑下有界集合$\{n\in\mathbb{Z}:n>\frac{x}{h}\}$，其唯一最小值记为$k$\newline
-$\therefore k-1\le\frac{x}{h}<k$ \newline
-$\therefore (k-1)h\le x<kh$} \newline
+\begin{proof}
+  考虑下有界集合$\{n\in\mathbb{Z}:n>\frac{x}{h}\}$，其唯一最小值记为$k$\newline
+  $\therefore k-1\le\frac{x}{h}<k$ \newline
+  $\therefore (k-1)h\le x<kh$
+\end{proof}
 
 (1)$\forall\epsilon>0, \exists n\in\mathbb{N}, 0<\frac{1}{n}<\epsilon$ \newline
-\textit{任意固定正数$\epsilon$，则$x=1$时，$\exists n\in\mathbb{N}, 0<1<n \epsilon$ \newline
-$\therefore 0<\frac{1}{n}<\epsilon$} \newline
+\begin{proof}
+  任意固定正数$\epsilon$，则$x=1$时，$\exists n\in\mathbb{N}, 0<1<n \epsilon$ \newline
+  $\therefore 0<\frac{1}{n}<\epsilon$
+\end{proof}
 (2)非负实数$x$，且$\forall n\in\mathbb{N}, x<\frac{1}{n}$，则$x=0$ \newline
-\textit{若$x>0$，则$\exists n\in\mathbb{N}, x>\frac{1}{n}$} \newline
+\begin{proof}
+  若$x>0$，则$\exists n\in\mathbb{N}, x>\frac{1}{n}$
+\end{proof}
 (3)$\forall a\in\mathbb{R}, \forall a\in\mathbb{R}, a<b \Rightarrow \exists r\in\mathbb{Q}, a<r<b$ \newline
-\textit{取$n\in\mathbb{N}$，使得$b-a>\frac{1}{n}$ \newline
-另取$m\in\mathbb{Z}$，使得$(m-1)\frac{1}{n} \le a<m\frac{1}{n}$ \newline
-假设$b\le \frac{m}{n}$，则$(m-1)\frac{1}{n}\le a<b \le\frac{m}{n}\Rightarrow b-a \le \frac{m}{n}-(m-1)\frac{1}{n}=\frac{1}{n}$ \newline
-$\therefore b>\frac{m}{n}$ \newline
-$\therefore \exists r=\frac{m}{n} \in\mathbb{Q},a<r<b$} \newline
-(4)$\forall x\in\mathbb{R}, \exists!k\in\mathbb{Z}, k\le x<k+1$ \newline
+\begin{proof}
+  取$n\in\mathbb{N}$，使得$b-a>\frac{1}{n}$ \newline
+  另取$m\in\mathbb{Z}$，使得$(m-1)\frac{1}{n} \le a<m\frac{1}{n}$ \newline
+  假设$b\le \frac{m}{n}$，则$(m-1)\frac{1}{n}\le a<b \le\frac{m}{n}\Rightarrow b-a \le \frac{m}{n}-(m-1)\frac{1}{n}=\frac{1}{n}$ \newline
+  $\therefore b>\frac{m}{n}$ \newline
+  $\therefore \exists r=\frac{m}{n} \in\mathbb{Q},a<r<b$
+\end{proof}
+(4)$\forall x\in\mathbb{R}, \exists k\in\mathbb{Z}, k\le x<k+1$ \newline
 
 \section{误差}
 \textbf{绝对误差和相对误差}\newline
@@ -265,72 +294,83 @@ $\therefore \exists r=\frac{m}{n} \in\mathbb{Q},a<r<b$} \newline
 (2)$\Delta(\tilde{x}\tilde{y})=|xy-\tilde{x}\tilde{y}|\le |\tilde{x}|\Delta(\tilde{y})+|\tilde{y}|\Delta(\tilde{x})+\Delta(\tilde{x})\Delta(\tilde{y})$ \newline
 (3)若$y\not=0,\tilde{y}\not=0,\delta(\tilde{y})=\frac{\Delta(\tilde{y})}{|\tilde{y}|}<1$，则  \newline
 $\Delta(\frac{\tilde{x}}{\tilde{y}})=|\frac{x}{y}-\frac{\tilde{x}}{\tilde{y}}|\le \frac{|\tilde{x}|\Delta(\tilde{y})+ |\tilde{y}|\Delta(\tilde{x})}{\tilde{y}^2} \frac{1}{1-\delta(\tilde{y})}$ \newline
-\textit{记$x=\tilde{x}+\alpha, y=\tilde{y}+\beta$ \newline
-(1)$\Delta(\tilde{x}+\tilde{y})=|(x+y)-(\tilde{x}+\tilde{y})|=|(x-\tilde{x})+(y-\tilde{y})|\le |x-\tilde{x}|+|y-\tilde{y}|=\Delta(\tilde{x})+\Delta(\tilde{y})$ \newline
-(2)$\Delta(\tilde{x}\tilde{y})=|(\tilde{x}+\alpha)(\tilde{y}+\beta)+\alpha\beta|=|\tilde{x}\beta+\tilde{y}\alpha+\alpha\beta|\le |\tilde{x}|\Delta(\tilde{y})+|\tilde{y}|\Delta(\tilde{x})+\Delta(\tilde{x})\Delta(\tilde{y})$ \newline
-(3)$\Delta(\frac{\tilde{x}}{\tilde{y}})=|\frac{x}{y}-\frac{\tilde{x}}{\tilde{y}}|=|\frac{x\tilde{y}-y\tilde{x}}{y\tilde{y}}|=|\frac{(\tilde{x}+\alpha)\tilde{y}-(\tilde{y}+\beta)\tilde{x}}{\tilde{y}^2}||\frac{1}{1+\frac{\beta}{\tilde{y}}}|\le \frac{|\tilde{x}||\beta|+|\tilde{y}||\alpha|}{\tilde{y}^2} \frac{1}{1-\delta(\tilde{y})}=\frac{|\tilde{x}|\Delta(\tilde{y})+ |\tilde{y}|\Delta(\tilde{x})}{\tilde{y}^2} \frac{1}{1-\delta(\tilde{y})}$
-} \newline
+\begin{proof}
+  记$x=\tilde{x}+\alpha, y=\tilde{y}+\beta$ \newline
+  (1)$\Delta(\tilde{x}+\tilde{y})=|(x+y)-(\tilde{x}+\tilde{y})|=|(x-\tilde{x})+(y-\tilde{y})|\le |x-\tilde{x}|+|y-\tilde{y}|=\Delta(\tilde{x})+\Delta(\tilde{y})$ \newline
+  (2)$\Delta(\tilde{x}\tilde{y})=|(\tilde{x}+\alpha)(\tilde{y}+\beta)+\alpha\beta|=|\tilde{x}\beta+\tilde{y}\alpha+\alpha\beta|\le |\tilde{x}|\Delta(\tilde{y})+|\tilde{y}|\Delta(\tilde{x})+\Delta(\tilde{x})\Delta(\tilde{y})$ \newline
+  (3)$\Delta(\frac{\tilde{x}}{\tilde{y}})=|\frac{x}{y}-\frac{\tilde{x}}{\tilde{y}}|=|\frac{x\tilde{y}-y\tilde{x}}{y\tilde{y}}|=|\frac{(\tilde{x}+\alpha)\tilde{y}-(\tilde{y}+\beta)\tilde{x}}{\tilde{y}^2}||\frac{1}{1+\frac{\beta}{\tilde{y}}}|\le \frac{|\tilde{x}||\beta|+|\tilde{y}||\alpha|}{\tilde{y}^2} \frac{1}{1-\delta(\tilde{y})}=\frac{|\tilde{x}|\Delta(\tilde{y})+ |\tilde{y}|\Delta(\tilde{x})}{\tilde{y}^2} \frac{1}{1-\delta(\tilde{y})}$
+\end{proof}
 
 \textbf{相对误差的估计} \newline
 (1)$\delta(\tilde{x}+\tilde{y}) \le \frac{\Delta(\tilde{x})+\Delta(\tilde{y})}{|\tilde{x}+\tilde{y}|}$ \newline
 (2)$\delta(\tilde{x}\tilde{y}) \le \delta(\tilde{x})+\delta(\tilde{y})+\delta(\tilde{x})\delta(\tilde{y})$ \newline
 (3)$\delta(\frac{\tilde{x}}{\tilde{y}}) \le \frac{\delta(\tilde{x})+\delta(\tilde{y})}{1-\delta(\tilde{y})}$ \newline
-近似值足够精确时，有 \newline
-$\Delta(\tilde{x})\Delta(\tilde{y})\approx 0, \delta(\tilde{x})\delta(\tilde{y})\approx 0, 1-\delta(\tilde{y})\approx 1$ \newline
-所以 \newline
-$\Delta(\tilde{x}\tilde{y}) \le |\tilde{x}|\Delta(\tilde{y})+|\tilde{y}|\Delta(\tilde{x})$ \newline
-$\Delta(\frac{\tilde{x}}{\tilde{y}}) \le \frac{|\tilde{x}|\Delta(\tilde{y})+ |\tilde{y}|\Delta(\tilde{x})}{\tilde{y}^2}$ \newline
-$\delta(\tilde{x}\tilde{y}) \le \delta(\tilde{x})+\delta(\tilde{y})$ \newline
-$\delta(\frac{\tilde{x}}{\tilde{y}}) \le \delta(\tilde{x})+\delta(\tilde{y})$ \newline
+\begin{proof}
+  近似值足够精确时，有 \newline
+  $\Delta(\tilde{x})\Delta(\tilde{y})\approx 0, \delta(\tilde{x})\delta(\tilde{y})\approx 0, 1-\delta(\tilde{y})\approx 1$ \newline
+  所以 \newline
+  $\Delta(\tilde{x}\tilde{y}) \le |\tilde{x}|\Delta(\tilde{y})+|\tilde{y}|\Delta(\tilde{x})$ \newline
+  $\Delta(\frac{\tilde{x}}{\tilde{y}}) \le \frac{|\tilde{x}|\Delta(\tilde{y})+ |\tilde{y}|\Delta(\tilde{x})}{\tilde{y}^2}$ \newline
+  $\delta(\tilde{x}\tilde{y}) \le \delta(\tilde{x})+\delta(\tilde{y})$ \newline
+  $\delta(\frac{\tilde{x}}{\tilde{y}}) \le \delta(\tilde{x})+\delta(\tilde{y})$ \newline
+\end{proof}
 
 \section{几个定理}
 \textbf{区间套引理} \newline
 $\mathbb{R}$中闭区间套$I_1\supset I_2\supset I_3\supset\dots\supset I_n\supset\dots$，必有点$c$属于所有这些闭区间 \newline
 若$\forall\epsilon>0 \exists I_k, |I_k|<\epsilon$，则$c$为闭区间套唯一公共点 \newline
-\textit{$\forall m \in\mathbb{N}, \forall n\in\mathbb{N}, I_m=[a_m,b_m],I_n=[a_n,b_n] \Rightarrow a_m<b_n$ \newline
-$\forall a_m\in\{a_m:m\in\mathbb{N}\}, \forall b_n\in\{b_n:n\in\mathbb{N}\}, \exists c\in\mathbb{R}, a_m<c<b_n$ \newline
-$\therefore \forall n\in\mathbb{N}, \exists c, a_n<c<b_n \Rightarrow c\in I_n$ \newline
-$\therefore \forall\epsilon>0 \exists I_k, |I_k|<\epsilon$，假设$c_1,c_2$为闭区间套的两个半不同公共点且$c_1<c_2$ \newline
-$\therefore \forall n\in\mathbb{N}, c_1\in I_n, c_2\in I_n \Rightarrow a_n\le c_1<c_2\le b_n$ \newline
-$\therefore |I_n|=b_n-a_n>c_2-c_1$，与$I_n<\epsilon$矛盾} \newline
+\begin{proof}
+  $\forall m \in\mathbb{N}, \forall n\in\mathbb{N}, I_m=[a_m,b_m],I_n=[a_n,b_n] \Rightarrow a_m<b_n$ \newline
+  $\forall a_m\in\{a_m:m\in\mathbb{N}\}, \forall b_n\in\{b_n:n\in\mathbb{N}\}, \exists c\in\mathbb{R}, a_m<c<b_n$ \newline
+  $\therefore \forall n\in\mathbb{N}, \exists c, a_n<c<b_n \Rightarrow c\in I_n$ \newline
+  $\therefore \forall\epsilon>0 \exists I_k, |I_k|<\epsilon$，假设$c_1,c_2$为闭区间套的两个半不同公共点且$c_1<c_2$ \newline
+  $\therefore \forall n\in\mathbb{N}, c_1\in I_n, c_2\in I_n \Rightarrow a_n\le c_1<c_2\le b_n$ \newline
+  $\therefore |I_n|=b_n-a_n>c_2-c_1$，与$I_n<\epsilon$矛盾
+\end{proof}
 
 \textbf{覆盖} \newline
 集合族$S=\{X\}$，若$Y\subset\sum\limits_{X\in S}X$，则集合族$S$覆盖$Y$ \newline
 
 \textbf{有限覆盖引理} \newline
 覆盖闭区间的开区间族总有覆盖该闭区间的有限子族 \newline
-\textit{记开区间族$S=\{U\}$覆盖闭区间$I_1=[a,b]$ \newline
-假设$S$无覆盖$I_1$的有限子族 \newline
-$\therefore$将$I_1$等分为两个闭区间，其中至少有一个不能被任何$S$的有限子族覆盖，记为$I_2$ \newline
-继续均分$I_2$，取其中不能被任何$S$的有限子族覆盖者，记为$I_3$ \newline
-重复此操作，得闭区间套$I_1\supset I_2\supset I_3\supset\dots$ \newline
-且$|I_n|=\frac{|I_1|}{2^{n-1}}$ \newline
-$\therefore$闭区间套$\{I_n,n\in\mathbb{N}\}$有唯一公共点$c$ \newline
-$\therefore \exists U=(\alpha,\beta)\in S, c\in U$ \newline
-取$I_n$，使得$|I_n|<\min\{c-\alpha,\beta-c\}$ \newline
-又$\because c\in I_n$ \newline
-$\therefore$$I_n\subset U$，与$I_n$不能被任何$S$的有限子族覆盖矛盾} \newline
+\begin{proof}
+  记开区间族$S=\{U\}$覆盖闭区间$I_1=[a,b]$ \newline
+  假设$S$无覆盖$I_1$的有限子族 \newline
+  $\therefore$将$I_1$等分为两个闭区间，其中至少有一个不能被任何$S$的有限子族覆盖，记为$I_2$ \newline
+  继续均分$I_2$，取其中不能被任何$S$的有限子族覆盖者，记为$I_3$ \newline
+  重复此操作，得闭区间套$I_1\supset I_2\supset I_3\supset\dots$ \newline
+  且$|I_n|=\frac{|I_1|}{2^{n-1}}$ \newline
+  $\therefore$闭区间套$\{I_n,n\in\mathbb{N}\}$有唯一公共点$c$ \newline
+  $\therefore \exists U=(\alpha,\beta)\in S, c\in U$ \newline
+  取$I_n$，使得$|I_n|<\min\{c-\alpha,\beta-c\}$ \newline
+  又$\because c\in I_n$ \newline
+  $\therefore$$I_n\subset U$，与$I_n$不能被任何$S$的有限子族覆盖矛盾
+\end{proof}
 
 \textbf{极限点} \newline
 (1)若点$p\in\mathbb{R}$的任何邻域与集$X$的交集均有不等于$p$的元素，则$p$为$X$之极限点 \newline
 (2)若点$p\in\mathbb{R}$的任何邻域与集$X$的交集为无穷集，则$p$为$X$之极限点 \newline
 (1)$\longleftrightarrow$(2) \newline
-\textit{若点$p\in\mathbb{R}$的任何邻域与集$X$的交集为无穷集，则此交集中必有不等于$p$的元素((2)$\rightarrow$(1)) \newline
-若点$p\in\mathbb{R}$的任何邻域与集$X$的交集均有不等于$p$的元素 \newline
-任取$p$的$\Delta$邻域$U(p,\Delta)=(p-\Delta,p+\Delta), \Delta>0$ \newline
-假设$U(p,\Delta)X=\{a_1,a_2,a_3,\dots,a_n\}$为有限集 \newline
-则集合$\{|p-a_1|,|p-a_2|,|p-a_3|,\dots,|p-a_n|\}$有最小值$m$ \newline
-则取$\delta<m$，邻域$U(p,\delta)$与集$X$的交集没有不等于$p$的元素 \newline
-$\therefore$(1)$\rightarrow$(2)} \newline
+\begin{proof}
+  若点$p\in\mathbb{R}$的任何邻域与集$X$的交集为无穷集，则此交集中必有不等于$p$的元素((2)$\rightarrow$(1)) \newline
+  若点$p\in\mathbb{R}$的任何邻域与集$X$的交集均有不等于$p$的元素 \newline
+  任取$p$的$\Delta$邻域$U(p,\Delta)=(p-\Delta,p+\Delta), \Delta>0$ \newline
+  假设$U(p,\Delta)X=\{a_1,a_2,a_3,\dots,a_n\}$为有限集 \newline
+  则集合$\{|p-a_1|,|p-a_2|,|p-a_3|,\dots,|p-a_n|\}$有最小值$m$ \newline
+  则取$\delta<m$，邻域$U(p,\delta)$与集$X$的交集没有不等于$p$的元素 \newline
+  $\therefore$(1)$\rightarrow$(2)
+\end{proof}
 
 \textbf{极限点引理} \newline
 无穷有界数集至少有一个极限点 \newline
-\textit{记$X\subset\mathbb{R}$为无穷有界集 \newline
-取闭区间$I=[a,b]$覆盖$X$ \newline
-假设$I$中无$X$的极限点 \newline
-对每个$x\in I$，取其邻域$U(x)$，使$U(x)$与$X$之交集为空集或非空有限集 \newline
-由此得开区间族$\{U(x)\}$覆盖$I$ \newline
-$\therefore$可选出有限个开区间$U(x_1),U(x_2),U(x_3),\dots,U(x_n)$覆盖$I$，亦覆盖$X\subset I$ \newline
-$\therefore$ $\sum\limits_{i=1}^{n}U(x_i)$为空集或有限集，与包含无穷集$X$矛盾}
+\begin{proof}
+  记$X\subset\mathbb{R}$为无穷有界集 \newline
+  取闭区间$I=[a,b]$覆盖$X$ \newline
+  假设$I$中无$X$的极限点 \newline
+  对每个$x\in I$，取其邻域$U(x)$，使$U(x)$与$X$之交集为空集或非空有限集 \newline
+  由此得开区间族$\{U(x)\}$覆盖$I$ \newline
+  $\therefore$可选出有限个开区间$U(x_1),U(x_2),U(x_3),\dots,U(x_n)$覆盖$I$，亦覆盖$X\subset I$ \newline
+  $\therefore$ $\sum\limits_{i=1}^{n}U(x_i)$为空集或有限集，与包含无穷集$X$矛盾
+\end{proof}
 
 \end{document}
