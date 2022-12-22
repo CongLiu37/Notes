@@ -63,7 +63,7 @@ QualityFilter = function(fq1=fq1,fq2=fq2, # Input fq files. Set fq2="none" if si
 # BBduk: trimming NGS reads
 bbduk=function(fq1=fq1,fq2=fq2, # Input fq files. Set fq2="none" if single-end.
                clean_fq1=clean_fq1,clean_fq2=clean_fq2,
-               adaptor.fa=adaptor.fa,
+               adaptor.fa=adaptor.fa, #bbmap/resources/adapters.fa 
                threads=threads){
   if (fq2!="none"){
     cmd=paste("bbduk.sh",
@@ -379,7 +379,15 @@ run_pilon=function(assembly=assembly,
   wd=getwd();setwd(out_dir)
   threads=as.character(threads)
   
-  for (i in 1:iteration){
+  f=system("ls",wait=TRUE,intern=TRUE)
+  t=grepl("Pilon_[1-9]",f)
+  if (TRUE %in% t){
+    f=f[t]
+    f=sub("Pilon_","",f);f=as.numeric(f);f=max(f)
+    range=(max(f)+1):(max(f)+iteration)
+  }else{range=1:iteration}
+  
+  for (i in range){
     system(paste("mkdir"," ","Pilon_",as.character(i),sep=""))
     minimap2(long_reads=NGS, # space-separated list for PE
              lr_type="sr", # long read type. 
@@ -396,7 +404,7 @@ run_pilon=function(assembly=assembly,
     c=system(paste("wc -l"," ",
                    "Pilon_",as.character(i),"/",out_basename,".changes",sep=""),
              wait=TRUE,intern=TRUE)
-    if (c=="0"){break}
+    if (c=="0"){break;iteration=i}
   }
   c=system(paste("wc -l"," ",
                  "Pilon_",as.character(iteration),"/",out_basename,".changes",sep=""),
@@ -410,7 +418,7 @@ run_pilon=function(assembly=assembly,
                  "./",out_basename,"_pilon.fna",sep=""),wait=TRUE)
   }else{
     print(out_basename)
-    print("More iteration needed")
+    print("More iterations needed")
   }
   
   setwd(wd)
@@ -500,6 +508,11 @@ salsa=function(assembly=assembly,
   print(cmd);system(cmd,wait=TRUE)
   setwd(wd)
 }
+
+
+
+
+
 
 
 

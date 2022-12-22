@@ -5,8 +5,9 @@ Content:
 3. Genome assembly
 4. Genome annotation
 5. Genome curation and evaluation
-6. Phylogenomics
+6. Genomic analysis based on genome annotation
 7. Machine learning in scikit-learn, python
+8. Gene function annotation
 
 Mode of README for projects:
 ###############################################################################################

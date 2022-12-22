@@ -13,6 +13,7 @@ kmc=function(fq1=fq1, # Input fq1
              threads=threads){
   threads=as.character(threads)
   out_dir=gsub("/$","",out_dir)
+  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
   kmer=as.character(kmer)
   wd=getwd()
   setwd(out_dir)
@@ -301,10 +302,14 @@ BUSCO=function(fna=fna, # Fasta file of nucleotide or protein.
   
   # BUSCO results
   l=unlist(strsplit(Lineage,"/"));l=l[length(l)]
-  re=readLines(paste(out_dir,"/",Out_prefix,"/short_summary.specific.",l,".",Out_prefix,".txt",sep=""))[9]
-  re=sub("\t","",re);re=sub("\t   ","",re)
+  if (file.exists(
+    paste(out_dir,"/",Out_prefix,"/short_summary.specific.",l,".",Out_prefix,".txt",sep="")
+  )){
+    re=readLines(paste(out_dir,"/",Out_prefix,"/short_summary.specific.",l,".",Out_prefix,".txt",sep=""))[9]
+    re=sub("\t","",re);re=sub("\t   ","",re)
+    return(re)
+  }
   
-  return(re)
 }
 
 # CheckM: Assess completeness and contamination of genomic bins via using collocated sets of genes that are ubiquitous and single-copy within a phylogenetic lineage by CheckM.
@@ -561,21 +566,21 @@ Diamond_Megan=function(fna, # fna. Input DNA sequences.
 # gene model statistics
 gene_model_stat=function(gff3=gff3,
                          out=out){
-  cmd=paste("awk -v OFS='\t' '{if ($3==\"gene\") print $4,$5}'",
+  cmd=paste("awk -F '\t' -v OFS='\t' '{if ($3==\"gene\") print $4,$5}'",
             gff3,"> gene_coordinate.tsv",
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   gene=read.table("gene_coordinate.tsv",sep="\t",header=FALSE,quote="")
   gene$V3=gene$V2-gene$V1+1
   
-  cmd=paste("awk -v OFS='\t' '{if ($3==\"exon\") print $4,$5}'",
+  cmd=paste("awk -F '\t' -v OFS='\t' '{if ($3==\"exon\") print $4,$5}'",
             gff3,"> exon_coordinate.tsv",
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   exon=read.table("exon_coordinate.tsv",sep="\t",header=FALSE,quote="")
   exon$V3=exon$V2-exon$V1+1
   
-  cmd=paste("awk -v OFS='\t' '{if ($3==\"mRNA\") print $4,$5}'",
+  cmd=paste("awk -F '\t' -v OFS='\t' '{if ($3==\"mRNA\") print $4,$5}'",
             gff3,"> mRNA_coordinate.tsv",
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)

@@ -1,4 +1,40 @@
-# Genome annotation
+# Genome annotation (protein-coding genes)
+
+# Split paired fq
+# Dependencies: seqkit
+SplitFQ=function(fq1=fq1,fq2=fq2,
+                 out_dir=out_dir,
+                 part=part,
+                 threads=threads){
+  threads=as.character(threads)
+  part=as.character(part)
+  
+  cmd=paste("seqkit split2",
+            "--read1",fq1,
+            "--read2",fq2,
+            "--by-part",part,
+            "--out-dir",out_dir,
+            "--threads",threads)
+  # out_dir/*part_001*
+  print(cmd);system(cmd,wait=TRUE)
+}
+
+# Split fasta
+# Dependencies: seqkit
+SplitFA=function(fasta=fasta,
+                 out_dir=out_dir,
+                 part=part,
+                 threads=threads){
+  threads=as.character(threads)
+  part=as.character(part)
+  
+  cmd=paste("seqkit split2",
+            fasta,
+            "--by-part",part,
+            "--out-dir",out_dir,
+            "--threads",threads)
+  print(cmd);system(cmd,wait=TRUE)
+}
 
 # Simplify sequence ID in genome
 # Dependencies: simplifyFastaHeaders.pl from AUGUSTUS
@@ -14,23 +50,20 @@ SimplifyID=function(fna=fna,
   return(paste(fna,"_SimpleIDs",sep=""))
 }
 
-# RepeatModeler & RepeatMasker: Genome mask
-# Masked genome: <file name of fna>.masked.masked
-# Dependencies: Singularity, RepeatMasker, RepeatModeler
-GenomeMask=function(fna=fna,# Fasta file of genome.
-                    out_dir=out_dir,
-                    out_prefix=out_prefix,
-                    Threads=Threads){
-  pwd_begin=getwd()
-  setwd(out_dir)
-  
+# RepeatModeler
+# Dependencies: RepeatModeler, Singularity
+repeatmodeler=function(fna=fna,
+                       out_dir=out_dir,
+                       out_prefix=out_prefix,
+                       Threads=Threads){
+  pwd_begin=getwd();setwd(out_dir)
   Threads=as.character(Threads)
   out_dir=sub("/$","",out_dir)
+  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "),wait=TRUE)}
   
   system(paste("cp",fna,out_dir,sep=" "),wait=TRUE)
   fna_name=unlist(strsplit(fna,"/"));fna_name=fna_name[length(fna_name)]
   fna=paste(out_dir,"/",fna_name,sep="")
-  
   #####################################################################
   # RepeatModeler & RepeatMasker installed in Singularity container
   path="singularity run /home/c/c-liu/Softwares/dfam-tetools-latest.sif"
@@ -53,27 +86,54 @@ GenomeMask=function(fna=fna,# Fasta file of genome.
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   
+  system(paste("rm",fna,sep=" "),wait=TRUE)
+  setwd(pwd_begin)
+  return(paste(out_dir,"/",out_prefix,"_RepeatModeler.db-families.fa",sep=""))
+}
+
+# RepeatMasker
+# Dependencies: Singularity, RepeatMasker
+repeatmasker=function(fna=fna,# Fasta file of genome.
+                    out_dir=out_dir,
+                    RepeatLib.fa=RepeatLib.fa,
+                    Threads=Threads){
+  pwd_begin=getwd()
+  setwd(out_dir)
+  
+  Threads=as.character(Threads)
+  out_dir=sub("/$","",out_dir)
+  
+  system(paste("cp",fna,out_dir,sep=" "),wait=TRUE)
+  fna_name=unlist(strsplit(fna,"/"));fna_name=fna_name[length(fna_name)]
+  fna=paste(out_dir,"/",fna_name,sep="")
+  
+  #####################################################################
+  # RepeatModeler & RepeatMasker installed in Singularity container
+  path="singularity run /home/c/c-liu/Softwares/dfam-tetools-latest.sif"
+  #####################################################################
+  
   # RepeatMasker: Mask repeats found by RepeatModeler
   cmd=paste(path,
             "RepeatMasker",
             "-xsmall", # soft masking
-            "-lib",paste(out_prefix,"_RepeatModeler.db-families.fa",sep=""),
+            "-lib",RepeatLib.fa,
             "-pa",Threads,
+            "-dir",out_dir,
             "-gff",
             fna,
-            "-dir",out_dir)
-  print(cmd);system(cmd,wait=TRUE)
-  
-  # RepeatMasker: Mask repeats in RepBase
-  cmd=paste(path,
-            "RepeatMasker",
-            "-xsmall", # soft masking
-            "-pa",Threads,
-            "-gff",
-            paste(fna,".masked",sep=""),
-            "-dir",out_dir,
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
+  
+  # # RepeatMasker: Mask repeats in RepBase
+  # cmd=paste(path,
+  #           "RepeatMasker",
+  #           "-xsmall", # soft masking
+  #           "-pa",Threads,
+  #           "-gff",
+  #           paste(fna,".masked",sep=""),
+  #           "-dir",out_dir,
+  #           sep=" ")
+  # print(cmd);system(cmd,wait=TRUE)
   
   # Remove temporaries
   system(paste("rm",fna,sep=" "),wait=TRUE)
@@ -81,7 +141,7 @@ GenomeMask=function(fna=fna,# Fasta file of genome.
   setwd(pwd_begin)
   
   # masked genome
-  return(paste(out_dir,"/",fna,".masked.masked",sep=""))
+  return(paste(out_dir,"/",fna,".masked",sep=""))
 }
 
 # GenomeThreader: protein-genome spliced alignments
@@ -151,7 +211,7 @@ miniprot=function(fna=fna,
   
   # Convert gene models to protein alignments
   system("echo '##gff-version 3' > protein_align.gff3")
-  cmd=paste("awk -v OFS='\t' '{if ($3==\"CDS\") $3=\"match\"; if ($3==\"match\") $8=\".\"; if ($3==\"match\") print $0}'",
+  cmd=paste("awk -F '\t' -v OFS='\t' '{if ($3==\"CDS\") $3=\"match\"; if ($3==\"match\") $8=\".\"; if ($3==\"match\") print $0}'",
             "gene_models.gff3",">>","protein_align.gff3",
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
@@ -161,8 +221,7 @@ miniprot=function(fna=fna,
   setwd(wd_begin)
 }
 
-# Compute hints by prothints
-# Run GeneMark-EP
+# Prothints+GeneMark-EP
 # Dependencies: GeneMark
 gm_ep = function(genome=genome,
                  faa=faa, # reference proteins
@@ -196,11 +255,13 @@ Hisat = function(fq1=fq1,fq2=fq2, # Input fq files. Make fq2="None" if single-en
                  out_prefix=out_prefix, # Prefix of output BAM file.
                  threads=threads){
   threads = as.character(threads)
-
-  cmd = paste("hisat2-build",
-              fna,
-              index,sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
+  
+  if (!file.exists(paste(index,".1.ht2",sep=""))){
+    cmd = paste("hisat2-build",
+                fna,
+                index,sep=" ")
+    print(cmd);system(cmd,wait=TRUE)
+  }
 
   if (fq2!="None"){ # pair-end
     cmd = paste("hisat2",
@@ -267,6 +328,31 @@ coverage=function(bam=bam,
   print(cmd);system(cmd,wait=TRUE)
 }
 
+# SAMtools: Merge BAM.
+MergeBAM=function(BAMs=BAMs,# SPACE-separated list of bam files.
+                  out_prefix=out_prefix,
+                  Threads=Threads){
+  Threads=as.character(Threads)
+  
+  cmd=paste("samtools","merge",
+            "-@",Threads,
+            "-",
+            BAMs,"|",
+            "samtools","sort",
+            "-@",threads,
+            "-o",paste(out_prefix,".bam",sep=""),
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  cmd=paste("samtools","index",
+            paste(out_prefix,".bam",sep=""),
+            "-@",threads,
+            sep=" ")
+  print(cmd);system(cmd)
+  
+  return(0)
+}
+
 # Assemble transcripts from BAM.
 # Dependencies: StringTie, script from EvidenceModeler
 StringTie = function(input_bam=input_bam, # Input BAM.
@@ -287,7 +373,7 @@ StringTie = function(input_bam=input_bam, # Input BAM.
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   
-  cmd=paste("awk -v OFS='\t' '{if ($2==\"Cufflinks\")  $2=\"StringTie\";print$0}'",
+  cmd=paste("awk -F '\t' -v OFS='\t' '{if ($2==\"Cufflinks\")  $2=\"StringTie\";print$0}'",
             paste(output_prefix,"_tmp.gff3",sep=""),">",
             paste(output_prefix,".gff3",sep=""),
             sep=" ")
@@ -301,7 +387,7 @@ StringTie = function(input_bam=input_bam, # Input BAM.
 TransDecoder=function(gtf=gtf, # gtf from StringTie
                       fna=fna,
                       out_dir=out_dir,
-                      dmdb=dmdb, # DIAMOND protein db
+                      dmdb=dmdb, # DIAMOND protein db, uniprot
                       pfam=pfam, # Pfam-A.hmm
                       threads=threads){
   threads=as.character(threads)
@@ -386,7 +472,7 @@ glimmerhmm_RNA=function(transcript_align.gff3=transcript_align.gff3, # get exon/
   wd_begin=getwd();setwd(out_dir)
   
   # Get exon coordinates
-  cmd=paste("awk -v OFS='\t' '{if ($0==\"\" || $3==\"exon\" || $3==\"match\") print $0}'",
+  cmd=paste("awk -F '\t' -v OFS='\t' '{if ($0==\"\" || $3==\"exon\" || $3==\"match\") print $0}'",
             transcript_align.gff3,"> tmp.gff3")
   print(cmd);system(cmd,wait=TRUE)
   transcript_align=readLines("tmp.gff3")
@@ -950,8 +1036,8 @@ pasa=function(genome=genome,
 }
 
 # Generate a comprehensive genomic database including:
-#   soft masked genome, PASA.gff3, transcripts.fna, transcripts_iso.fna, cds.fna, cds_iso.fna, protein.faa, protein.iso.faa
-# Dependencies: maker,gffread,seqkit
+# genes.gff3, transcripts_rep.fna, transcripts_iso.fna, cds_rep.fna, cds_iso.fna, proteins_rep.faa, proteins_iso.faa
+# Dependencies: maker, gffread, seqkit
 pasa_more=function(species=species,
                    genome=genome,
                    PASA.gff3=PASA.gff3,
@@ -959,12 +1045,6 @@ pasa_more=function(species=species,
   out_dir=sub("/$","",out_dir)
   if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
   wd=getwd();setwd(out_dir)
-  
-  cmd=paste("cp",genome,
-            paste("./",species,"_masked_genome.fna",sep=""),
-            sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  genome=paste("./",species,"_masked_genome.fna",sep="")
   
   cmd=paste("cp",PASA.gff3,
             paste("./",species,"_genes.gff3",sep=""),
@@ -1029,6 +1109,46 @@ pasa_more=function(species=species,
   system(paste("rm",paste(species,"_cds.fna",sep=""),sep=" "),wait=TRUE)
   system(paste("rm",paste(species,"_proteins.faa",sep=""),sep=" "),wait=TRUE)
 }
+
+# Trinity: de novo assembly of transcriptome
+trinity=function(fq1=fq1,fq2=fq2,
+                 threads=threads,
+                 max_memory=max_memory, # 500G
+                 out_dir=out_dir){
+  threads=as.character(threads)
+  out_dir=sub("/$","",out_dir)
+  wd=getwd()
+  
+  cmd=paste("Trinity",
+            "--seqType","fq",
+            "--left",fq1,
+            "--right",fq2,
+            "--CPU",threads,
+            "--output",out_dir,
+            "--max_memory",max_memory,
+            "--full_cleanup",
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  setwd(wd)
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # MAKER
 # Dependencies: MAKER, SNAP, RepeatMasker, blast, AUGUSTUS, exonerate, blast+, GAAS, stringr (R)
@@ -1231,20 +1351,7 @@ maker=function(fna=fna, # masked
 
 
 
-# SAMtools: Merge BAM.
-MergeBAM=function(BAMs=BAMs,# space-separated list of bam files.
-                  out_prefix=out_prefix,
-                  Threads=Threads){
-  Threads=as.character(Threads)
-  
-  cmd=paste("samtools","merge",
-            "-@",Threads,
-            paste(out_prefix,".bam"),
-            BAMs,sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  
-  return(0)
-}
+
 
 # Star: Map short RNA reads to reference genome. 
 # SAMtools: Compress SAM to BAM, sort BAM, index BAM.
