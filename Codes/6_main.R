@@ -1,4 +1,5 @@
 # Genomic analysis based on genome annotation (protein-coding)
+# Gene function annotation, genome collinearity, horizontal gene transfer
 
 # For peptide sets from NCBI
 # Retain the longest protein isoform of each gene by header lines of faa.
@@ -106,7 +107,7 @@ Re_orthofinder=function(previous_orthofinder_result_dir=previous_orthofinder_res
 
 # Best protein-protein hit by blast
 best_blastp=function(query.faa=query.faa,
-                     reference.db=reference.db, # blast database
+                     reference.faa=reference.faa,
                      out_dir=out_dir,
                      out_basename=out_basename,
                      threads=threads){
@@ -115,13 +116,25 @@ best_blastp=function(query.faa=query.faa,
   if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
   wd=getwd();setwd(out_dir)
   
-  cmd=paste("cp",query.faa,paste(out_dir,"/query.faa",sep=""),sep=" ")
+  cmd=paste("cp",query.faa,out_dir,sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  query.faa=unlist(strsplit(query.faa,"/"));query.faa=query.faa[length(query.faa)]
+  
+  cmd=paste("cp",reference.faa,out_dir,sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  reference.faa=unlist(strsplit(reference.faa,"/"));reference.faa=reference.faa[length(reference.faa)]
+  
+  cmd=paste("makeblastdb",
+            "-in",reference.faa,
+            "-dbtype","prot",
+            "-parse_seqids",
+            sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   
   cmd=paste("blastp",
             "-num_threads",threads,
-            "-db","reference.faa",
-            "-query","query.faa",
+            "-db",reference.faa,
+            "-query",query.faa,
             "-outfmt 6",
             "-evalue 1e-5",
             "-num_alignments 1",
@@ -129,7 +142,9 @@ best_blastp=function(query.faa=query.faa,
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   
-  system("rm ./query.faa",wait=TRUE)
+  system(paste("rm",query.faa,sep=" "),wait=TRUE)
+  system(paste("rm",reference.faa,sep=" "),wait=TRUE)
+  system(paste("rm"," ",reference.faa,".*",sep=""),wait=TRUE)
   setwd(wd)
 }
 
@@ -143,10 +158,11 @@ interpro=function(proteins.faa=proteins.faa,
   if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
   wd=getwd();setwd(out_dir)
   
-  cmd=paste("cp",proteins.faa,"./proteins.faa",sep=" ")
+  cmd=paste("cp",proteins.faa,out_dir,sep=" ")
   print(cmd);system(cmd,wait=TRUE)
+  proteins.faa=unlist(strsplit(proteins.faa,"/"));proteins.faa=proteins.faa[length(proteins.faa)]
   
-  cmd="sed -i 's/*/X/g' proteins.faa"
+  cmd=paste("sed -i 's/*/X/g'",proteins.faa,sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   
   cmd=paste("interproscan.sh",
@@ -155,87 +171,128 @@ interpro=function(proteins.faa=proteins.faa,
             "-cpu",threads,
             "-f TSV",
             "-goterms",
-            "-i","proteins.faa",
+            "-i",proteins.faa,
             "--pathways",
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   
-  system("rm proteins.faa",wait=TRUE)
+  system(paste("rm",proteins.faa,sep=" "),wait=TRUE)
   setwd(wd)
 }
 
-# 6-frame translation (DNA to protein)
-# hmmer build (protein)
-# hmmer search (protein-protein)
-
-# blast protein-protein alignment
-# Dependencies: blast+
-blastp=function(query.faa=query.faa,
-                reference.faa=reference.faa,
-                out_dir=out_dir,
-                out_basename=out_basename,
-                threads=threads){
+# WGDI input files
+# Dependencies: blastp
+wgdi_input=function(genome.fna1=genome.fna1,gff1=gff1,proteins.faa1=proteins.faa1,cds.fna1=cds.fna1,
+                    genome.fna2=genome.fna2,gff2=gff2,proteins.faa2=proteins.faa2,cds.fna2=cds.fna2,
+                    threads=threads,
+                    out_dir=out_dir,
+                    out_basename=out_basename){
   threads=as.character(threads)
   out_dir=sub("/$","",out_dir)
   if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
   wd=getwd();setwd(out_dir)
+  system("mkdir tmp",wait=TRUE)
   
-  conf=paste(out_basename,"_blast.conf",sep="")
-  system(paste("echo","'","query","'",">",conf,sep=" "))
-  system(paste("echo","'",query.faa,"'",">>",conf,sep=" "))
-  system(paste("echo","'","reference","'",">>",conf,sep=" "))
-  system(paste("echo","'",reference.faa,"'",">>",conf,sep=" "))
-  system(paste("echo","'","output","'",">>",conf,sep=" "))
-  system(paste("echo","'",paste(out_dir,"/",out_basename,".blast",sep=""),"'",">>",conf,sep=" "))
+  self2self=genome.fna1==genome.fna2
+  setwd("tmp/")
   
-  cmd=paste("cp",query.faa,paste(out_dir,"/query.faa",sep=""),sep=" ")
+  cmd=paste("cp"," ",proteins.faa1," ",".",sep="")
   print(cmd);system(cmd,wait=TRUE)
-  cmd=paste("cp",reference.faa,paste(out_dir,"/reference.faa",sep=""),sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
+  proteins.faa1=unlist(strsplit(proteins.faa1,"/"));proteins.faa1=proteins.faa1[length(proteins.faa1)]
+  if (!self2self){
+    cmd=paste("cp"," ",proteins.faa2," ",".",sep="")
+    print(cmd);system(cmd,wait=TRUE)
+  }
+  proteins.faa2=unlist(strsplit(proteins.faa2,"/"));proteins.faa2=proteins.faa2[length(proteins.faa2)]
   
   cmd=paste("makeblastdb",
-            "-in","reference.faa",
+            "-in",proteins.faa1,
             "-dbtype prot",
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
-  
   cmd=paste("blastp",
             "-num_threads",threads,
-            "-db","reference.faa",
-            "-query","query.faa",
+            "-db",proteins.faa1,
+            "-query",proteins.faa2,
             "-outfmt 6",
             "-evalue 1e-5",
             "-num_alignments 20",
-            "-out",paste(out_dir,"/",out_basename,".blast",sep=""),
+            "-out",paste(out_basename,".blast",sep=""),
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
+  blast1=paste(out_basename,".blast",sep="")
+  if (!self2self){
+    cmd=paste("makeblastdb",
+              "-in",proteins.faa2,
+              "-dbtype prot",
+              sep=" ")
+    print(cmd);system(cmd,wait=TRUE)
+    cmd=paste("blastp",
+              "-num_threads",threads,
+              "-db",proteins.faa2,
+              "-query",proteins.faa1,
+              "-outfmt 6",
+              "-evalue 1e-5",
+              "-num_alignments 20",
+              "-out",paste(out_basename,"_reverse.blast",sep=""),
+              sep=" ")
+    print(cmd);system(cmd,wait=TRUE)
+    blast2=paste(out_basename,"_reverse.blast",sep="")
+  }else{
+    #blast2=paste(out_dir,"/",out_basename,".blast",sep="")
+    blast2="false"
+  }
   
-  system("rm ./query.faa",wait=TRUE)
-  system("rm ./reference.faa",wait=TRUE)
+  system(paste("mv",proteins.faa1,"../",sep=" "),wait=TRUE)
+  if (!self2self){system(paste("mv",proteins.faa2,"../",sep=" "),wait=TRUE)}
+  system(paste("mv",blast1,"../",sep=" "),wait=TRUE)
+  if (!self2self){system(paste("mv",blast2,"../",sep=" "),wait=TRUE)}
+  setwd("../")
+  system("rm -r tmp",wait=TRUE)
+  system(paste("cp"," ",cds.fna1," ",".",sep=""),wait=TRUE)
+  system(paste("cp"," ",cds.fna2," ",".",sep=""),wait=TRUE)
+  
+  # Prepare fake gff and len file required by wgdi
+  # Dependencies: https://github.com/xuzhougeng/myscripts/blob/master/comparative/generate_conf.py
+  wgdi_input=function(genome.fna=genome.fna,
+                      gff=gff,
+                      out_prefix=out_prefix){
+    cmd=paste("generate_conf.py",
+              "-p",out_prefix,
+              genome.fna,gff,
+              sep=" ")
+    print(cmd);system(cmd,wait=TRUE)
+    
+    cmd=paste("awk -F '\t' -v OFS='\t' '{$2=$7; print $0}'",paste(out_prefix,".gff",sep=""),
+              ">",paste(out_prefix,"_tmp.gff",sep=""),sep=" ")
+    print(cmd);system(cmd,wait=TRUE)
+    
+    system(paste("rm",paste(out_prefix,".gff",sep=""),sep=" "),wait=TRUE)
+    system(paste("mv",
+                 paste(out_prefix,"_tmp.gff",sep=""),
+                 paste(out_prefix,".gff",sep=""),
+                 sep=" "),wait=TRUE)
+  }
+  genome_prefix1=unlist(strsplit(genome.fna1,"/"));genome_prefix1=genome_prefix1[length(genome_prefix1)]
+  wgdi_input(genome.fna=genome.fna1,
+             gff=gff1,
+             out_prefix=genome_prefix1)
+  fake_gff1=paste(out_dir,"/",genome_prefix1,".gff",sep="")
+  len1=paste(out_dir,"/",genome_prefix1,".len",sep="")
+  if (!self2self){
+    genome_prefix2=unlist(strsplit(genome.fna2,"/"));genome_prefix2=genome_prefix2[length(genome_prefix2)]
+    wgdi_input(genome.fna=genome.fna2,
+               gff=gff2,
+               out_prefix=genome_prefix2)
+    fake_gff2=paste(out_dir,"/",genome_prefix2,".gff",sep="")
+    len2=paste(out_dir,"/",genome_prefix2,".len",sep="")
+  }else{
+    genome_prefix2=genome_prefix1
+    fake_gff2=paste(out_dir,"/",genome_prefix1,".gff",sep="")
+    len2=paste(out_dir,"/",genome_prefix1,".len",sep="")
+  }
   
   setwd(wd)
-}
-
-# Prepare fake gff and len file required by wgdi
-# Dependencies: https://github.com/xuzhougeng/myscripts/blob/master/comparative/generate_conf.py
-wgdi_input=function(genome.fna=genome.fna,
-                    gff=gff,
-                    out_prefix=out_prefix){
-  cmd=paste("generate_conf.py",
-            "-p",out_prefix,
-            genome.fna,gff,
-            sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  
-  cmd=paste("awk -F '\t' -v OFS='\t' '{$2=$7; print $0}'",paste(out_prefix,".gff",sep=""),
-            ">",paste(out_prefix,"_tmp.gff",sep=""),sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  
-  system(paste("rm",paste(out_prefix,".gff",sep=""),sep=" "),wait=TRUE)
-  system(paste("mv",
-               paste(out_prefix,"_tmp.gff",sep=""),
-               paste(out_prefix,".gff",sep=""),
-               sep=" "),wait=TRUE)
 }
 
 # Genome-genome dotplot
@@ -259,9 +316,16 @@ wgdi_dot=function(blast=blast,blast_reverse="false",
   conf[6]=paste("lens2 = ",lens2,sep="")
   conf[7]=paste("genome1_name = ",genome1_name,sep="")
   conf[8]=paste("genome2_name = ",genome2_name,sep="")
+  conf[9]="multiple  = 1"
+  conf[10]="score = 100"
+  conf[11]="evalue = 1e-5"
+  conf[12]="repeat_number = 10"
+  conf[13]="position = order"
   conf[14]=paste("blast_reverse = ",blast_reverse,sep="")
   conf[15]="ancestor_left = none"
   conf[16]="ancestor_top = none"
+  conf[17]="markersize = 0.5"
+  conf[18]="figsize = 100,100"
   conf[19]=paste("savefig = ",out_basename,"_dotplot.pdf",sep="")
   writeLines(conf,paste(out_basename,"_dotplot.conf",sep=""))
   
@@ -279,11 +343,13 @@ wgdi_col=function(blast=blast,blast_reverse="false",
                   fake.gff1=fake.gff1,fake.gff2=fake.gff2,
                   lens1=lens1,lens2=lens2,
                   genome1_name=genome1_name,genome2_name=genome2_name,
+                  pvalue=1,
                   out_basename=out_basename,
                   out_dir=out_dir){
   out_dir=sub("/$","",out_dir)
   if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
   wd=getwd();setwd(out_dir)
+  pvalue=as.character(pvalue)
   
   cmd="wgdi -icl \\?"
   conf=system(cmd,wait=TRUE,intern=TRUE)
@@ -293,6 +359,15 @@ wgdi_col=function(blast=blast,blast_reverse="false",
   conf[5]=paste("lens2 = ",lens2,sep="")
   conf[6]=paste("blast = ",blast,sep="")
   conf[7]=paste("blast_reverse = ",blast_reverse,sep="")
+  conf[8]="multiple  = 1"
+  conf[9]="process = 8"
+  conf[10]="evalue = 1e-5"
+  conf[11]="score = 100"
+  conf[12]="grading = 50,40,25"
+  conf[13]="mg = 40,40"
+  conf[14]=paste("pvalue = ",pvalue,sep="")
+  conf[15]="repeat_number = 10"
+  conf[16]="positon = order"
   conf[17]=paste("savefile = ",out_basename,"_colinearity.txt",sep="")
   writeLines(conf,paste(out_basename,"_colinearity.conf",sep=""))
   
@@ -338,7 +413,7 @@ wgdi_bi=function(blast=blast,
                  lens1=lens1,lens2=lens2,
                  wgdi_colinearity=wgdi_colinearity,
                  wgdi_kaks=wgdi_kaks,
-                 ks_col=ks_col, # ks_NG86/ks_YN00
+                 ks_col="ks_NG86", # ks_NG86/ks_YN00
                  out_basename=out_basename,
                  out_dir=out_dir){
   out_dir=sub("/$","",out_dir)
@@ -353,6 +428,10 @@ wgdi_bi=function(blast=blast,
   conf[5]=paste("lens1 = ",lens1,sep="")
   conf[6]=paste("lens2 = ",lens2,sep="")
   conf[7]=paste("collinearity = ",wgdi_colinearity,sep="")
+  conf[8]="score = 100" 
+  conf[9]="evalue = 1e-5" 
+  conf[10]="repeat_number = 10"
+  conf[11]="position = order"  
   conf[12]=paste("ks = ",wgdi_kaks,sep="")
   conf[13]=paste("ks_col =",ks_col,sep="")
   conf[14]=paste("savefile =",out_basename,"_BlockInfo.csv",sep="")
@@ -365,12 +444,12 @@ wgdi_bi=function(blast=blast,
   setwd(wd)
 }
 
-# ks dotplot
+# ks+collinearity
 # Dependencies: wgdi
 wgdi_bk=function(wgdi_BlockInfo=wgdi_BlockInfo,
                  lens1=lens1,lens2=lens2,
                  genome1_name=genome1_name,genome2_name=genome2_name,
-                 p_block=0.2, # 0-1,
+                 p_block=1, # 0-1,
                  out_basename=out_basename,
                  out_dir=out_dir){
   out_dir=sub("/$","",out_dir)
@@ -386,7 +465,11 @@ wgdi_bk=function(wgdi_BlockInfo=wgdi_BlockInfo,
   conf[6]=paste("blockinfo = ",wgdi_BlockInfo,sep="")
   conf[7]=paste("pvalue = ",as.character(p_block),sep="")
   conf[8]="tandem = true"
+  conf[9]="tandem_length = 200"
+  conf[10]="markersize = 1"  
+  conf[11]="area = 0,10"
   conf[12]="block_length = 5"
+  conf[13]="figsize = 100,100"   
   conf[14]=paste("savefig = ",out_basename,"_BlockKs.pdf",sep="")
   writeLines(conf,paste(out_basename,"_BlockKs.conf",sep=""))
   
@@ -398,10 +481,10 @@ wgdi_bk=function(wgdi_BlockInfo=wgdi_BlockInfo,
   setwd(wd)
 }
 
-# ks distribution
+# ks peaks of collinearity block
 # Dependencies: wgdi
 wgdi_kspeak=function(wgdi_BlockInfo=wgdi_BlockInfo,
-                     p_block=0.2, # 0-1,
+                     p_block=1, # 0-1,
                      out_basename=out_basename,
                      out_dir=out_dir){
   out_dir=sub("/$","",out_dir)
@@ -412,8 +495,14 @@ wgdi_kspeak=function(wgdi_BlockInfo=wgdi_BlockInfo,
   conf=system(cmd,wait=TRUE,intern=TRUE)
   conf[2]=paste("blockinfo = ",wgdi_BlockInfo,sep="")
   conf[3]=paste("pvalue = ",as.character(p_block),sep="")
+  conf[4]="tandem = true"  
   conf[5]="block_length = 5"
-  #conf[6]="ks_area = 0,10"
+  conf[6]="ks_area = 0,10"
+  conf[7]="multiple  = 1" 
+  conf[8]="homo = 0,1"
+  conf[9]="fontsize = 9"  
+  conf[10]="area = 0,10"
+  conf[11]="figsize = 10,6.18" 
   conf[12]=paste("savefig = ",out_basename,"_KsPeaks.pdf",sep="")
   conf[13]=paste("savefile = ",out_basename,"_KsPeaks.csv",sep="")
   writeLines(conf,paste(out_basename,"_KsPeaks.conf",sep=""))
@@ -425,6 +514,47 @@ wgdi_kspeak=function(wgdi_BlockInfo=wgdi_BlockInfo,
   
   setwd(wd)
 }
+
+
+# # Ks peaks
+# cmd="wgdi -kp \\?"
+# conf=system(cmd,wait=TRUE,intern=TRUE)
+# conf[2]=paste("blockinfo = ",wgdi_BlockInfo,sep="")
+# conf[3]="pvalue = 0.05"
+# conf[5]="block_length = 5"
+# conf[6]="ßks_area = 0,10"
+# conf[11]="figsize = 10,6.18"
+# conf[12]=paste("savefig = ",out_basename,"_KsPeak.pdf",sep="")
+# conf[13]=paste("savefile = ",out_basename,"_KsPeak.csv",sep="")
+# writeLines(conf,paste(out_basename,"_KsPeak.conf",sep=""))
+# cmd=paste("wgdi -kp",
+#           paste(out_basename,"_KsPeak.conf",sep=""),
+#           sep=" ")
+# print(cmd);system(cmd,wait=TRUE)
+# 
+# # Ks peak fit
+# cmd="wgdi -pf \\?"
+# conf=system(cmd,wait=TRUE,intern=TRUE)
+# conf[2]=paste("blockinfo = ",wgdi_BlockInfo,sep="")
+# conf[10]=paste("savefig = ",out_basename,"_PeakFit.pdf",sep="")
+# writeLines(conf,paste(out_basename,"_PeakFit.conf",sep=""))
+# cmd=paste("wgdi -pf",
+#           paste(out_basename,"_PeakFit.conf",sep=""),
+#           sep=" ")
+# print(cmd);system(cmd,wait=TRUE)
+# 
+# # Ks figure
+# cmd="wgdi -kf \\?"
+# conf=system(cmd,wait=TRUE,intern=TRUE)
+# conf[2]=paste("ksfit = ",out_basename,"_KsPeak.csv",sep="")
+# conf[11]=paste("savefig = ",out_basename,"_KsFig.pdf",sep="")
+# writeLines(conf,paste(out_basename,"_KsFig.conf",sep=""))
+# cmd=paste("wgdi -kf",
+#           paste(out_basename,"_KsFig.conf",sep=""),
+#           sep=" ")
+# print(cmd);system(cmd,wait=TRUE)
+
+
 
 # Incomplete
 # AvP

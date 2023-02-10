@@ -81,6 +81,38 @@ QualityFilter = function(fq1=fq1,fq2=fq2, # Input fq files. Set fq2="none" if si
   return(0)
 }
 
+# BBduk: trimming NGS reads
+bbduk=function(fq1=fq1,fq2=fq2, # Input fq files. Set fq2="none" if single-end.
+               clean_fq1=clean_fq1,clean_fq2=clean_fq2,
+               adaptor.fa=adaptor.fa, #bbmap/resources/adapters.fa 
+               threads=threads){
+  if (fq2!="none"){
+    cmd=paste("bbduk.sh",
+              paste("-t=",threads,sep=""),
+              paste("in1=",fq1,sep=""),
+              paste("in2=",fq2,sep=""),
+              paste("out1=",clean_fq1,sep=""),
+              paste("out2=",clean_fq2,sep=""),
+              "ktrim=r",
+              paste("ref=",adaptor.fa,sep=""),
+              "k=23 mink=7 hdist=1 tpe tbo maq=10",
+              "qtrim=rl trimq=15 minlength=35",
+              sep=" ")
+  }else{
+    cmd=paste("bbduk.sh",
+              paste("-t=",threads,sep=""),
+              paste("in=",fq1,sep=""),
+              paste("out=",clean_fq1,sep=""),
+              "ktrim=r",
+              paste("ref=",adaptor.fa,sep=""),
+              "k=23 mink=7 hdist=1",
+              "tpe tbo maq=10 qtrim=rl trimq=15 minlength=35",
+              sep=" ")
+  }
+  
+  print(cmd);system(cmd,wait=TRUE)
+}
+
 # Extract cds from gff
 # Dependencies: gffread
 gffread = function(gff=gff,

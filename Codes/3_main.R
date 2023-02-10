@@ -1,4 +1,4 @@
-# Prepare genome assembly
+# Genome assembly
 
 # Check quality of fastq file.
 # Dependencies: FastQC
@@ -162,6 +162,7 @@ getorganelle=function(fq1=fq1,
   threads=as.character(threads)
   out_dir=sub("/$","",out_dir)
   # GetOrganelle will make the out_dir
+  
   cmd="get_organelle_from_reads.py"
   if (fq2!="none"){
     cmd=paste(cmd,"-1",fq1,"-2",fq2,sep=" ")
@@ -187,9 +188,9 @@ getorganelle=function(fq1=fq1,
   print(cmd);system(cmd,wait=TRUE)
 }
 
-# Map reads to reference
+# Map DNA reads to reference
 # Dependencies: Minimap2, SAMtools
-minimap2=function(long_reads=long_reads, # space-separated list for PE
+minimap2=function(reads=reads, # space-separated list for PE
                   lr_type=lr_type, # long read type. 
                                    # "map-pb" for PacBio
                                    # "map-hifi" for HiFi
@@ -203,7 +204,7 @@ minimap2=function(long_reads=long_reads, # space-separated list for PE
             "-ax",lr_type,
             "-t",threads,
             "--secondary=no","--MD","-L",
-            assembly,long_reads,"|",
+            assembly,reads,"|",
             "samtools","view","-@",threads,"-bS","|",
             "samtools","sort",
             "-@",threads,
@@ -520,56 +521,56 @@ salsa=function(assembly=assembly,
 
 
 
-# Bowtie2: Map reads to genome. 
-# SAMtools: Compress SAM to BAM, sort BAM, index BAM.
-# Dependencies: Bowtie2, SAMtools
-Bowtie2 = function(fq1=fq1,fq2=fq2, # Input fq files. Make fq2="none" if single-end.
-                   # Can be comma-separated list of files if multiple libraries used
-                   fna=fna, # FASTA of genome
-                   index=index, # Basename of Bowtie2 index of reference genome.
-                   out_prefix=out_prefix, # Prefix of output BAM file.
-                   threads=threads){
-  threads = as.character(threads)
-  
-  cmd = paste("bowtie2-build",
-              fna,
-              index,
-              sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  
-  bam_filename=paste(out_prefix,".bam",sep="")
-  if (fq2!="none"){ # pair-end
-    cmd = paste("bowtie2",
-                "-x",index,
-                "-p",threads,
-                "-1",fq1,
-                "-2",fq2,
-                "|",
-                "samtools","view",
-                "-@",threads,"-bS",
-                "|",
-                "samtools","sort",
-                "-@",threads,
-                "-o",bam_filename,
-                sep=" ")
-  }else{ # single pair
-    cmd = paste("bowtie2",
-                "-x",index,
-                "-p",threads,
-                "-U",fq1,
-                "|",
-                "samtools","view",
-                "-@",threads,"-bS",
-                "|",
-                "samtools","sort",
-                "-@",threads,
-                "-o",bam_filename,
-                sep=" ")
-  }
-  print(cmd);system(cmd,wait=TRUE)
-  
-  cmd=paste("samtools","index",bam_filename,sep=" ")
-  print(cmd);system(cmd)
-  
-  return(bam_filename)
-}
+# # Bowtie2: Map reads to genome. 
+# # SAMtools: Compress SAM to BAM, sort BAM, index BAM.
+# # Dependencies: Bowtie2, SAMtools
+# Bowtie2 = function(fq1=fq1,fq2=fq2, # Input fq files. Make fq2="none" if single-end.
+#                    # Can be comma-separated list of files if multiple libraries used
+#                    fna=fna, # FASTA of genome
+#                    index=index, # Basename of Bowtie2 index of reference genome.
+#                    out_prefix=out_prefix, # Prefix of output BAM file.
+#                    threads=threads){
+#   threads = as.character(threads)
+#   
+#   cmd = paste("bowtie2-build",
+#               fna,
+#               index,
+#               sep=" ")
+#   print(cmd);system(cmd,wait=TRUE)
+#   
+#   bam_filename=paste(out_prefix,".bam",sep="")
+#   if (fq2!="none"){ # pair-end
+#     cmd = paste("bowtie2",
+#                 "-x",index,
+#                 "-p",threads,
+#                 "-1",fq1,
+#                 "-2",fq2,
+#                 "|",
+#                 "samtools","view",
+#                 "-@",threads,"-bS",
+#                 "|",
+#                 "samtools","sort",
+#                 "-@",threads,
+#                 "-o",bam_filename,
+#                 sep=" ")
+#   }else{ # single pair
+#     cmd = paste("bowtie2",
+#                 "-x",index,
+#                 "-p",threads,
+#                 "-U",fq1,
+#                 "|",
+#                 "samtools","view",
+#                 "-@",threads,"-bS",
+#                 "|",
+#                 "samtools","sort",
+#                 "-@",threads,
+#                 "-o",bam_filename,
+#                 sep=" ")
+#   }
+#   print(cmd);system(cmd,wait=TRUE)
+#   
+#   cmd=paste("samtools","index",bam_filename,sep=" ")
+#   print(cmd);system(cmd)
+#   
+#   return(bam_filename)
+# }

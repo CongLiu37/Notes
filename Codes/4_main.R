@@ -1,4 +1,36 @@
-# Genome annotation (protein-coding genes)
+# Genome annotation (protein-coding genes and pseudogenes)
+
+# BBduk: trimming NGS reads
+bbduk=function(fq1=fq1,fq2=fq2, # Input fq files. Set fq2="none" if single-end.
+               clean_fq1=clean_fq1,clean_fq2=clean_fq2,
+               adaptor.fa=adaptor.fa, #bbmap/resources/adapters.fa 
+               threads=threads){
+  if (fq2!="none"){
+    cmd=paste("bbduk.sh",
+              paste("-t=",threads,sep=""),
+              paste("in1=",fq1,sep=""),
+              paste("in2=",fq2,sep=""),
+              paste("out1=",clean_fq1,sep=""),
+              paste("out2=",clean_fq2,sep=""),
+              "ktrim=r",
+              paste("ref=",adaptor.fa,sep=""),
+              "k=23 mink=7 hdist=1 tpe tbo maq=10",
+              "qtrim=rl trimq=15 minlength=35",
+              sep=" ")
+  }else{
+    cmd=paste("bbduk.sh",
+              paste("-t=",threads,sep=""),
+              paste("in=",fq1,sep=""),
+              paste("out=",clean_fq1,sep=""),
+              "ktrim=r",
+              paste("ref=",adaptor.fa,sep=""),
+              "k=23 mink=7 hdist=1",
+              "tpe tbo maq=10 qtrim=rl trimq=15 minlength=35",
+              sep=" ")
+  }
+  
+  print(cmd);system(cmd,wait=TRUE)
+}
 
 # Split paired fq
 # Dependencies: seqkit
@@ -37,17 +69,22 @@ SplitFA=function(fasta=fasta,
 }
 
 # Simplify sequence ID in genome
+# Make sure fasta header is simple and remove all space
 # Dependencies: simplifyFastaHeaders.pl from AUGUSTUS
 SimplifyID=function(fna=fna,
-                    common_pattern=common_pattern # common pattern in simplified sequence IDs
-                    ){
-  cmd=paste("simplifyFastaHeaders.pl",
+                    common_pattern=common_pattern, # common pattern in simplified sequence IDs
+                    out_dir=out_dir){
+  out_dir=sub("/$","",out_dir)
+  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "),wait=TRUE)}
+  fna_name=unlist(strsplit(fna,"/"));fna_name=fna_name[length(fna_name)]
+  
+  cmd=paste("simplifyFastaHeaders.pl", # AUGUSTUS
             fna,
             common_pattern,
-            paste(fna,"_SimpleIDs",sep=""), # FASTA with simplified IDs
-            paste(fna,"_IDconvert.tsv",sep="")) # old ID to new ID (tabular)
+            paste(out_dir,"/",fna_name,"_SimpleIDs",sep=""), # FASTA with simplified IDs
+            paste(out_dir,"/",fna_name,"_IDconvert.tsv",sep="")) # old ID to new ID (tabular)
   print(cmd);system(cmd,wait=TRUE)
-  return(paste(fna,"_SimpleIDs",sep=""))
+  return(paste(out_dir,"/",fna_name,"_SimpleIDs",sep=""))
 }
 
 # RepeatModeler
@@ -97,11 +134,12 @@ repeatmasker=function(fna=fna,# Fasta file of genome.
                     out_dir=out_dir,
                     RepeatLib.fa=RepeatLib.fa,
                     Threads=Threads){
+  out_dir=sub("/$","",out_dir)
+  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "),wait=TRUE)}
+  
   pwd_begin=getwd()
   setwd(out_dir)
-  
   Threads=as.character(Threads)
-  out_dir=sub("/$","",out_dir)
   
   system(paste("cp",fna,out_dir,sep=" "),wait=TRUE)
   fna_name=unlist(strsplit(fna,"/"));fna_name=fna_name[length(fna_name)]
@@ -144,67 +182,41 @@ repeatmasker=function(fna=fna,# Fasta file of genome.
   return(paste(out_dir,"/",fna,".masked",sep=""))
 }
 
-# GenomeThreader: protein-genome spliced alignments
-# Dependencies: GenomeThreader, scripts from EvidenceModeler
-gth=function(fna=fna, # masked genome
-             faa=faa, # protein sequences
-             out_dir=out_dir){
-  out_dir=sub("/$","",out_dir)
-  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
-  wd_begin=getwd();setwd(out_dir)
-  
-  cmd=paste("cp",fna,".",sep=" ");system(cmd,wait=TRUE)
-  fna=unlist(strsplit(fna,"/"));fna_file=fna[length(fna)]
-  cmd=paste("cp",faa,".",sep=" ");system(cmd,wait=TRUE)
-  faa=unlist(strsplit(faa,"/"));faa_file=faa[length(faa)]
-  
-  cmd=paste("gth",
-            "-genomic",fna_file,
-            "-protein",faa_file,
-            "-gff3out -intermediate",
-            "-o","protein_alignment.gff3",
-            sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  
-  system(paste("rm",fna_file,sep=" "),wait=TRUE)
-  system(paste("rm",faa_file,sep=" "),wait=TRUE)
-  system(paste("rm"," ",fna_file,"*",sep=""),wait=TRUE)
-  system(paste("rm"," ",faa_file,"*",sep=""),wait=TRUE)
-  # EvidenceModeler
-  cmd="genomeThreader_to_evm_gff3.pl protein_alignment.gff3 >protein_alignment_evm.gff3"
-  print(cmd);system(cmd,wait=TRUE)
-  
-  setwd(wd_begin)
-  return(out_dir)
-}
-
 # Compute gene models (gff3) by miniprot
 # Get gene models (gff3) to protein alignments (gff3)
 # Dependencies: miniprot
 miniprot=function(fna=fna,
-                  faa=faa,
+                  faa=faa, # comma-list
                   threads=threads,
                   out_dir=out_dir){
   threads=as.character(threads)
   out_dir=sub("/$","",out_dir)
-  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
+  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "),wait=TRUE)}
   wd_begin=getwd();setwd(out_dir)
   
+  prot=unlist(strsplit(faa,","))
+  for (i in prot){
+    system(paste("cat",i,">","proteins.faa",sep=" "),wait=TRUE)
+  }
+  
   # Compute gene models by spliced alignments
-  cmd=paste("miniprot",
-            "-t",threads,
-            "-d","genome.mpi",
-            fna,
-            sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
+  if (!file.exists("genome.mpi")){
+    cmd=paste("miniprot",
+              "-t",threads,
+              "-d","genome.mpi",
+              fna,
+              sep=" ")
+    print(cmd);system(cmd,wait=TRUE)
+  }
   cmd=paste("miniprot",
             "-t",threads,
             "--gff",
             "genome.mpi",
-            faa,
+            "proteins.faa",
             ">","miniprot.gff3", # mRNA, CDS, stip_codon features
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
+  
   # separate genes by blank lines
   cmd="sed 's/.*##PAF.*//' miniprot.gff3 > gene_models.gff3"
   print(cmd);system(cmd,wait=TRUE)
@@ -218,29 +230,14 @@ miniprot=function(fna=fna,
   cmd="sed -i 's/Parent=/ID=/' protein_align.gff3"
   print(cmd);system(cmd,wait=TRUE)
   
-  setwd(wd_begin)
-}
-
-# Prothints+GeneMark-EP
-# Dependencies: GeneMark
-gm_ep = function(genome=genome,
-                 faa=faa, # reference proteins
-                 threads=threads,
-                 out_dir=out_dir){
-  out_dir=sub("/$","",out_dir)
-  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
-  wd_begin=getwd();setwd(out_dir)
-  threads=as.character(threads)
-  
-  cmd=paste("gmes_petap.pl","--verbose",
-            "--format GFF3",
-            "--EP",
-            "--dbep",faa,
-            "--soft_mask","auto",
-            "--cores",threads,
-            "--sequence",genome,
-            sep=" ")
+  cmd="awk -F '\t' -v OFS='\t' '{if ($2==\"miniprot\")  $2=\"PROTEIN\";print$0}' protein_align.gff3 > protein.gff"
   print(cmd);system(cmd,wait=TRUE)
+  system("rm protein_align.gff3")
+  system("mv protein.gff protein_align.gff3")
+  
+  system("rm proteins.faa",wait=TRUE)
+  system("rm genome.mpi",wait=TRUE)
+  system("rm miniprot.gff3",wait=TRUE)
   
   setwd(wd_begin)
 }
@@ -301,7 +298,7 @@ Hisat = function(fq1=fq1,fq2=fq2, # Input fq files. Make fq2="None" if single-en
             paste(out_prefix,".bam",sep=""),
             "-@",threads,
             sep=" ")
-  print(cmd);system(cmd)
+  print(cmd);system(cmd,wait=TRUE)
 
   return(paste(out_prefix,".bam",sep=""))
 }
@@ -348,7 +345,7 @@ MergeBAM=function(BAMs=BAMs,# SPACE-separated list of bam files.
             paste(out_prefix,".bam",sep=""),
             "-@",threads,
             sep=" ")
-  print(cmd);system(cmd)
+  print(cmd);system(cmd,wait=TRUE)
   
   return(0)
 }
@@ -365,7 +362,7 @@ StringTie = function(input_bam=input_bam, # Input BAM.
               "-o", paste(output_prefix,".gtf",sep=""),
               input_bam,
               sep=" ")
-  print(cmd);system(cmd,wait = T)
+  print(cmd);system(cmd,wait = TRUE)
   
   cmd=paste("cufflinks_gtf_to_alignment_gff3.pl", # evidencemodeler
             paste(output_prefix,".gtf",sep=""),">",
@@ -379,6 +376,12 @@ StringTie = function(input_bam=input_bam, # Input BAM.
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   system(paste("rm"," ",output_prefix,"_tmp.gff3",sep=""),wait=TRUE)
+  
+  cmd="awk -F '\t' -v OFS='\t' '{if ($2==\"StringTie\")  $2=\"TRANSCRIPT\";print$0}' Drosophila.gff3 > transcripts.gff"
+  print(cmd);system(cmd,wait=TRUE)
+  system("rm Drosophila.gff3")
+  system("mv transcripts.gff Drosophila.gff3")
+  
   return(paste(output_prefix,".gtf",sep=""))
 }
 
@@ -391,7 +394,7 @@ TransDecoder=function(gtf=gtf, # gtf from StringTie
                       pfam=pfam, # Pfam-A.hmm
                       threads=threads){
   threads=as.character(threads)
-  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
+  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "),wait=TRUE)}
   wd=getwd();setwd(out_dir)
   
   cmd=paste("gtf_genome_to_cdna_fasta.pl",
@@ -456,123 +459,109 @@ TransDecoder=function(gtf=gtf, # gtf from StringTie
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   
+  cmd=paste("agat_convert_sp_gxf2gxf.pl",
+            "--gff TransDecoder.gff3",
+            "-o sorted.gff3",
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  system("rm blastp.outfmt6")
+  system("rm hmmsearch.out")
+  system("rm pfam.domtblout")
+  system("rm pipeliner.*.cmds")
+  system("rm temp.gff3")
+  system("rm transcripts.fna.transdecoder.bed")
+  system("rm transcripts.fna.transdecoder.cds")
+  system("rm -r transcripts.fna.transdecoder_dir")
+  system("rm -r transcripts.fna.transdecoder_dir.__checkpoints")
+  system("rm transcripts.fna.transdecoder.gff3")
+  system("rm transcripts.fna.transdecoder.pep")
+  system("rm TransDecoder.agat.log")
   setwd(wd)
   return("TransDecoder.gff3")
 }
 
-# Extract exon coordinates from transcript alignment (gff3) and randomly select 1000 genes
-# Run GlimmerHMM
-# Dependencies: glimmerhmm, scripts from EvidenceModeler
-glimmerhmm_RNA=function(transcript_align.gff3=transcript_align.gff3, # get exon/match features
-                                                                     # empty line separate genes
-                        genome=genome,
-                        out_dir=out_dir){
+# Prothints+GeneMark-EP
+# Dependencies: GeneMark
+gm_ep = function(genome=genome,
+                 faa=faa, # reference proteins
+                 threads=threads,
+                 out_dir=out_dir){
   out_dir=sub("/$","",out_dir)
-  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
+  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "),wait=TRUE)}
   wd_begin=getwd();setwd(out_dir)
+  threads=as.character(threads)
   
-  # Get exon coordinates
-  cmd=paste("awk -F '\t' -v OFS='\t' '{if ($0==\"\" || $3==\"exon\" || $3==\"match\") print $0}'",
-            transcript_align.gff3,"> tmp.gff3")
-  print(cmd);system(cmd,wait=TRUE)
-  transcript_align=readLines("tmp.gff3")
-  training=sapply(transcript_align,
-                  function(st){
-                    if (st==""){
-                      return("")
-                    }else{
-                      st=unlist(strsplit(st,"\t"))
-                      seq=st[1];strand=st[7]
-                      if (strand=="+"){start=st[4];end=st[5]}
-                      if (strand=="-"){start=st[5];end=st[4]}
-                      return(paste(seq,start,end,sep=" "))
-                    }
-                  })
-  
-  # How many genes provided?
-  j=0
-  for (i in 1:length(training)){
-    if (training[i]==""){
-      j=j+1
-      cat(paste(as.character(i),"\n",sep=""),file="list",append=TRUE)
-    }
-  }
-  
-  if (j<=1000){
-    writeLines(training,"exon_file")
-  }else{ # randomly select 1000 genes for training
-    index=sort(runif(1000,1,j))
-    is=readLines("list")[index]
-    sapply(is,function(i){
-      i=as.numeric(i)
-      for (k in (i-1):1){
-        if (training[k]==""){break}
-      }
-      gene=training[(k-1):i]
-      for (m in gene){
-        cat(paste(m,"\n",sep=""),file="exon_file",append=TRUE)
-      }
-    })
-  }
-  
-  cmd=paste("trainGlimmerHMM",
-            genome,"exon_file",
-            "-d training",
+  cmd=paste("gmes_petap.pl","--verbose",
+            "--format GFF3",
+            "--EP",
+            "--dbep",faa,
+            "--soft_mask","auto",
+            "--cores",threads,
+            "--sequence",genome,
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   
-  cmd=paste("glimmerhmm_linux_x86_64",
-            genome,"training","-g",
-            "> GlimmerHMM.gff3",sep=" ")
+  cmd=paste("agat_convert_sp_gxf2gxf.pl",
+            "--gff genemark.gff3",
+            "-o sorted_tmp.gff3",
+            sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   
-  cmd="glimmerHMM_to_GFF3.pl GlimmerHMM.gff3 > GlimmerHMM_evm.gff3"
-  print(cmd);system(cmd,wait=TRUE)
+  cmd="awk -F '\t' -v OFS='\t' '{if ($2==\"GeneMark.hmm3\")  $2=\"GeneMark_EP\";print$0}' sorted_tmp.gff3 > sorted.gff3"
+  print(cmd)
+  system(cmd,wait=TRUE)
   
-  system("rm list",wait=TRUE)
+  system("rm sorted_tmp.gff3")
+  system("rm -r data")
+  system("rm genemark.agat.log")
+  system("rm gmes.log")
+  system("rm -r info")
+  system("rm -r output")
+  system("rm -r run")
+  system("rm rm run.cfg")
   
   setwd(wd_begin)
 }
 
 # Get hints (introns) from RNA-mapping BAM
 # Extract and filter hints (introns) from RNA-mapping BAM 
-# GeneMark-ET with hints (not robust to termite genomes, not converging for Incistermes)
-# Get redundant training set (AUGUSTUS)
-# Dependencies: GeneMark-ET, AUGUSTUS, SAMtools, scripts from BRAKER, stringr (R)
+# GeneMark-ET with hints
+# Dependencies: GeneMark-ET, AUGUSTUS, scripts from BRAKER
 gm_et = function(genome=genome, # soft masked
                  bam=bam,
                  PE=TRUE, # logical. TRUE for pair-end RNA reads
                  out_dir=out_dir,
                  threads=threads){
   out_dir=sub("/$","",out_dir)
-  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
+  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "),wait=TRUE)}
   wd_begin=getwd();setwd(out_dir)
   threads=as.character(threads)
   
   # Filter BAM
-  cmd=paste("samtools sort -n",
-            "-@",threads,
-            bam,
-            # "|","samtools sort","-@",threads,
-            ">","Aligned.out.ss.bam",
-            sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  if (PE){st="--paired --pairwiseAlignment"}else{st=""}
-  cmd=paste("filterBam","--uniq",st,
-            "--in","Aligned.out.ss.bam",
-            "--out Aligned.out.ssf.bam",
-            sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  cmd=paste("samtools sort",
-            "-@",threads,
-            "Aligned.out.ssf.bam",
-            ">","Aligned.out.ss.bam",
-            sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-
+  # cmd=paste("samtools sort -n",
+  #           "-@",threads,
+  #           bam,
+  #           # "|","samtools sort","-@",threads,
+  #           ">","Aligned.out.ss.bam",
+  #           sep=" ")
+  # print(cmd);system(cmd,wait=TRUE)
+  # if (PE){st="--paired --pairwiseAlignment"}else{st=""}
+  # cmd=paste("filterBam","--uniq",st,
+  #           "--in","Aligned.out.ss.bam",
+  #           "--out Aligned.out.ssf.bam",
+  #           sep=" ")
+  # print(cmd);system(cmd,wait=TRUE)
+  # cmd=paste("samtools sort",
+  #           "-@",threads,
+  #           "Aligned.out.ssf.bam",
+  #           ">","Aligned.out.ss.bam",
+  #           sep=" ")
+  # print(cmd);system(cmd,wait=TRUE)
+  
   # Extract and filter hints
   cmd=paste("bam2hints","--intronsonly", # AUGUSTUS
-            "--in=Aligned.out.ss.bam",
+            paste("--in=",bam,sep=""),
             "--out=introns.gff",
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
@@ -584,7 +573,8 @@ gm_et = function(genome=genome, # soft masked
   
   # GeneMark-ET
   # generating trained gmhmm.mod for GeneMarkHMM
-  cmd=paste("gmes_petap.pl","--verbose",  
+  cmd=paste("gmes_petap.pl","--verbose",
+            "--format GFF3",
             "--ET","introns.f.gff",      
             "--soft_mask","auto",
             "--cores",threads,
@@ -592,105 +582,24 @@ gm_et = function(genome=genome, # soft masked
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   
-  cmd=paste("filterGenemark.pl", # BRAKER
-            "--genemark=genemark.gtf",
-            "--hints=introns.f.gff",
+  cmd=paste("agat_convert_sp_gxf2gxf.pl",
+            "--gff genemark.gff3",
+            "-o sorted_tmp.gff3",
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
-  system("mv genemark.f.good.gtf training_AUGUSTUS.gtf")
   
-  cmd="computeFlankingRegion.pl training_AUGUSTUS.gtf" # AUGUSTUS
+  cmd="awk -F '\t' -v OFS='\t' '{if ($2==\"GeneMark.hmm3\")  $2=\"GeneMark_ET\";print$0}' sorted_tmp.gff3 > sorted.gff3"
   print(cmd)
-  flanking_DNA=system(cmd,wait=TRUE,intern=TRUE)[4]
-  library(stringr)
-  flanking_DNA=str_extract(flanking_DNA,": [0-9]*")
-  flanking_DNA=sub(": ","",flanking_DNA)
+  system(cmd,wait=TRUE)
   
-  cmd=paste("gff2gbSmallDNA.pl genemark.gtf", # AUGUSTUS
-            genome,flanking_DNA,"tmp.gb",sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  
-  cmd=paste("filterGenesIn_mRNAname.pl", # AUGUSTUS
-            "training_AUGUSTUS.gtf",
-            "tmp.gb",">","training_AUGUSTUS.gb")
-  print(cmd);system(cmd,wait=TRUE)
-  
-  setwd(wd_begin)
-}
-
-# SNAP for gene prediction
-# Dependencies: agat, SNAP, scripts from EvidenceModeler
-snap=function(fna=fna,
-              train.gff3=train.gff3,
-              out_dir=out_dir){
-  out_dir=sub("/$","",out_dir)
-  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
-  wd_begin=getwd();setwd(out_dir)
-  
-  cmd=paste("cp",fna,".",sep=" ");system(cmd,wait=TRUE)
-  fna=unlist(strsplit(fna,"/"));fna_file=fna[length(fna)]
-  cmd=paste("cp",train.gff3,".",sep=" ");system(cmd,wait=TRUE)
-  train.gff3=unlist(strsplit(train.gff3,"/"));train.gff3_file=train.gff3[length(train.gff3)]
-  
-  cmd=paste("agat_convert_sp_gff2zff.pl",
-            "--fasta",fna_file,
-            "--gff",train.gff3_file,
-            "-o train",
-            sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  system("mv train.ann train.zff",wait=TRUE)
-  
-  cmd=paste("fathom -validate train.zff",fna_file,"> train.validate",sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  
-  cmd=paste("fathom -categorize 100 train.zff",fna_file,sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  
-  cmd="fathom -export 100 -plus uni.*"
-  print(cmd);system(cmd,wait=TRUE)
-  
-  cmd="fathom -validate export.ann export.dna"
-  print(cmd);system(cmd,wait=TRUE)
-  
-  cmd="forge export.ann export.dna"
-  print(cmd);system(cmd,wait=TRUE)
-  
-  cmd="hmm-assembler.pl model . > model.hmm"
-  print(cmd);system(cmd,wait=TRUE)
-  
-  cmd=paste("snap model.hmm",fna_file,">","SNAP.zff",sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  
-  cmd="zff2gff3.pl SNAP.zff > SNAP.gff3"
-  print(cmd);system(cmd,wait=TRUE)
-  
-  cmd="SNAP_to_GFF3.pl SNAP.gff3 > SNAP_evm.gff3" # EvidenceModeler
-  print(cmd);system(cmd,wait=TRUE)
-  
-  system(paste("rm",fna_file,sep=" "),wait=TRUE)
-  system(paste("rm",train.gff3_file,sep=" "),wait=TRUE)
-  setwd(wd_begin)
-}
-
-# GeneMarkerHMM for gene prediction
-# Dependencies: GeneMark
-gmhmm=function(genome=genome,
-               model_file=model_file, # gmhmm.mod from GeneMark-ET/EP
-               threads=threads,
-               out_dir=out_dir){
-  threads=as.character(threads)
-  out_dir=sub("/$","",out_dir)
-  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
-  wd_begin=getwd();setwd(out_dir)
-  
-  cmd=paste("gmes_petap.pl",
-            "--predict_with",model_file,
-            "--format","GFF3",
-            "--soft_mask auto",
-            "--cores",threads,
-            "--sequence",genome,
-            sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
+  system("rm sorted_tmp.gff3")
+  system("rm -r data")
+  system("rm genemark.agat.log")
+  system("rm gmes.log")
+  system("rm -r info")
+  system("rm -r output")
+  system("rm -r run")
+  system("rm run.cfg")
   
   setwd(wd_begin)
 }
@@ -702,7 +611,7 @@ augustus_trainset=function(gene_models.gff3=gene_models.gff3,
                            out_dir=out_dir){
   library(stringr)
   out_dir=sub("/$","",out_dir)
-  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
+  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "),wait=TRUE)}
   wd_begin=getwd();setwd(out_dir)
   
   cmd=paste("gth2gtf.pl", # AUGUSTUS 
@@ -735,7 +644,7 @@ non_redundant=function(training_AUGUSTUS.gb=training_AUGUSTUS.gb, # GenBank
                        out_dir=out_dir){
   library(stringr)
   out_dir=sub("/$","",out_dir)
-  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
+  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "),wait=TRUE)}
   wd_begin=getwd();setwd(out_dir)
   threads=as.character(threads)
   
@@ -805,6 +714,10 @@ non_redundant=function(training_AUGUSTUS.gb=training_AUGUSTUS.gb, # GenBank
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   
+  system("rm *.lst")
+  system("rm prot.*")
+  system("rm bonafide.f.gtf")
+  
   setwd(wd_begin)
   return(paste(out_dir,"/training_AUGUSTUS_nr.gb",sep=""))
 }
@@ -819,7 +732,7 @@ augustus=function(fna=fna, # genome
                   threads=threads){
   threads=as.character(threads)
   out_dir=sub("/$","",out_dir)
-  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
+  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "),wait=TRUE)}
   wd=getwd();setwd(out_dir)
   
   cmd=paste("autoAug.pl",
@@ -848,7 +761,7 @@ augustus=function(fna=fna, # genome
             "autoAug/autoAugPred_abinitio/shells/aug*.out",
             ">",
             "AUGUSTUS.gff3")
-  print(cmd);system(cmd)
+  print(cmd);system(cmd,wait=TRUE)
   
   cmd="cat AUGUSTUS.gff3 | join_aug_pred.pl > AUGUSTUS_nr.gff3"
   print(cmd);system(cmd,wait=TRUE)
@@ -857,10 +770,108 @@ augustus=function(fna=fna, # genome
   cmd="augustus_GFF3_to_EVM_GFF3.pl AUGUSTUS_nr.gff3 > AUGUSTUS_evm.gff3"
   print(cmd);system(cmd,wait=TRUE)
   
+  cmd=paste("agat_convert_sp_gxf2gxf.pl",
+            "--gff AUGUSTUS_evm.gff3",
+            "-o sorted.gff3",
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  system(paste("mv"," ","$AUGUSTUS_CONFIG_PATH/species/",species," ",".",sep=""))
+  
+  system("rm -r autoAug")
+  system("rm AUGUSTUS_evm.agat.log")
+  system("rm AUGUSTUS.gff3")
+  
+  setwd(wd)
+}
+
+# BRAKER
+braker=function(genome=genome,
+                bam=bam, # comma-list
+                ref_proteins=ref_proteins,
+                species=species,
+                tsebra.conf=tsebra.conf, # TSEBRA/config/default.cfg 
+                out_dir=out_dir,
+                threads=threads){
+  threads=as.character(threads)
+  out_dir=sub("/$","",out_dir)
+  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "),wait=TRUE)}
+  wd=getwd();setwd(out_dir)
+  
+  # BRAKER with RNA-seq
+  system(paste("mkdir"," ",out_dir,"/braker_rna/",sep=""),wait=TRUE)
+  cmd=paste("braker.pl",
+            paste("--cores=",threads,sep=""),
+            paste("--workingdir=",out_dir,"/braker_rna/",sep=""),
+            paste("--species=",species,"_braker_rna",sep=""),
+            paste("--genome=",genome,sep=""),
+            paste("--bam=",bam,sep=""),
+            "--softmasking",
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  # BRAKER with OrthoDB
+  system(paste("mkdir"," ",out_dir,"/braker_prot/",sep=""),wait=TRUE)
+  cmd=paste("braker.pl",
+            paste("--cores=",threads,sep=""),
+            paste("--workingdir=",out_dir,"/braker_prot/",sep=""),
+            paste("--species=",species,"_braker_prot",sep=""),
+            paste("--genome=",genome,sep=""),
+            paste("--prot_seq=",ref_proteins,sep=""),
+            "--softmasking",
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  # TSEBRA
+  cmd=paste("tsebra.py",
+            "-g",paste(out_dir,"/braker_rna/augustus.hints.gtf",",",
+                       out_dir,"/braker_prot/augustus.hints.gtf",
+                       sep=""),
+            "-c",tsebra.conf,
+            "-e",paste(out_dir,"/braker_rna/hintsfile.gff",",",
+                       out_dir,"/braker_prot/hintsfile.gff",
+                       sep=""),
+            "-o","braker_final.gtf",
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  cmd=paste("agat_convert_sp_gxf2gxf.pl",
+            "--gff braker_final.gtf",
+            "-o sorted_tmp.gff",
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  system("rm braker_final.agat.log")
+  
+  cmd="awk -F '\t' -v OFS='\t' '{if ($2==\"AUGUSTUS\")  $2=\"TSEBRA\";print$0}' sorted_tmp.gff > sorted.gff3"
+  print(cmd);system(cmd,wait=TRUE)
+  
+  system("rm sorted_tmp.gff")
+  system("rm ./braker_rna/augustus.hints.aa")
+  system("rm ./braker_rna/augustus.hints.codingseq")
+  system("rm ./braker_rna/bam_header.map")
+  system("rm -r ./braker_rna/errors")
+  system("rm -r ./braker_rna/GeneMark-ET")
+  system("rm ./braker_rna/genemark_hintsfile.gff")
+  system("rm ./braker_rna/genome_header.map")
+  system("rm ./braker_prot/what-to-cite.txt")
+  
+  system("rm ./braker_prot/augustus.hints.aa")
+  system("rm ./braker_prot/augustus.hints.codingseq")
+  system("rm -r ./braker_prot/errors")
+  system("rm ./braker_prot/genemark_hintsfile.gff")
+  system("rm ./braker_prot/genome_header.map")
+  system("rm ./braker_prot/what-to-cite.txt")
+  system("rm ./braker_prot/augustus.hints_iter1.gtf")
+  system("rm ./braker_prot/evidence.gff")
+  system("rm -r ./braker_prot/GeneMark-EP")
+  system("rm -r ./braker_prot/GeneMark-ES")
+  system("rm ./braker_prot/genemark_evidence.gff")
+  system("rm ./braker_prot/prothint.gff")
   setwd(wd)
 }
 
 # EvidenceModeler
+# Dependencies: EvidenceModeler, agat
 evm=function(protein_alignments.gff3="none", # Absolute path. GFF3 for protein-genome spliced alignments
              gene_predictions.gff3="none", # Absolute path. GFF3 from ab initio gene prediction
              transcript_alignments.gff3="none", # Absolute path. GFF3 for transcript-genome spliced alignments
@@ -874,7 +885,7 @@ evm=function(protein_alignments.gff3="none", # Absolute path. GFF3 for protein-g
                                       # ABINITIO_PREDICTION AUGUSTUS 1
                                       # ABINITIO_PREDICTION Glimmer 1
                                       # TRANSCRIPT  StringTie 10
-                                      # OTHER_PREDICTIONS TransDecoder  10
+                                      # OTHER_PREDICTION TransDecoder  10
                                       # gff3 of AUGUSTUS, Glimmer and TransDecoder should be merged 
                                       # into a single gff3 whose 2nd column is AUGUSTUS/Glimmer/TransDecoder
              genome=genome,
@@ -882,9 +893,9 @@ evm=function(protein_alignments.gff3="none", # Absolute path. GFF3 for protein-g
              threads=threads){
   threads=as.character(threads)
   out_dir=sub("/$","",out_dir)
-  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
+  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "),wait=TRUE)}
   wd=getwd();setwd(out_dir)
-  system("mkdir temp_dir")
+  system("mkdir temp_dir",wait=TRUE)
   setwd("temp_dir")
   
   cmd_part=""
@@ -931,6 +942,7 @@ evm=function(protein_alignments.gff3="none", # Absolute path. GFF3 for protein-g
               scr=system("ls x*",wait=TRUE,intern=TRUE)[i]
               cmd=paste("bash"," ",scr,sep="")
               print(cmd);system(cmd,wait=TRUE)})
+  stopCluster(clus)
   
   cmd="recombine_EVM_partial_outputs.pl --partitions partitions_list.out --output_file_name evm.out"
   print(cmd);system(cmd,wait=TRUE)
@@ -953,15 +965,104 @@ evm=function(protein_alignments.gff3="none", # Absolute path. GFF3 for protein-g
   print(cmd);system(cmd,wait=TRUE)
   cmd="mv EvidenceModeler.gff3 ../"
   print(cmd);system(cmd,wait=TRUE)
+  system("rm x*")
+  system("rm merge_gff3.sh")
   
   setwd(out_dir)
-  system("rm -r temp_dir")
+  
+  cmd="evm_evidence.py temp_dir/ | awk -F '\t' -v OFS='\t' '{print$1,$2,$3,$4,$5,$7}' | sort > evidence_summary.tsv"
+  print(cmd);system(cmd,wait=TRUE)
+  system("rm -r temp_dir",wait=TRUE)
+  
+  cmd=paste("agat_convert_sp_gxf2gxf.pl",
+            "--gff EvidenceModeler.gff3",
+            "-o sorted.gff3",
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  system("rm EvidenceModeler.agat.log")
+  cmd="grep 'gene' sorted.gff3 | awk -F '\t' -v OFS='\t' '{print$1,$2,$3,$4,$5,$9}' | sed 's/ID=//' | sed 's/;Name=.*$//' | sort > gene_coordinate.tsv"
+  print(cmd);system(cmd,wait=TRUE)
+  
+  a=read.table("evidence_summary.tsv",header=FALSE,sep="\t")
+  b=read.table("gene_coordinate.tsv",header=FALSE,sep="\t")
+  c=merge(a,b,by=c("V1","V2","V3","V4","V5"),all=TRUE)
+  colnames(c)=c("chr","source","feature","start","end","software","geneID")
+  c[,"evidence"]=sapply(c[,"software"],
+                        function(i){
+                          if (grepl("TRANSCRIPT",i)){
+                            return("Transcript")
+                          }else if(grepl("PROTEIN",i)){
+                            return("Protein")
+                          }else{
+                            return("Hypothetical")
+                          }
+                        })
+  write.table(c,"gene_evidence.tsv",sep="\t",row.names=FALSE,quote=FALSE)
+  system("rm evidence_summary.tsv")
+  system("rm gene_coordinate.tsv")
+  
+  system("mkdir add_evidence")
+  setwd("add_evidence")
+  cmd=paste("split",
+            "-d",
+            "-n",paste("l/",as.character(as.numeric(threads)-1),sep=""),
+            "../gene_evidence.tsv",
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  clus=makeCluster(as.numeric(threads))
+  parSapply(clus,
+            1:(as.numeric(threads)-1),
+            function(i){
+              scr=system("ls x*",wait=TRUE,intern=TRUE)[i]
+              cmd=paste("awk -F '\t' -v OFS='\t' '{print $7}'",
+                        scr,">",paste("gene_list.",as.character(i),sep=""),
+                        sep=" ")
+              system(cmd,wait=TRUE)
+              cmd=paste("agat_sp_filter_feature_from_keep_list.pl",
+                        "--gff ../sorted.gff3",
+                        "--keep_list",paste("gene_list.",as.character(i),sep=""),
+                        "--output",paste(as.character(i),".gff3",sep=""),
+                        ">",paste("agat.out.",as.character(i),sep=""),
+                        sep=" ")
+              system(cmd,wait=TRUE)
+              map=system(paste("awk -F '\t' -v OFS='\t' '{print $7,$8}'",
+                            scr,sep=" "),
+                         intern=TRUE)
+              sapply(map,
+                     function(j){
+                       j=unlist(strsplit(j,"\t"))
+                       gene=j[1];evidence=j[2]
+                       cmd=paste("sed -i",
+                                 paste("'s/","ID=",gene,";/ID=",gene,";Evidence=",evidence,";/'",sep=""),
+                                 paste(as.character(i),".gff3",sep=""),
+                                 sep=" ")
+                       system(cmd,wait=TRUE)
+                     })
+              
+              cmd=paste("cat",paste("./add_evidence/",as.character(i),".gff3",sep=""),
+                        ">>","final.gff3",sep=" ")
+              cat(paste(cmd,"\n",sep=""),file="../cmd.sh",append=TRUE)
+              }
+            )
+  stopCluster(clus)
+  setwd(out_dir)
+  system("bash cmd.sh",wait=TRUE)
+  system("mv sorted.gff3 ./add_evidence/")
+  system("rm -r ./add_evidence")
+  
+  cmd=paste("agat_convert_sp_gxf2gxf.pl",
+            "--gff final.gff3",
+            "-o sorted.gff3",
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  system("rm final.agat.log")
   
   setwd(wd)
 }
 
 # Update gff3 by PASA
-# Dependencies: pasa,sqlite3,scripts from PASAPipeline
+# Dependencies: pasa,sqlite3,,agat,scripts from PASAPipeline
 pasa=function(genome=genome,
               transcripts=transcripts,
               original.gff3=original.gff3, # only protein-coding gene
@@ -971,8 +1072,9 @@ pasa=function(genome=genome,
               out_dir=out_dir){
   threads=as.character(threads)
   out_dir=sub("/$","",out_dir)
-  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
+  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "),wait=TRUE)}
   wd=getwd();setwd(out_dir)
+  system("mkdir ./tmp");setwd("tmp")
   
   cmd=paste("cp",genome,".",sep=" ");system(cmd,wait=TRUE)
   genome=unlist(strsplit(genome,"/"))
@@ -987,25 +1089,25 @@ pasa=function(genome=genome,
   #cmd="sqlite3 pasa.sqlite.db"
   #print(cmd);system(cmd,wait=TRUE)
   if (!file.exists(paste(getwd(),"/pasa.sqlite.db",sep=""))){
-  cmd=paste("cp",pasa.alignAssembly.conf,"./alignAssembly.config",sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  a=readline("./alignAssembly.config")
-  a[5]=paste("DATABASE=",getwd(),"/pasa.sqlite.db",sep="")
-  writeLines(a,"./alignAssembly.config")
-  
-  cmd=paste("Launch_PASA_pipeline.pl",
-            "-c",paste(out_dir,"/alignAssembly.config",sep=""),
-            "-C -R",
-            "-g",genome,
-            "-t",transcripts,
-            "--ALIGNERS minimap2",
-            "--CPU",threads,
-            sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
+    cmd=paste("cp",pasa.alignAssembly.conf,"./alignAssembly.config",sep=" ")
+    print(cmd);system(cmd,wait=TRUE)
+    a=readline("./alignAssembly.config")
+    a[5]=paste("DATABASE=",getwd(),"/pasa.sqlite.db",sep="")
+    writeLines(a,"./alignAssembly.config")
+    
+    cmd=paste("Launch_PASA_pipeline.pl",
+              "-c",paste(getwd(),"/alignAssembly.config",sep=""),
+              "-C -R",
+              "-g",genome,
+              "-t",transcripts,
+              "--ALIGNERS minimap2",
+              "--CPU",threads,
+              sep=" ")
+    print(cmd);system(cmd,wait=TRUE)
   }
   
   cmd=paste("Load_Current_Gene_Annotations.dbi",
-            "-c",paste(out_dir,"/alignAssembly.config",sep=""),
+            "-c",paste(getwd(),"/alignAssembly.config",sep=""),
             "-g",genome,
             "-P",original.gff3,
             sep=" ")
@@ -1018,7 +1120,7 @@ pasa=function(genome=genome,
   writeLines(a,"./annotationCompare.config")
 
   cmd=paste("Launch_PASA_pipeline.pl",
-            "-c",paste(out_dir,"/annotationCompare.config",sep=""),
+            "-c",paste(getwd(),"/annotationCompare.config",sep=""),
             "-A",
             "-g",genome,
             "-t",transcripts,
@@ -1027,12 +1129,24 @@ pasa=function(genome=genome,
   print(cmd);system(cmd,wait=TRUE)
   
   re=system("ls pasa.sqlite.db.gene_structures_post_PASA_updates.[0-9]*.gff3",wait=TRUE,intern=TRUE)
-  cmd=paste("mv",re,"PASA.gff3",sep=" ")
+  cmd=paste("cp",re,"../PASA.gff3",sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   
   system(paste("rm",genome,sep=" "),wait=TRUE)
   system(paste("rm",transcripts,sep=" "),wait=TRUE)
   system(paste("rm",original.gff3,sep=" "),wait=TRUE)
+  
+  setwd("../")
+  cmd=paste("agat_convert_sp_gxf2gxf.pl",
+            "--gff","PASA.gff3",
+            "-o","sorted.gff3",
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  system("rm -r tmp")
+  system("rm PASA.agat.log")
+  
+  setwd(wd)
 }
 
 # Generate a comprehensive genomic database including:
@@ -1043,7 +1157,7 @@ pasa_more=function(species=species,
                    PASA.gff3=PASA.gff3,
                    out_dir=out_dir){
   out_dir=sub("/$","",out_dir)
-  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
+  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "),wait=TRUE)}
   wd=getwd();setwd(out_dir)
   
   cmd=paste("cp",PASA.gff3,
@@ -1110,6 +1224,120 @@ pasa_more=function(species=species,
   system(paste("rm",paste(species,"_proteins.faa",sep=""),sep=" "),wait=TRUE)
 }
 
+# PseudoPipe for pseudogene identification
+# Dependencies: seqkit,PseudoPipe (modified)
+PseudoPipe=function(genome=genome, # soft masked
+                    protein.fa=protein.fa, # space list
+                    gff=gff,
+                    out_dir=out_dir,
+                    threads=threads){
+  out_dir=sub("/$","",out_dir)
+  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "),wait=TRUE)}
+  wd=getwd();setwd(out_dir)
+  threads=as.character(threads)
+  
+  system("mkdir ./input")
+  
+  system("mkdir ./input/dna")
+  cmd=paste("cp",genome,"./input/dna/masked.fa",sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  cmd=paste("seqkit","seq","-u",
+            "-j",threads,
+            "./input/dna/masked.fa > ./input/dna/unmasked.fa",
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  cmd=paste("seqkit","split2","./input/dna/unmasked.fa","-s 1","-j",threads,sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  split.fa=system("ls ./input/dna/unmasked.fa.split/unmasked.part_[0-9]*.fa",intern=TRUE)
+  split=sapply(1:length(split.fa),
+               function(i){
+                 seqID=system(paste("head -n1",split.fa[i],sep=" "),intern=TRUE)
+                 seqID=sub(">","",seqID)
+                 seqID=sub(" .*$","",seqID)
+                 
+                 cmd=paste("mv",split.fa[i],
+                           paste("./input/dna/unmasked.",seqID,".fa",sep=""),
+                           sep=" ")
+                 system(cmd,wait=TRUE)
+                 return(paste("./input/dna/unmasked.",seqID,".fa",sep=""))
+               })
+  system("rm -r ./input/dna/unmasked.fa.split/")
+  system("rm ./input/dna/unmasked.fa")
+  
+  system("mkdir ./input/pep")
+  cmd=paste("cat",protein.fa,">","./input/pep/protein.fa",sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  system("mkdir ./input/mysql")
+  cmd=paste("grep","'exon'",gff,"|",
+            "awk","-F '\t' -v OFS='\t' '{print $1,$2,$4,$5}'",
+            ">","./input/mysql/gff",sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  sapply(1:length(split),
+         function(i){
+           seqID=system(paste("head -n1",split[i],sep=" "),intern=TRUE)
+           seqID=sub(">","",seqID)
+           seqID=sub(" .*$","",seqID)
+           cmd=paste("grep"," ","'",seqID,"'"," ","./input/mysql/gff",
+                     " > ","./input/mysql/gff.",seqID,".tsv",
+                     sep="")
+           system(cmd,wait=TRUE)
+         })
+  #########################
+  # python2
+  system("module load sango-legacy-modules")
+  system("module load python/2.7.3")
+  system("module load fasta/35.4.12")
+  #########################
+  cmd=paste("pseudopipe.sh",
+            getwd(),
+            paste(getwd(),"/input/dna/masked.fa",sep=""),
+            paste(getwd(),"/input/dna/unmasked.%s.fa",sep=""),
+            paste(getwd(),"/input/pep/protein.fa",sep=""),
+            paste(getwd(),"/input/mysql/gff.%s.tsv",sep=""),
+            "0",
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  print(cmd);system(cmd,wait=TRUE)
+  print(cmd);system(cmd,wait=TRUE)
+  
+  system("rm -r input/")
+  system("rm -r blast/")
+  system("rm -r dna/")
+  system("rm -r pep/")
+  system("mv ./pgenes/*.gz ./")
+  system("mv ./pgenes/*.txt ./")
+  system("rm -r pgenes/")
+  setwd(wd)
+}
+
+# PseudoPipe output to gff3
+PseudoPipe2gff3=function(Pseudo.out.txt=Pseudo.out.txt,
+                         species=species,
+                         out.gff3=out.gff3){
+  origin=readLines(Pseudo.out.txt)
+  origin=origin[2:length(origin)]
+  
+  in.type=c("DUP","PSSD","FRAG")
+  out.type=c("duplicated","processed","fragment")
+  names(out.type)=in.type
+  
+  gff3=sapply(1:length(origin),
+              function(i){
+                txt=unlist(strsplit(origin[i],"\t"))
+                g=paste(txt[1],"\t","PseudoPipe","\t","pseudogene","\t",
+                        txt[2],"\t",txt[3],"\t",".","\t",txt[4],"\t",
+                        ".","\t",
+                        paste("ID=pgene_",species,as.character(i),";",
+                              "Parent=",txt[5],";",
+                              "Type=",unname(out.type[txt[14]]),
+                              sep=""),
+                        sep="")
+                return(g)
+              })
+  writeLines(gff3,out.gff3)
+}
+
 # Trinity: de novo assembly of transcriptome
 trinity=function(fq1=fq1,fq2=fq2,
                  threads=threads,
@@ -1149,258 +1377,635 @@ trinity=function(fq1=fq1,fq2=fq2,
 
 
 
-
-# MAKER
-# Dependencies: MAKER, SNAP, RepeatMasker, blast, AUGUSTUS, exonerate, blast+, GAAS, stringr (R)
-#               scripts from AUGUSTUS
-maker=function(fna=fna, # masked
-               transcript.file=transcript.file, # gff3/gtf with transcript/mRNA and exon/CDS features e.g. gtf from stringtie
-               protein.file=protein.file, # gff3/gtf with transcript/mRNA and exon/CDS features
-               threads=threads,
-               augustus_species=augustus_species,
-               out_dir=out_dir){
-  threads=as.character(threads)
-  out_dir=sub("/$","",out_dir)
-  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "),wait=TRUE)}
-  wd=getwd();setwd(out_dir)
-  
-  if (!file.exists("maker_1/MAKER.gff3")){
-  if (file.exists("maker_1")){system("rm -r maker_1",wait=TRUE)}
-  cmd=paste("agat_sp_alignment_output_style.pl",
-            "-g",transcript.file,
-            "-o","transcript_align.gff3")
-  print(cmd);system(cmd,wait=TRUE)
-  cmd=paste("agat_sp_alignment_output_style.pl",
-            "-g",protein.file,
-            "-o","protein_align.gff3")
-  print(cmd);system(cmd,wait=TRUE)
-  
-  transcript_align.gff3="transcript_align3.gff"
-  protein_align.gff3="protein_align3.gff"
-  
-  system("mkdir maker_1",wait=TRUE);setwd("maker_1")
-  cmd="maker -CTL"
-  print(cmd);system(cmd,wait=TRUE)
-  a=readLines("maker_opts.ctl")
-  a[2]=paste("genome=",fna,sep="")
-  a[18]=paste("est_gff=",out_dir,"/",transcript_align.gff3,sep="")
-  a[23]=paste("protein_gff=",out_dir,"/",protein_align.gff3,sep="")
-  a[41]="est2genome=1"
-  a[42]="protein2genome=1"
-  writeLines(a,"maker_opts.ctl")
-  cmd=paste("maker",
-            "-c",threads,
-            "-RM_off","-quiet",
-            "-base maker",
-            "maker_opts.ctl maker_bopts.ctl maker_exe.ctl",
-            sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  cmd="gff3_merge -s -n -g -d maker.maker.output/maker_master_datastore_index.log > MAKER.gff3"
-  print(cmd);system(cmd,wait=TRUE)
-  setwd("..")
-  }else{
-  transcript_align.gff3="transcript_align3.gff"
-  protein_align.gff3="protein_align3.gff"
-  }
-  
-  if (!file.exists("snap_1/MAKER.hmm")){
-  if (file.exists("snap_1")){system("rm -r snap_1",wait=TRUE)}
-  system("mkdir snap_1",wait=TRUE);setwd("snap_1")
-  cmd="maker2zff -x 0.25 -l 50 -d ../maker_1/maker.maker.output/maker_master_datastore_index.log"
-  print(cmd);system(cmd,wait=TRUE)
-  cmd="fathom genome.ann genome.dna -gene-stats > gene-stats.log 2>&1"
-  print(cmd);system(cmd,wait=TRUE)
-  cmd="fathom genome.ann genome.dna -validate > validate.log 2>&1"
-  print(cmd);system(cmd,wait=TRUE)
-  cmd="fathom genome.ann genome.dna -categorize 1000 > categorize.log 2>&1"
-  print(cmd);system(cmd,wait=TRUE)
-  cmd="fathom uni.ann uni.dna -export 1000 -plus > uni-plus.log 2>&1"
-  print(cmd);system(cmd,wait=TRUE)
-  cmd="forge export.ann export.dna > forge.log 2>&1"
-  print(cmd);system(cmd,wait=TRUE)
-  cmd="hmm-assembler.pl genome . > MAKER.hmm"
-  print(cmd);system(cmd,wait=TRUE)
-  setwd("..")
-  }
-  
-  config=system("echo $AUGUSTUS_CONFIG_PATH",wait=TRUE,intern=TRUE)
-  if (!file.exists(paste(config,"/species/",augustus_species,sep=""))){
-  if (file.exists("augustus_1")){system("rm -r augustus_1",wait=TRUE)}
-  system("mkdir augustus_1",wait=TRUE);setwd("augustus_1")
-  library(stringr)
-  cmd=paste("gth2gtf.pl", # AUGUSTUS 
-            "../maker_1/MAKER.gff3",
-            "training_AUGUSTUS.gtf",sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  cmd="computeFlankingRegion.pl training_AUGUSTUS.gtf" # AUGUSTUS
-  print(cmd)
-  flanking_DNA=system(cmd,wait=TRUE,intern=TRUE)[4]
-  flanking_DNA=str_extract(flanking_DNA,": [0-9]*")
-  flanking_DNA=sub(": ","",flanking_DNA)
-  cmd=paste("gff2gbSmallDNA.pl training_AUGUSTUS.gtf", # AUGUSTUS
-            fna,flanking_DNA,"training_AUGUSTUS.gb",sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  GenBank=readLines("training_AUGUSTUS.gb")
-  gb=GenBank[grepl("/gene=",GenBank)]
-  gb=sub("                     /gene=\"","",gb)
-  gb=sub("\"","",gb)
-  gb=unique(gb)
-  write.table(gb,"traingenes.lst",sep="\t",col.names=FALSE,row.names=FALSE,quote=TRUE)
-  LOCUS=GenBank[grepl("LOCUS",GenBank)]
-  LOCUS=sub("LOCUS       ","",LOCUS)
-  LOCUS=sub("   [0-9]* bp  DNA","",LOCUS)
-  write.table(data.frame(gb,LOCUS),"loci.lst",sep="\t",col.names=FALSE,row.names=FALSE,quote=FALSE)
-  cmd=paste("grep",
-            "-f","traingenes.lst",
-            "-F","training_AUGUSTUS.gtf",
-            ">",
-            "bonafide.f.gtf",
-            sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  cmd=paste("gtf2aa.pl", # AUGUSTUS
-            fna,
-            "bonafide.f.gtf",
-            "prot.aa",
-            sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  cmd=paste("simplifyFastaHeaders.pl", # AUGUSTUS
-            "prot.aa",
-            "Gene",
-            "prot.aa_SimpleIDs", # FASTA with simplified IDs
-            "prot.aa_IDconvert.tsv", # new ID to old ID (tabular)
-            sep=" ") 
-  print(cmd);system(cmd,wait=TRUE)
-  cmd=paste("aa2nonred.pl",
-            paste("--cores=",threads,sep=""),
-            "prot.aa_SimpleIDs","prot.nr.aa",
-            sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  cmd="grep '>' prot.nr.aa | perl -pe 's/>//' > nonred.lst"
-  print(cmd);system(cmd,wait=TRUE)
-  cmd="grep -f nonred.lst prot.aa_IDconvert.tsv | cut -f2 | perl -pe 's/>//' > original_geneID.lst"
-  print(cmd);system(cmd,wait=TRUE)
-  cmd="grep -f original_geneID.lst loci.lst | cut -f2 > nonred.loci.lst"
-  print(cmd);system(cmd,wait=TRUE)
-  cmd=paste("filterGenesIn.pl",
-            "nonred.loci.lst",
-            "training_AUGUSTUS.gb",
-            ">",
-            "training_AUGUSTUS_nr.gb",
-            sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  cmd=paste("autoAug.pl",
-            paste("--cpus=",threads,sep=""),
-            paste("--workingdir=",out_dir,"/augustus_1",sep=""),
-            paste("--species=",augustus_species,sep=""),
-            paste("--genome=",fna,sep=""),
-            paste("--trainingset=","training_AUGUSTUS_nr.gb",sep=""),
-            sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  setwd("..")
-  }
-  
-  if (!file.exists("maker_2/MAKER.gff3")){
-  if (file.exists("maker_2")){system("rm -r maker_2",wait=TRUE)}
-  system("mkdir maker_2",wait=TRUE);setwd("maker_2")
-  cmd="maker -CTL"
-  print(cmd);system(cmd,wait=TRUE)
-  a=readLines("maker_opts.ctl")
-  a[2]=paste("genome=",fna,sep="")
-  a[18]=paste("est_gff=",out_dir,"/",transcript_align.gff3,sep="")
-  a[23]=paste("protein_gff=",out_dir,"/",protein_align.gff3,sep="")
-  a[34]=paste("snaphmm=",out_dir,"/snap_1/MAKER.hmm",sep="")
-  a[36]=paste("augustus_species=",augustus_species,sep="")
-  writeLines(a,"maker_opts.ctl")
-  cmd=paste("maker",
-            "-c",threads,
-            "-RM_off","-quiet",
-            "-base maker",
-            "maker_opts.ctl maker_bopts.ctl maker_exe.ctl",
-            sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  cmd="gff3_merge -s -n -g -d maker.maker.output/maker_master_datastore_index.log > MAKER.gff3"
-  print(cmd);system(cmd,wait=TRUE)
-  setwd("..")
-  }
-  
-  if (!file.exists("MAKER.gff3")){
-  cmd=paste("maker_map_ids",
-            "--prefix",augustus_species,
-            "maker_2/MAKER.gff3 > MAKER.name.map",
-            sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  cmd="map_gff_ids MAKER.name.map maker_2/MAKER.gff3"
-  print(cmd);system(cmd,wait=TRUE)
-  system("mv maker_2/MAKER.gff3 ./MAKER.gff3")
-  }
-  
-  setwd(wd)
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# Star: Map short RNA reads to reference genome. 
-# SAMtools: Compress SAM to BAM, sort BAM, index BAM.
-# ulimit -n
-Star = function(fq1=fq1,fq2=fq2, # Input fq files. Make fq2="None" if single-end.
-                # Comma-separated list.
-                fna=fna, # genome (soft masked for training AUGUSTUS)
-                out_dir=out_dir,
-                out_basename=out_basename,
-                threads=threads){
-  out_dir=sub("/$","",out_dir)
-  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
-  wd_begin=getwd();setwd(out_dir)
-  threads=as.character(threads)
-  
-  system("mkdir index")
-  cmd=paste("STAR",
-            "--runThreadN",threads,
-            "--runMode genomeGenerate",
-            "--genomeDir index",
-            "--genomeFastaFiles",fna,
-            sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  
-  cmd=paste("awk '/^>/{if (l!=\"\") print(l);l=0;next}{l+=length($0)}END{print l}'",
-            fna,sep=" ")
-  print(cmd)
-  size=system(cmd,wait=TRUE,intern=TRUE)
-  size=sum(as.numeric(size))
-  genomeSAindexNbases=14
-  if (log2(size)/2-1<14){genomeSAindexNbases=floor(log2(size)/2-1)}
-  
-  cmd=paste("STAR",
-            "--runMode alignReads",
-            "--runThreadN",threads,
-            "--genomeDir index",
-            "--readFilesIn",fq1,fq2,
-            "--outFileNamePrefix",out_basename,
-            "--outSAMtype BAM SortedByCoordinate",
-            "--genomeSAindexNbases",as.character(genomeSAindexNbases),
-            "--readFilesCommand gunzip -c",
-            sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  
-  cmd=paste("samtools","index",
-            paste(out_basename,"Aligned.sortedByCoord.out.bam",sep=""),
-            "-@",threads,
-            sep=" ")
-  print(cmd);system(cmd)
-  
-  return(paste(out_dir,"/",out_basename,"Aligned.sortedByCoord.out.bam",sep=""))
-}
+# # Sort gff3 
+# # Dependencies: AGAT
+# sort_gff3=function(in.gff3=in.gff3,
+#                    out.gff3=out.gff3){
+#   cmd=paste("agat_convert_sp_gxf2gxf.pl",
+#             "--gff",in.gff3,
+#             "-o",out.gff3,
+#             sep=" ")
+#   print(cmd);system(cmd,wait=TRUE)
+# }
+# 
+# # MAKER
+# # Dependencies: MAKER, SNAP, RepeatMasker, blast, AUGUSTUS, exonerate, blast+, GAAS, stringr (R)
+# #               scripts from AUGUSTUS
+# maker=function(fna=fna, # masked
+#                transcript.file=transcript.file, # gff3/gtf with transcript/mRNA and exon/CDS features e.g. gtf from stringtie
+#                protein.file=protein.file, # gff3/gtf with transcript/mRNA and exon/CDS features
+#                threads=threads,
+#                augustus_species=augustus_species,
+#                out_dir=out_dir){
+#   threads=as.character(threads)
+#   out_dir=sub("/$","",out_dir)
+#   if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "),wait=TRUE)}
+#   wd=getwd();setwd(out_dir)
+#   
+#   if (!file.exists("maker_1/MAKER.gff3")){
+#   if (file.exists("maker_1")){system("rm -r maker_1",wait=TRUE)}
+#   cmd=paste("agat_sp_alignment_output_style.pl",
+#             "-g",transcript.file,
+#             "-o","transcript_align.gff3")
+#   print(cmd);system(cmd,wait=TRUE)
+#   cmd=paste("agat_sp_alignment_output_style.pl",
+#             "-g",protein.file,
+#             "-o","protein_align.gff3")
+#   print(cmd);system(cmd,wait=TRUE)
+#   
+#   transcript_align.gff3="transcript_align3.gff"
+#   protein_align.gff3="protein_align3.gff"
+#   
+#   system("mkdir maker_1",wait=TRUE);setwd("maker_1")
+#   cmd="maker -CTL"
+#   print(cmd);system(cmd,wait=TRUE)
+#   a=readLines("maker_opts.ctl")
+#   a[2]=paste("genome=",fna,sep="")
+#   a[18]=paste("est_gff=",out_dir,"/",transcript_align.gff3,sep="")
+#   a[23]=paste("protein_gff=",out_dir,"/",protein_align.gff3,sep="")
+#   a[41]="est2genome=1"
+#   a[42]="protein2genome=1"
+#   writeLines(a,"maker_opts.ctl")
+#   cmd=paste("maker",
+#             "-c",threads,
+#             "-RM_off","-quiet",
+#             "-base maker",
+#             "maker_opts.ctl maker_bopts.ctl maker_exe.ctl",
+#             sep=" ")
+#   print(cmd);system(cmd,wait=TRUE)
+#   cmd="gff3_merge -s -n -g -d maker.maker.output/maker_master_datastore_index.log > MAKER.gff3"
+#   print(cmd);system(cmd,wait=TRUE)
+#   setwd("..")
+#   }else{
+#   transcript_align.gff3="transcript_align3.gff"
+#   protein_align.gff3="protein_align3.gff"
+#   }
+#   
+#   if (!file.exists("snap_1/MAKER.hmm")){
+#   if (file.exists("snap_1")){system("rm -r snap_1",wait=TRUE)}
+#   system("mkdir snap_1",wait=TRUE);setwd("snap_1")
+#   cmd="maker2zff -x 0.25 -l 50 -d ../maker_1/maker.maker.output/maker_master_datastore_index.log"
+#   print(cmd);system(cmd,wait=TRUE)
+#   cmd="fathom genome.ann genome.dna -gene-stats > gene-stats.log 2>&1"
+#   print(cmd);system(cmd,wait=TRUE)
+#   cmd="fathom genome.ann genome.dna -validate > validate.log 2>&1"
+#   print(cmd);system(cmd,wait=TRUE)
+#   cmd="fathom genome.ann genome.dna -categorize 1000 > categorize.log 2>&1"
+#   print(cmd);system(cmd,wait=TRUE)
+#   cmd="fathom uni.ann uni.dna -export 1000 -plus > uni-plus.log 2>&1"
+#   print(cmd);system(cmd,wait=TRUE)
+#   cmd="forge export.ann export.dna > forge.log 2>&1"
+#   print(cmd);system(cmd,wait=TRUE)
+#   cmd="hmm-assembler.pl genome . > MAKER.hmm"
+#   print(cmd);system(cmd,wait=TRUE)
+#   setwd("..")
+#   }
+#   
+#   config=system("echo $AUGUSTUS_CONFIG_PATH",wait=TRUE,intern=TRUE)
+#   if (!file.exists(paste(config,"/species/",augustus_species,sep=""))){
+#   if (file.exists("augustus_1")){system("rm -r augustus_1",wait=TRUE)}
+#   system("mkdir augustus_1",wait=TRUE);setwd("augustus_1")
+#   library(stringr)
+#   cmd=paste("gth2gtf.pl", # AUGUSTUS 
+#             "../maker_1/MAKER.gff3",
+#             "training_AUGUSTUS.gtf",sep=" ")
+#   print(cmd);system(cmd,wait=TRUE)
+#   cmd="computeFlankingRegion.pl training_AUGUSTUS.gtf" # AUGUSTUS
+#   print(cmd)
+#   flanking_DNA=system(cmd,wait=TRUE,intern=TRUE)[4]
+#   flanking_DNA=str_extract(flanking_DNA,": [0-9]*")
+#   flanking_DNA=sub(": ","",flanking_DNA)
+#   cmd=paste("gff2gbSmallDNA.pl training_AUGUSTUS.gtf", # AUGUSTUS
+#             fna,flanking_DNA,"training_AUGUSTUS.gb",sep=" ")
+#   print(cmd);system(cmd,wait=TRUE)
+#   GenBank=readLines("training_AUGUSTUS.gb")
+#   gb=GenBank[grepl("/gene=",GenBank)]
+#   gb=sub("                     /gene=\"","",gb)
+#   gb=sub("\"","",gb)
+#   gb=unique(gb)
+#   write.table(gb,"traingenes.lst",sep="\t",col.names=FALSE,row.names=FALSE,quote=TRUE)
+#   LOCUS=GenBank[grepl("LOCUS",GenBank)]
+#   LOCUS=sub("LOCUS       ","",LOCUS)
+#   LOCUS=sub("   [0-9]* bp  DNA","",LOCUS)
+#   write.table(data.frame(gb,LOCUS),"loci.lst",sep="\t",col.names=FALSE,row.names=FALSE,quote=FALSE)
+#   cmd=paste("grep",
+#             "-f","traingenes.lst",
+#             "-F","training_AUGUSTUS.gtf",
+#             ">",
+#             "bonafide.f.gtf",
+#             sep=" ")
+#   print(cmd);system(cmd,wait=TRUE)
+#   cmd=paste("gtf2aa.pl", # AUGUSTUS
+#             fna,
+#             "bonafide.f.gtf",
+#             "prot.aa",
+#             sep=" ")
+#   print(cmd);system(cmd,wait=TRUE)
+#   cmd=paste("simplifyFastaHeaders.pl", # AUGUSTUS
+#             "prot.aa",
+#             "Gene",
+#             "prot.aa_SimpleIDs", # FASTA with simplified IDs
+#             "prot.aa_IDconvert.tsv", # new ID to old ID (tabular)
+#             sep=" ") 
+#   print(cmd);system(cmd,wait=TRUE)
+#   cmd=paste("aa2nonred.pl",
+#             paste("--cores=",threads,sep=""),
+#             "prot.aa_SimpleIDs","prot.nr.aa",
+#             sep=" ")
+#   print(cmd);system(cmd,wait=TRUE)
+#   cmd="grep '>' prot.nr.aa | perl -pe 's/>//' > nonred.lst"
+#   print(cmd);system(cmd,wait=TRUE)
+#   cmd="grep -f nonred.lst prot.aa_IDconvert.tsv | cut -f2 | perl -pe 's/>//' > original_geneID.lst"
+#   print(cmd);system(cmd,wait=TRUE)
+#   cmd="grep -f original_geneID.lst loci.lst | cut -f2 > nonred.loci.lst"
+#   print(cmd);system(cmd,wait=TRUE)
+#   cmd=paste("filterGenesIn.pl",
+#             "nonred.loci.lst",
+#             "training_AUGUSTUS.gb",
+#             ">",
+#             "training_AUGUSTUS_nr.gb",
+#             sep=" ")
+#   print(cmd);system(cmd,wait=TRUE)
+#   cmd=paste("autoAug.pl",
+#             paste("--cpus=",threads,sep=""),
+#             paste("--workingdir=",out_dir,"/augustus_1",sep=""),
+#             paste("--species=",augustus_species,sep=""),
+#             paste("--genome=",fna,sep=""),
+#             paste("--trainingset=","training_AUGUSTUS_nr.gb",sep=""),
+#             sep=" ")
+#   print(cmd);system(cmd,wait=TRUE)
+#   setwd("..")
+#   }
+#   
+#   if (!file.exists("maker_2/MAKER.gff3")){
+#   if (file.exists("maker_2")){system("rm -r maker_2",wait=TRUE)}
+#   system("mkdir maker_2",wait=TRUE);setwd("maker_2")
+#   cmd="maker -CTL"
+#   print(cmd);system(cmd,wait=TRUE)
+#   a=readLines("maker_opts.ctl")
+#   a[2]=paste("genome=",fna,sep="")
+#   a[18]=paste("est_gff=",out_dir,"/",transcript_align.gff3,sep="")
+#   a[23]=paste("protein_gff=",out_dir,"/",protein_align.gff3,sep="")
+#   a[34]=paste("snaphmm=",out_dir,"/snap_1/MAKER.hmm",sep="")
+#   a[36]=paste("augustus_species=",augustus_species,sep="")
+#   writeLines(a,"maker_opts.ctl")
+#   cmd=paste("maker",
+#             "-c",threads,
+#             "-RM_off","-quiet",
+#             "-base maker",
+#             "maker_opts.ctl maker_bopts.ctl maker_exe.ctl",
+#             sep=" ")
+#   print(cmd);system(cmd,wait=TRUE)
+#   cmd="gff3_merge -s -n -g -d maker.maker.output/maker_master_datastore_index.log > MAKER.gff3"
+#   print(cmd);system(cmd,wait=TRUE)
+#   setwd("..")
+#   }
+#   
+#   if (!file.exists("MAKER.gff3")){
+#   cmd=paste("maker_map_ids",
+#             "--prefix",augustus_species,
+#             "maker_2/MAKER.gff3 > MAKER.name.map",
+#             sep=" ")
+#   print(cmd);system(cmd,wait=TRUE)
+#   cmd="map_gff_ids MAKER.name.map maker_2/MAKER.gff3"
+#   print(cmd);system(cmd,wait=TRUE)
+#   system("mv maker_2/MAKER.gff3 ./MAKER.gff3")
+#   }
+#   
+#   setwd(wd)
+# }
+# 
+# # Star: Map short RNA reads to reference genome. 
+# # SAMtools: Compress SAM to BAM, sort BAM, index BAM.
+# # ulimit -n
+# Star = function(fq1=fq1,fq2=fq2, # Input fq files. Make fq2="None" if single-end.
+#                 # Comma-separated list.
+#                 fna=fna, # genome (soft masked for training AUGUSTUS)
+#                 out_dir=out_dir,
+#                 out_basename=out_basename,
+#                 threads=threads){
+#   out_dir=sub("/$","",out_dir)
+#   if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "),wait=TRUE)}
+#   wd_begin=getwd();setwd(out_dir)
+#   threads=as.character(threads)
+#   
+#   system("mkdir index",wait=TRUE)
+#   cmd=paste("STAR",
+#             "--runThreadN",threads,
+#             "--runMode genomeGenerate",
+#             "--genomeDir index",
+#             "--genomeFastaFiles",fna,
+#             sep=" ")
+#   print(cmd);system(cmd,wait=TRUE)
+#   
+#   cmd=paste("awk '/^>/{if (l!=\"\") print(l);l=0;next}{l+=length($0)}END{print l}'",
+#             fna,sep=" ")
+#   print(cmd)
+#   size=system(cmd,wait=TRUE,intern=TRUE)
+#   size=sum(as.numeric(size))
+#   genomeSAindexNbases=14
+#   if (log2(size)/2-1<14){genomeSAindexNbases=floor(log2(size)/2-1)}
+#   
+#   cmd=paste("STAR",
+#             "--runMode alignReads",
+#             "--runThreadN",threads,
+#             "--genomeDir index",
+#             "--readFilesIn",fq1,fq2,
+#             "--outFileNamePrefix",out_basename,
+#             "--outSAMtype BAM SortedByCoordinate",
+#             "--genomeSAindexNbases",as.character(genomeSAindexNbases),
+#             "--readFilesCommand gunzip -c",
+#             sep=" ")
+#   print(cmd);system(cmd,wait=TRUE)
+#   
+#   cmd=paste("samtools","index",
+#             paste(out_basename,"Aligned.sortedByCoord.out.bam",sep=""),
+#             "-@",threads,
+#             sep=" ")
+#   print(cmd);system(cmd,wait=TRUE)
+#   
+#   return(paste(out_dir,"/",out_basename,"Aligned.sortedByCoord.out.bam",sep=""))
+# }
+# 
+# # GenomeThreader: protein-genome spliced alignments
+# # Dependencies: GenomeThreader, scripts from EvidenceModeler
+# gth=function(fna=fna, # masked genome
+#              faa=faa, # comma-list
+#              out_dir=out_dir){
+#   out_dir=sub("/$","",out_dir)
+#   if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "),wait=TRUE)}
+#   wd_begin=getwd();setwd(out_dir)
+#   
+#   prot=unlist(strsplit(faa,","))
+#   for (i in prot){
+#     system(paste("cat",i,">","proteins.faa",sep=" "),wait=TRUE)
+#   }
+#   
+#   cmd=paste("cp",fna,".",sep=" ");system(cmd,wait=TRUE)
+#   fna=unlist(strsplit(fna,"/"));fna_file=fna[length(fna)]
+#   
+#   cmd=paste("gth",
+#             "-genomic",fna_file,
+#             "-protein","proteins.faa",
+#             "-gff3out -intermediate",
+#             "-o","protein_alignment.gff3",
+#             sep=" ")
+#   print(cmd);system(cmd,wait=TRUE)
+#   
+#   system(paste("rm",fna_file,sep=" "),wait=TRUE)
+#   system(paste("rm","proteins.faa",sep=" "),wait=TRUE)
+#   system(paste("rm"," ",fna_file,"*",sep=""),wait=TRUE)
+#   system(paste("rm"," ","proteins.faa","*",sep=""),wait=TRUE)
+#   # EvidenceModeler
+#   cmd="genomeThreader_to_evm_gff3.pl protein_alignment.gff3 >protein_alignment_evm.gff3"
+#   print(cmd);system(cmd,wait=TRUE)
+#   
+#   setwd(wd_begin)
+#   return(out_dir)
+# }
+# 
+# # Spaln for protein-genome alignments
+# # Dependencies: Spaln, gffread, scripts from AUGUSTUS
+# spaln=function(genome=genome,
+#                faa=faa, # comma-list
+#                threads=threads,
+#                out_dir=out_dir){
+#   threads=as.character(threads)
+#   out_dir=sub("/$","",out_dir)
+#   if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "),wait=TRUE)}
+#   wd_begin=getwd();setwd(out_dir)
+#   
+#   cmd=paste("cp",genome,out_dir,sep=" ")
+#   print(cmd);system(cmd,wait=TRUE)
+#   genome=unlist(strsplit(genome,"/"));genome=genome[length(genome)]
+#   
+#   prot=unlist(strsplit(faa,","))
+#   for (i in prot){
+#     system(paste("cat",i,">","proteins.faa",sep=" "),wait=TRUE)
+#   }
+#   
+#   # Format genome
+#   cmd=paste("spaln",
+#             "-W -KP",
+#             "-t",threads,
+#             genome,sep=" ")
+#   print(cmd);system(cmd,wait=TRUE)
+#   
+#   # Gene models
+#   cmd=paste("spaln",
+#             "-Q 7",
+#             "-O 0",
+#             "-t",threads,
+#             "-d",genome,"proteins.faa",
+#             ">","Spaln_gene.gff3",
+#             sep=" ")
+#   print(cmd);system(cmd,wait=TRUE)
+#   
+#   # Format to protein-genome alignments
+#   
+#   system(paste("rm",genome,sep=" "),wait=TRUE)
+#   system("rm proteins.faa",wait=TRUE)
+#   setwd(wd_begin)
+# }
+# 
+# # GeMoMa: Predict genes from transcript/protein-genome alignments
+# # Dependencies: GeMoMa, scripts from evidencemodeler
+# gemoma=function(genome=genome,
+#                 ref_gff=ref_gff,# comma-list
+#                 ref_genome=ref_genome, # comma-list
+#                 RNA_lib="FR_UNSTRANDED", # FR_UNSTRANDED/FR_FIRST_STRAND/FR_SECOND_STRAND
+#                 bam=bam,
+#                 threads=threads,
+#                 out_dir=out_dir){
+#   #######################################
+#   #Absolute path to gemoma
+#   #######################################
+#   path="/home/c/c-liu/miniconda3/pkgs/gemoma-1.9-hdfd78af_0/share/gemoma-1.9-0/GeMoMa-1.9.jar"
+#   system("conda activate gemoma",wait=TRUE)
+#   # setwd("/home/c/c-liu/miniconda3/pkgs/gemoma-1.9-hdfd78af_0/share/gemoma-1.9-0/")
+#   # system("cd /home/c/c-liu/miniconda3/pkgs/gemoma-1.9-hdfd78af_0/share/gemoma-1.9-0/")
+#   #######################################
+#   
+#   threads=as.character(threads)
+#   if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "),wait=TRUE)}
+#   
+#   ref_genome=unlist(strsplit(ref_genome,","))
+#   ref_gff=unlist(strsplit(ref_gff,","))
+#   f=function(i){
+#     s1=paste("s=own",
+#              paste("a=",ref_gff[i],sep=""),
+#              paste("g=",ref_genome[i],sep=""),
+#              sep=" ")
+#     return(s1)
+#   }
+#   s=sapply(1:length(ref_genome),f)
+#   s=paste(s,collapse=" ")
+#   
+#   cmd=paste("java -jar",
+#             path,"CLI GeMoMaPipeline",
+#             paste("threads=",threads,sep=""),
+#             paste("t=",genome,sep=""),
+#             s,
+#             "tblastn=true",
+#             paste("outdir=",out_dir,sep=""),
+#             "r=MAPPED",
+#             paste("ERE.s=",RNA_lib,sep=""),
+#             paste("ERE.m=",bam,sep=""),
+#             "ERE.c=true AnnotationFinalizer.r=NO",
+#             sep=" ")
+#   print(cmd);system(cmd,wait=TRUE)
+#   
+#   cmd=paste("GeMoMa_gff_to_gff3.pl"," ",
+#             out_dir,"/final_annotation.gff"," ",
+#             ">"," ",
+#             out_dir,"/GeMoMa_evm.gff")
+#   print(cmd);system(cmd,wait=TRUE)
+#   
+#   cmd=paste("agat_convert_sp_gxf2gxf.pl"," ",
+#             "--gff"," ",out_dir,"/GeMoMa_evm.gff"," ",
+#             "-o"," ",out_dir,"/sorted.gff",
+#             sep="")
+#   print(cmd);system(cmd,wait=TRUE)
+#   
+#   wd=getwd();setwd(out_dir)
+#   system("rm GeMoMa_evm.agat.log") 
+#   system("rm predicted_proteins.fasta")
+#   system("rm protocol_GeMoMaPipeline.txt") 
+#   system("rm reference_gene_table.tabular")
+#   setwd(wd)
+# }
+# 
+# # GeneMarkerHMM for gene prediction
+# # Dependencies: GeneMark
+# gmhmm=function(genome=genome,
+#                model_file=model_file, # gmhmm.mod from GeneMark-ET/EP
+#                threads=threads,
+#                out_dir=out_dir){
+#   threads=as.character(threads)
+#   out_dir=sub("/$","",out_dir)
+#   if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "),wait=TRUE)}
+#   wd_begin=getwd();setwd(out_dir)
+#   
+#   cmd=paste("gmes_petap.pl",
+#             "--predict_with",model_file,
+#             "--format","GFF3",
+#             "--soft_mask auto",
+#             "--cores",threads,
+#             "--sequence",genome,
+#             sep=" ")
+#   print(cmd);system(cmd,wait=TRUE)
+#   
+#   cmd=paste("agat_convert_sp_gxf2gxf.pl",
+#             "--gff genemark.gff3",
+#             "-o sorted.gff3",
+#             sep=" ")
+#   print(cmd);system(cmd,wait=TRUE)
+#   
+#   system("rm -r data")
+#   system("rm genemark.agat.log")
+#   system("rm rm gmes.log")
+#   system("rm -r info")
+#   system("rm -r output")
+#   system("rm -r run")
+#   system("rm run.cfg")
+#   
+#   setwd(wd_begin)
+# }
+# 
+# # Extract exon coordinates from transcript alignment (gff3) and randomly select 1000 genes
+# # Run GlimmerHMM
+# # Dependencies: glimmerhmm, scripts from EvidenceModeler
+# glimmerhmm=function(transcript_align.gff3=transcript_align.gff3, # get exon/match features
+#                     # empty line separate genes
+#                     genome=genome,
+#                     out_dir=out_dir){
+#   out_dir=sub("/$","",out_dir)
+#   if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "),wait=TRUE)}
+#   wd_begin=getwd();setwd(out_dir)
+#   
+#   # Get exon coordinates
+#   cmd=paste("awk -F '\t' -v OFS='\t' '{if ($0==\"\" || $3==\"exon\" || $3==\"match\") print $0}'",
+#             transcript_align.gff3,"> tmp.gff3")
+#   print(cmd);system(cmd,wait=TRUE)
+#   transcript_align=readLines("tmp.gff3")
+#   training=sapply(transcript_align,
+#                   function(st){
+#                     if (st==""){
+#                       return("")
+#                     }else{
+#                       st=unlist(strsplit(st,"\t"))
+#                       seq=st[1];strand=st[7]
+#                       if (strand=="+"){start=st[4];end=st[5]}
+#                       if (strand=="-"){start=st[5];end=st[4]}
+#                       return(paste(seq,start,end,sep=" "))
+#                     }
+#                   })
+#   training=unname(training)
+#   
+#   # How many genes provided?
+#   j=0
+#   for (i in 1:length(training)){
+#     if (training[i]==""){
+#       j=j+1
+#       cat(paste(as.character(i),"\n",sep=""),file="list",append=TRUE)
+#     }
+#   }
+#   
+#   c=5000 # how many genes for training?
+#   if (j<=c){
+#     writeLines(training,"exon_file")
+#   }else{ # pick 1000 longest genes
+#     exon_length=sapply(1:length(training),
+#                        function(line){
+#                          line=training[line]
+#                          if (line==""){
+#                            return(NA)
+#                          }else{
+#                            line=unlist(strsplit(line," "))
+#                            start=as.numeric(line[2])
+#                            end=as.numeric(line[3])
+#                            return(end-start+1)
+#                          }
+#                        })
+#     
+#     # compute gene length
+#     gene_length=rep(NA,j)
+#     gene_index=1
+#     gene_len=0
+#     for (i in exon_length){
+#       if (!is.na(i)){
+#         gene_len=gene_len+i
+#       }else{
+#         gene_length[gene_index]=gene_len
+#         gene_len=0
+#         gene_index=gene_index+1
+#       }
+#     }
+#     gene_length=abs(gene_length)
+#     names(gene_length)=1:j
+#     gene_length=sort(gene_length,decreasing=TRUE)
+#     
+#     # Pick long genes
+#     index=names(head(gene_length,n=c))
+#     index=as.numeric(index)
+#     is=readLines("list")[index]
+#     sapply(is,function(i){
+#       i=as.numeric(i)
+#       for (k in (i-1):1){
+#         if (training[k]==""){break}
+#       }
+#       gene=training[(k-1):i]
+#       for (m in gene){
+#         cat(paste(m,"\n",sep=""),file="exon_file",append=TRUE)
+#       }
+#     })
+#   }
+#   
+#   cmd=paste("trainGlimmerHMM",
+#             genome,"exon_file",
+#             "-d training",
+#             sep=" ")
+#   print(cmd);system(cmd,wait=TRUE)
+#   
+#   cmd=paste("glimmerhmm_linux_x86_64",
+#             genome,"training","-g",
+#             "> GlimmerHMM.gff3",sep=" ")
+#   print(cmd);system(cmd,wait=TRUE)
+#   
+#   cmd="glimmerHMM_to_GFF3.pl GlimmerHMM.gff3 > GlimmerHMM_evm.gff3"
+#   print(cmd);system(cmd,wait=TRUE)
+#   
+#   cmd=paste("agat_convert_sp_gxf2gxf.pl",
+#             "--gff GlimmerHMM_evm.gff3",
+#             "-o sorted.gff3",
+#             sep=" ")
+#   print(cmd);system(cmd,wait=TRUE)
+#   
+#   system("rm list",wait=TRUE)
+#   system("rm GlimmerHMM_evm.agat.log")
+#   system("rm tmp.gff3")
+#   system("rm -r training")
+#   system("rm training.log")
+#   
+#   setwd(wd_begin)
+# }
+# 
+# # SNAP for gene prediction
+# # Dependencies: agat, SNAP, scripts from EvidenceModeler
+# snap=function(fna=fna,
+#               train.gff3=train.gff3, # Gene models
+#               out_dir=out_dir){
+#   out_dir=sub("/$","",out_dir)
+#   if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "),wait=TRUE)}
+#   wd_begin=getwd();setwd(out_dir)
+#   
+#   cmd=paste("agat_convert_sp_gff2zff.pl",
+#             "--fasta",fna,
+#             "--gff",train.gff3,
+#             "-o ./train",
+#             sep=" ")
+#   print(cmd);system(cmd,wait=TRUE)
+#   system("mv train.ann train.zff",wait=TRUE)
+#   
+#   cmd="fathom -validate train.zff train.dna > train.validate"
+#   print(cmd);system(cmd,wait=TRUE)
+#   
+#   cmd="fathom -categorize 100 train.zff train.dna"
+#   print(cmd);system(cmd,wait=TRUE)
+#   
+#   cmd="fathom -export 100 -plus uni.*"
+#   print(cmd);system(cmd,wait=TRUE)
+#   
+#   cmd="fathom -validate export.ann export.dna"
+#   print(cmd);system(cmd,wait=TRUE)
+#   
+#   cmd="forge export.ann export.dna"
+#   print(cmd);system(cmd,wait=TRUE)
+#   
+#   cmd="hmm-assembler.pl model . > model.hmm"
+#   print(cmd);system(cmd,wait=TRUE)
+#   
+#   cmd="snap model.hmm train.dna > SNAP.zff"
+#   print(cmd);system(cmd,wait=TRUE)
+#   
+#   cmd="zff2gff3.pl SNAP.zff > SNAP.gff3"
+#   print(cmd);system(cmd,wait=TRUE)
+#   
+#   cmd="SNAP_to_GFF3.pl SNAP.gff3 > SNAP_evm.gff3" # EvidenceModeler
+#   print(cmd);system(cmd,wait=TRUE)
+#   
+#   cmd=paste("agat_convert_sp_gxf2gxf.pl",
+#             "--gff SNAP_evm.gff3",
+#             "-o sorted.gff3",
+#             sep=" ")
+#   print(cmd);system(cmd,wait=TRUE)
+#   
+#   system("rm Acceptor*")
+#   system("rm alt*")
+#   system("rm Coding*")
+#   system("rm Donor*")
+#   system("rm E*")
+#   system("rm e*")
+#   system("rm I*")
+#   system("rm P*")
+#   system("rm Start*")
+#   system("rm Stop*")
+#   system("rm UTR*")
+#   system("rm *.ann")
+#   system("rm t*")
+#   system("rm *.dna")
+#   system("rm phaseprefs model.hmm")
+#   system("rm SNAP_evm.agat.log")
+#   setwd(wd_begin)
+# }
+# 
+# # Extract features (gene+exon+CDS) by list of gene IDs
+# SplitGFF=function(in.gff=in.gff,
+#                   gene.list=gene.list,
+#                   out.gff=out.gff){
+#   cmd=paste("agat_sp_filter_feature_from_keep_list.pl",
+#             "--gff",in.gff,
+#             "--keep_list",gene.list,
+#             "--out",out.gff)
+#   print(cmd);system(cmd,wait=TRUE)
+# }

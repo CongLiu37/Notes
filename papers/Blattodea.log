@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.24 (TeX Live 2022/Homebrew) (preloaded format=pdflatex 2022.8.9)  20 DEC 2022 21:34
+This is pdfTeX, Version 3.141592653-2.6-1.40.24 (TeX Live 2022/Homebrew) (preloaded format=pdflatex 2023.1.12)  25 JAN 2023 21:08
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -6,9 +6,9 @@ entering extended mode
 **/Users/congliu/Desktop/Notes/papers/Blattodea.tex
 (/Users/congliu/Desktop/Notes/papers/Blattodea.tex
 LaTeX2e <2021-11-15> patch level 1
-L3 programming layer <2022-02-24> (/opt/homebrew/Cellar/texlive/20220321_1/share/texmf-dist/tex/latex/base/article.cls
+L3 programming layer <2022-02-24> (/opt/homebrew/Cellar/texlive/20220321_4/share/texmf-dist/tex/latex/base/article.cls
 Document Class: article 2021/10/04 v1.4n Standard LaTeX document class
-(/opt/homebrew/Cellar/texlive/20220321_1/share/texmf-dist/tex/latex/base/size11.clo
+(/opt/homebrew/Cellar/texlive/20220321_4/share/texmf-dist/tex/latex/base/size11.clo
 File: size11.clo 2021/10/04 v1.4n Standard LaTeX file (size option)
 )
 \c@part=\count185
@@ -22,54 +22,54 @@ File: size11.clo 2021/10/04 v1.4n Standard LaTeX file (size option)
 \abovecaptionskip=\skip47
 \belowcaptionskip=\skip48
 \bibindent=\dimen138
-) (/opt/homebrew/Cellar/texlive/20220321_1/share/texmf-dist/tex/latex/setspace/setspace.sty
+) (/opt/homebrew/Cellar/texlive/20220321_4/share/texmf-dist/tex/latex/setspace/setspace.sty
 Package: setspace 2011/12/19 v6.7a set line spacing
-) (/opt/homebrew/Cellar/texlive/20220321_1/share/texmf-dist/tex/latex/hyperref/hyperref.sty
+) (/opt/homebrew/Cellar/texlive/20220321_4/share/texmf-dist/tex/latex/hyperref/hyperref.sty
 Package: hyperref 2022-02-21 v7.00n Hypertext links for LaTeX
- (/opt/homebrew/Cellar/texlive/20220321_1/share/texmf-dist/tex/generic/ltxcmds/ltxcmds.sty
+ (/opt/homebrew/Cellar/texlive/20220321_4/share/texmf-dist/tex/generic/ltxcmds/ltxcmds.sty
 Package: ltxcmds 2020-05-10 v1.25 LaTeX kernel commands for general use (HO)
-) (/opt/homebrew/Cellar/texlive/20220321_1/share/texmf-dist/tex/generic/iftex/iftex.sty
+) (/opt/homebrew/Cellar/texlive/20220321_4/share/texmf-dist/tex/generic/iftex/iftex.sty
 Package: iftex 2022/02/03 v1.0f TeX engine tests
-) (/opt/homebrew/Cellar/texlive/20220321_1/share/texmf-dist/tex/generic/pdftexcmds/pdftexcmds.sty
+) (/opt/homebrew/Cellar/texlive/20220321_4/share/texmf-dist/tex/generic/pdftexcmds/pdftexcmds.sty
 Package: pdftexcmds 2020-06-27 v0.33 Utility functions of pdfTeX for LuaTeX (HO)
- (/opt/homebrew/Cellar/texlive/20220321_1/share/texmf-dist/tex/generic/infwarerr/infwarerr.sty
+ (/opt/homebrew/Cellar/texlive/20220321_4/share/texmf-dist/tex/generic/infwarerr/infwarerr.sty
 Package: infwarerr 2019/12/03 v1.5 Providing info/warning/error messages (HO)
 )
 Package pdftexcmds Info: \pdf@primitive is available.
 Package pdftexcmds Info: \pdf@ifprimitive is available.
 Package pdftexcmds Info: \pdfdraftmode found.
-) (/opt/homebrew/Cellar/texlive/20220321_1/share/texmf-dist/tex/latex/graphics/keyval.sty
+) (/opt/homebrew/Cellar/texlive/20220321_4/share/texmf-dist/tex/latex/graphics/keyval.sty
 Package: keyval 2014/10/28 v1.15 key=value parser (DPC)
 \KV@toks@=\toks16
-) (/opt/homebrew/Cellar/texlive/20220321_1/share/texmf-dist/tex/generic/kvsetkeys/kvsetkeys.sty
+) (/opt/homebrew/Cellar/texlive/20220321_4/share/texmf-dist/tex/generic/kvsetkeys/kvsetkeys.sty
 Package: kvsetkeys 2019/12/15 v1.18 Key value parser (HO)
-) (/opt/homebrew/Cellar/texlive/20220321_1/share/texmf-dist/tex/generic/kvdefinekeys/kvdefinekeys.sty
+) (/opt/homebrew/Cellar/texlive/20220321_4/share/texmf-dist/tex/generic/kvdefinekeys/kvdefinekeys.sty
 Package: kvdefinekeys 2019-12-19 v1.6 Define keys (HO)
-) (/opt/homebrew/Cellar/texlive/20220321_1/share/texmf-dist/tex/generic/pdfescape/pdfescape.sty
+) (/opt/homebrew/Cellar/texlive/20220321_4/share/texmf-dist/tex/generic/pdfescape/pdfescape.sty
 Package: pdfescape 2019/12/09 v1.15 Implements pdfTeX's escape features (HO)
-) (/opt/homebrew/Cellar/texlive/20220321_1/share/texmf-dist/tex/latex/hycolor/hycolor.sty
+) (/opt/homebrew/Cellar/texlive/20220321_4/share/texmf-dist/tex/latex/hycolor/hycolor.sty
 Package: hycolor 2020-01-27 v1.10 Color options for hyperref/bookmark (HO)
-) (/opt/homebrew/Cellar/texlive/20220321_1/share/texmf-dist/tex/latex/letltxmacro/letltxmacro.sty
+) (/opt/homebrew/Cellar/texlive/20220321_4/share/texmf-dist/tex/latex/letltxmacro/letltxmacro.sty
 Package: letltxmacro 2019/12/03 v1.6 Let assignment for LaTeX macros (HO)
-) (/opt/homebrew/Cellar/texlive/20220321_1/share/texmf-dist/tex/latex/auxhook/auxhook.sty
+) (/opt/homebrew/Cellar/texlive/20220321_4/share/texmf-dist/tex/latex/auxhook/auxhook.sty
 Package: auxhook 2019-12-17 v1.6 Hooks for auxiliary files (HO)
-) (/opt/homebrew/Cellar/texlive/20220321_1/share/texmf-dist/tex/latex/kvoptions/kvoptions.sty
+) (/opt/homebrew/Cellar/texlive/20220321_4/share/texmf-dist/tex/latex/kvoptions/kvoptions.sty
 Package: kvoptions 2020-10-07 v3.14 Key value format for package options (HO)
 )
 \@linkdim=\dimen139
 \Hy@linkcounter=\count193
 \Hy@pagecounter=\count194
- (/opt/homebrew/Cellar/texlive/20220321_1/share/texmf-dist/tex/latex/hyperref/pd1enc.def
+ (/opt/homebrew/Cellar/texlive/20220321_4/share/texmf-dist/tex/latex/hyperref/pd1enc.def
 File: pd1enc.def 2022-02-21 v7.00n Hyperref: PDFDocEncoding definition (HO)
 Now handling font encoding PD1 ...
 ... no UTF-8 mapping file for font encoding PD1
-) (/opt/homebrew/Cellar/texlive/20220321_1/share/texmf-dist/tex/generic/intcalc/intcalc.sty
+) (/opt/homebrew/Cellar/texlive/20220321_4/share/texmf-dist/tex/generic/intcalc/intcalc.sty
 Package: intcalc 2019/12/15 v1.3 Expandable calculations with integers (HO)
-) (/opt/homebrew/Cellar/texlive/20220321_1/share/texmf-dist/tex/generic/etexcmds/etexcmds.sty
+) (/opt/homebrew/Cellar/texlive/20220321_4/share/texmf-dist/tex/generic/etexcmds/etexcmds.sty
 Package: etexcmds 2019/12/15 v1.7 Avoid name clashes with e-TeX commands (HO)
 )
 \Hy@SavedSpaceFactor=\count195
- (/opt/homebrew/Cellar/texlive/20220321_1/share/texmf-dist/tex/latex/hyperref/puenc.def
+ (/opt/homebrew/Cellar/texlive/20220321_4/share/texmf-dist/tex/latex/hyperref/puenc.def
 File: puenc.def 2022-02-21 v7.00n Hyperref: PDF Unicode definition (HO)
 Now handling font encoding PU ...
 ... no UTF-8 mapping file for font encoding PU
@@ -83,15 +83,15 @@ Package hyperref Info: Backreferencing OFF on input line 4157.
 Package hyperref Info: Implicit mode ON; LaTeX internals redefined.
 Package hyperref Info: Bookmarks ON on input line 4390.
 \c@Hy@tempcnt=\count196
- (/opt/homebrew/Cellar/texlive/20220321_1/share/texmf-dist/tex/latex/url/url.sty
+ (/opt/homebrew/Cellar/texlive/20220321_4/share/texmf-dist/tex/latex/url/url.sty
 \Urlmuskip=\muskip16
 Package: url 2013/09/16  ver 3.4  Verb mode for urls, etc.
 )
 LaTeX Info: Redefining \url on input line 4749.
 \XeTeXLinkMargin=\dimen140
- (/opt/homebrew/Cellar/texlive/20220321_1/share/texmf-dist/tex/generic/bitset/bitset.sty
+ (/opt/homebrew/Cellar/texlive/20220321_4/share/texmf-dist/tex/generic/bitset/bitset.sty
 Package: bitset 2019/12/09 v1.3 Handle bit-vector datatype (HO)
- (/opt/homebrew/Cellar/texlive/20220321_1/share/texmf-dist/tex/generic/bigintcalc/bigintcalc.sty
+ (/opt/homebrew/Cellar/texlive/20220321_4/share/texmf-dist/tex/generic/bigintcalc/bigintcalc.sty
 Package: bigintcalc 2019/12/15 v1.5 Expandable calculations on big integers (HO)
 ))
 \Fld@menulength=\count197
@@ -106,7 +106,7 @@ Package hyperref Info: Link coloring with OCG OFF on input line 6052.
 Package hyperref Info: PDF/A mode OFF on input line 6057.
 LaTeX Info: Redefining \ref on input line 6097.
 LaTeX Info: Redefining \pageref on input line 6101.
- (/opt/homebrew/Cellar/texlive/20220321_1/share/texmf-dist/tex/latex/base/atbegshi-ltx.sty
+ (/opt/homebrew/Cellar/texlive/20220321_4/share/texmf-dist/tex/latex/base/atbegshi-ltx.sty
 Package: atbegshi-ltx 2021/01/10 v1.0c Emulation of the original atbegshi
 package with kernel methods
 )
@@ -115,23 +115,23 @@ package with kernel methods
 \c@Hfootnote=\count266
 )
 Package hyperref Info: Driver (autodetected): hpdftex.
- (/opt/homebrew/Cellar/texlive/20220321_1/share/texmf-dist/tex/latex/hyperref/hpdftex.def
+ (/opt/homebrew/Cellar/texlive/20220321_4/share/texmf-dist/tex/latex/hyperref/hpdftex.def
 File: hpdftex.def 2022-02-21 v7.00n Hyperref driver for pdfTeX
- (/opt/homebrew/Cellar/texlive/20220321_1/share/texmf-dist/tex/latex/base/atveryend-ltx.sty
+ (/opt/homebrew/Cellar/texlive/20220321_4/share/texmf-dist/tex/latex/base/atveryend-ltx.sty
 Package: atveryend-ltx 2020/08/19 v1.0a Emulation of the original atveryend package
 with kernel methods
 )
 \Fld@listcount=\count267
 \c@bookmark@seq@number=\count268
- (/opt/homebrew/Cellar/texlive/20220321_1/share/texmf-dist/tex/latex/rerunfilecheck/rerunfilecheck.sty
+ (/opt/homebrew/Cellar/texlive/20220321_4/share/texmf-dist/tex/latex/rerunfilecheck/rerunfilecheck.sty
 Package: rerunfilecheck 2019/12/05 v1.9 Rerun checks for auxiliary files (HO)
- (/opt/homebrew/Cellar/texlive/20220321_1/share/texmf-dist/tex/generic/uniquecounter/uniquecounter.sty
+ (/opt/homebrew/Cellar/texlive/20220321_4/share/texmf-dist/tex/generic/uniquecounter/uniquecounter.sty
 Package: uniquecounter 2019/12/15 v1.4 Provide unlimited unique counter (HO)
 )
 Package uniquecounter Info: New unique counter `rerunfilecheck' on input line 286.
 )
 \Hy@SectionHShift=\skip49
-) (/opt/homebrew/Cellar/texlive/20220321_1/share/texmf-dist/tex/latex/lineno/lineno.sty
+) (/opt/homebrew/Cellar/texlive/20220321_4/share/texmf-dist/tex/latex/lineno/lineno.sty
 Package: lineno 2005/11/02 line numbers on paragraphs v4.41
 \linenopenalty=\count269
 \output=\toks17
@@ -148,7 +148,7 @@ Package: lineno 2005/11/02 line numbers on paragraphs v4.41
 \bframesep=\dimen147
 \bframebox=\box50
 LaTeX Info: Redefining \\ on input line 3056.
-) (/opt/homebrew/Cellar/texlive/20220321_1/share/texmf-dist/tex/latex/booktabs/booktabs.sty
+) (/opt/homebrew/Cellar/texlive/20220321_4/share/texmf-dist/tex/latex/booktabs/booktabs.sty
 Package: booktabs 2020/01/12 v1.61803398 Publication quality tables
 \heavyrulewidth=\dimen148
 \lightrulewidth=\dimen149
@@ -167,33 +167,33 @@ Package: booktabs 2020/01/12 v1.61803398 Publication quality tables
 \@thisruleclass=\count278
 \@lastruleclass=\count279
 \@thisrulewidth=\dimen160
-) (/opt/homebrew/Cellar/texlive/20220321_1/share/texmf-dist/tex/latex/graphics/graphicx.sty
+) (/opt/homebrew/Cellar/texlive/20220321_4/share/texmf-dist/tex/latex/graphics/graphicx.sty
 Package: graphicx 2021/09/16 v1.2d Enhanced LaTeX Graphics (DPC,SPQR)
- (/opt/homebrew/Cellar/texlive/20220321_1/share/texmf-dist/tex/latex/graphics/graphics.sty
+ (/opt/homebrew/Cellar/texlive/20220321_4/share/texmf-dist/tex/latex/graphics/graphics.sty
 Package: graphics 2021/03/04 v1.4d Standard LaTeX Graphics (DPC,SPQR)
- (/opt/homebrew/Cellar/texlive/20220321_1/share/texmf-dist/tex/latex/graphics/trig.sty
+ (/opt/homebrew/Cellar/texlive/20220321_4/share/texmf-dist/tex/latex/graphics/trig.sty
 Package: trig 2021/08/11 v1.11 sin cos tan (DPC)
-) (/opt/homebrew/Cellar/texlive/20220321_1/share/texmf-dist/tex/latex/graphics-cfg/graphics.cfg
+) (/opt/homebrew/Cellar/texlive/20220321_4/share/texmf-dist/tex/latex/graphics-cfg/graphics.cfg
 File: graphics.cfg 2016/06/04 v1.11 sample graphics configuration
 )
 Package graphics Info: Driver file: pdftex.def on input line 107.
- (/opt/homebrew/Cellar/texlive/20220321_1/share/texmf-dist/tex/latex/graphics-def/pdftex.def
+ (/opt/homebrew/Cellar/texlive/20220321_4/share/texmf-dist/tex/latex/graphics-def/pdftex.def
 File: pdftex.def 2020/10/05 v1.2a Graphics/color driver for pdftex
 ))
 \Gin@req@height=\dimen161
 \Gin@req@width=\dimen162
-) (/opt/homebrew/Cellar/texlive/20220321_1/share/texmf-dist/tex/latex/float/float.sty
+) (/opt/homebrew/Cellar/texlive/20220321_4/share/texmf-dist/tex/latex/float/float.sty
 Package: float 2001/11/08 v1.3d Float enhancements (AL)
 \c@float@type=\count280
 \float@exts=\toks18
 \float@box=\box51
 \@float@everytoks=\toks19
 \@floatcapt=\box52
-) (/opt/homebrew/Cellar/texlive/20220321_1/share/texmf-dist/tex/latex/floatrow/floatrow.sty
+) (/opt/homebrew/Cellar/texlive/20220321_4/share/texmf-dist/tex/latex/floatrow/floatrow.sty
 Package: floatrow 2008/08/02 v0.3b floatrow: float package extension
 
 
-/opt/homebrew/Cellar/texlive/20220321_1/share/texmf-dist/tex/latex/floatrow/floatrow.sty:33: Package floatrow Error: Do not use float package with floatrow.
+/opt/homebrew/Cellar/texlive/20220321_4/share/texmf-dist/tex/latex/floatrow/floatrow.sty:33: Package floatrow Error: Do not use float package with floatrow.
 (floatrow)                The latter will be skipped.
 
 See the floatrow package documentation for explanation.
@@ -207,7 +207,7 @@ command, so I can't give any explicit help.
 Pretend that you're Hercule Poirot: Examine all clues,
 and deduce the truth by order and method.
 
-) (/opt/homebrew/Cellar/texlive/20220321_1/share/texmf-dist/tex/latex/subfigure/subfigure.sty
+) (/opt/homebrew/Cellar/texlive/20220321_4/share/texmf-dist/tex/latex/subfigure/subfigure.sty
 Package: subfigure 2002/03/15 v2.1.5 subfigure package
 \subfigtopskip=\skip50
 \subfigcapskip=\skip51
@@ -223,12 +223,12 @@ Package: subfigure 2002/03/15 v2.1.5 subfigure package
 ****************************************
 * Local config file subfigure.cfg used *
 ****************************************
-(/opt/homebrew/Cellar/texlive/20220321_1/share/texmf-dist/tex/latex/subfigure/subfigure.cfg)
+(/opt/homebrew/Cellar/texlive/20220321_4/share/texmf-dist/tex/latex/subfigure/subfigure.cfg)
 \subfig@top=\skip54
 \subfig@bottom=\skip55
-) (/opt/homebrew/Cellar/texlive/20220321_1/share/texmf-dist/tex/latex/caption/caption.sty
+) (/opt/homebrew/Cellar/texlive/20220321_4/share/texmf-dist/tex/latex/caption/caption.sty
 Package: caption 2022/03/01 v3.6b Customizing captions (AR)
- (/opt/homebrew/Cellar/texlive/20220321_1/share/texmf-dist/tex/latex/caption/caption3.sty
+ (/opt/homebrew/Cellar/texlive/20220321_4/share/texmf-dist/tex/latex/caption/caption3.sty
 Package: caption3 2022/03/17 v2.3b caption3 kernel (AR)
 \caption@tempdima=\dimen165
 \captionmargin=\dimen166
@@ -246,11 +246,11 @@ Package caption Info: float package is loaded.
 Package caption Info: floatrow package is loaded.
 Package caption Info: hyperref package is loaded.
 Package caption Info: subfigure package is loaded.
-) (/opt/homebrew/Cellar/texlive/20220321_1/share/texmf-dist/tex/latex/caption/subcaption.sty
+) (/opt/homebrew/Cellar/texlive/20220321_4/share/texmf-dist/tex/latex/caption/subcaption.sty
 Package: subcaption 2022/01/07 v1.5 Sub-captions (AR)
 
 
-/opt/homebrew/Cellar/texlive/20220321_1/share/texmf-dist/tex/latex/caption/subcaption.sty:66: Package subcaption Error: This package can't be used in cooperation
+/opt/homebrew/Cellar/texlive/20220321_4/share/texmf-dist/tex/latex/caption/subcaption.sty:66: Package subcaption Error: This package can't be used in cooperation
 (subcaption)                with the subfigure package.
 
 See the subcaption package documentation for explanation.
@@ -265,9 +265,9 @@ section about errors.
 Try typing  <return>  to proceed.
 If that doesn't work, type  X <return>  to quit.
 
-) (/opt/homebrew/Cellar/texlive/20220321_1/share/texmf-dist/tex/latex/geometry/geometry.sty
+) (/opt/homebrew/Cellar/texlive/20220321_4/share/texmf-dist/tex/latex/geometry/geometry.sty
 Package: geometry 2020/01/02 v5.9 Page Geometry
- (/opt/homebrew/Cellar/texlive/20220321_1/share/texmf-dist/tex/generic/iftex/ifvtex.sty
+ (/opt/homebrew/Cellar/texlive/20220321_4/share/texmf-dist/tex/generic/iftex/ifvtex.sty
 Package: ifvtex 2019/10/25 v1.7 ifvtex legacy package. Use iftex instead.
 )
 \Gm@cnth=\count287
@@ -282,13 +282,13 @@ Package: ifvtex 2019/10/25 v1.7 ifvtex legacy package. Use iftex instead.
 \Gm@layouthoffset=\dimen179
 \Gm@layoutvoffset=\dimen180
 \Gm@dimlist=\toks20
-) (/opt/homebrew/Cellar/texlive/20220321_1/share/texmf-dist/tex/latex/multirow/multirow.sty
+) (/opt/homebrew/Cellar/texlive/20220321_4/share/texmf-dist/tex/latex/multirow/multirow.sty
 Package: multirow 2021/03/15 v2.8 Span multiple rows of a table
 \multirow@colwidth=\skip56
 \multirow@cntb=\count290
 \multirow@dima=\skip57
 \bigstrutjot=\dimen181
-) (/opt/homebrew/Cellar/texlive/20220321_1/share/texmf-dist/tex/latex/tools/longtable.sty
+) (/opt/homebrew/Cellar/texlive/20220321_4/share/texmf-dist/tex/latex/tools/longtable.sty
 Package: longtable 2021-09-01 v4.17 Multi-page Table package (DPC)
 \LTleft=\skip58
 \LTright=\skip59
@@ -306,7 +306,7 @@ Package: longtable 2021-09-01 v4.17 Multi-page Table package (DPC)
 \c@LT@tables=\count294
 \c@LT@chunks=\count295
 \LT@p@ftn=\toks21
-) (/opt/homebrew/Cellar/texlive/20220321_1/share/texmf-dist/tex/latex/graphics/lscape.sty
+) (/opt/homebrew/Cellar/texlive/20220321_4/share/texmf-dist/tex/latex/graphics/lscape.sty
 Package: lscape 2020/05/28 v3.02 Landscape Pages (DPC)
 )
 
@@ -326,7 +326,7 @@ l.21 \usepackage
  
 Here is how much of TeX's memory you used:
  9793 strings out of 478268
- 161926 string characters out of 5835367
+ 161926 string characters out of 5835366
  442586 words of memory out of 5000000
  27930 multiletter control sequences out of 15000+600000
  469559 words of font info for 29 fonts, out of 8000000 for 9000

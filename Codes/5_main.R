@@ -299,7 +299,8 @@ BUSCO=function(fna=fna, # Fasta file of nucleotide or protein.
     print(cmd);system(cmd,wait=TRUE)
     setwd(wd_begin)
   }
-  
+
+
   # BUSCO results
   l=unlist(strsplit(Lineage,"/"));l=l[length(l)]
   if (file.exists(
@@ -331,6 +332,25 @@ checkm=function(bin_dir=bin_dir, # the directory in which bins are located.
   
   return(out_dir)
 }
+
+# Compare gff
+# Dependencies: biocode
+compare_gff=function(ref.gff=ref.gff,
+                     predicted.gff=predicted.gff,
+                     feature=feature, # Exon/CDS
+                     out_dir=out_dir){
+  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
+  
+  cmd=paste("compare_gene_structures.py",
+            "-a1",ref.gff,
+            "-a2",predicted.gff,
+            "-f",feature,
+            "-o",out_dir,
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+}
+
 
 # Profile contaminations via reconstructing the SSU rRNAs.
 # Dependencies: PhyloFlash
@@ -631,6 +651,17 @@ genbank2gff=function(genbank=genbank,
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   return(gff)
+}
+
+# Extract features (gene+exon+CDS) by list of gene IDs
+SplitGFF=function(in.gff=in.gff,
+                  gene.list=gene.list,
+                  out.gff=out.gff){
+  cmd=paste("agat_sp_filter_feature_from_keep_list.pl",
+            "--gff",in.gff,
+            "--keep_list",gene.list,
+            "--out",out.gff)
+  print(cmd);system(cmd,wait=TRUE)
 }
 
 
