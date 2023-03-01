@@ -320,10 +320,6 @@ miRNAture=function(genome=genome,
   wd=getwd();setwd(out_dir)
   threads=as.character(threads)
   
-  system("source ~/miniconda3/etc/profile.d/conda.sh")
-  system("conda init bash")
-  system("conda activate mirnature")
-  
   cmd=paste("cp -r",dataF,"./dataF",sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   cmd=paste("cp",genome,"./genome.fa",sep=" ")
@@ -356,15 +352,62 @@ miRNAture=function(genome=genome,
 }
 
 # miRanda: microRNA target gene identification
-miranda=function(target.fa=target.fa,
-                 miRNA.fa=miRNA.fa,
+# Dependencies: miRanda, bedtools
+miranda=function(gff=gff, # three_prime_UTR feature required
+                 genome=genome,
+                 miRNA.fna=miRNA.fna,
+                 threads=threads,
                  out_dir=out_dir){
   if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "),wait=TRUE)}
   wd=getwd();setwd(out_dir)
+  threads=as.character(threads)
   
-  cmd=paste("miranda",miRNA.fa,genome.fa,target.fa,"-out miranda.txt",sep=" ")
+  cmd=paste("grep 'three_prime_UTR' ",gff,
+            " | awk -F '\t' -v OFS='\t' '{print $1,$4-1,$5,$9,200,$7}' | sed 's/ID=.*;Parent=//' | sed 's/;//' > 3_UTR.bed",
+            sep="")
+  print(cmd);system(cmd,wait=TRUE)
+  system(paste("cp",genome,"./genome.fa",sep=" "))
+  cmd=paste("bedtools getfasta -s -name",
+            "-fi","./genome.fa",
+            "-bed 3_UTR.bed",
+            " | sed 's/::.*//' > 3_UTR.fa")
   print(cmd);system(cmd,wait=TRUE)
   
+  cmd=paste("seqkit split2",
+            "3_UTR.fa",
+            "--by-part",as.character(as.numeric(threads)-1),
+            "--out-dir","tmp",
+            "--threads",threads,
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  system(paste("cp",miRNA.fna,"./miRNA.fna",sep=" "))
+  library(parallel)
+  clus=makeCluster(as.numeric(threads))
+  parSapply(clus,
+            1:(as.numeric(threads)-1),
+            function(i){
+              utr=system("ls tmp/*.fa",intern=TRUE)[i]
+              cmd=paste("miranda","miRNA.fna",utr,
+                        "-sc 150","-en -20",
+                        "| grep '>>' | sed 's/>>//' | sort -k 5 -n -r",
+                        "| awk -F '\t' -v OFS='\t' '{print $1,$2}' | sort | uniq -u >",
+                        paste("tmp/",as.character(i),".tsv",sep=""),
+                        sep=" ")
+              system(cmd,wait=TRUE)
+            })
+  stopCluster(clus)
+  
+  o=system("ls tmp/*.tsv",intern=TRUE)
+  cmd=paste("cat",paste(o,collapse=" "),"> miRanda.tsv")
+  system(cmd)
+  
+  system("rm ./miRNA.fna")
+  system("rm ./3_UTR.fa")
+  system("rm ./3_UTR.bed")
+  system("rm ./genome.fa")
+  system("rm ./genome.fa.fai")
+  system("rm -r tmp")
   setwd(wd)
 }
 
@@ -421,11 +464,36 @@ infernal=function(genome=genome,
   setwd(wd)
 }
 
-# Integrate ncRNA identification from tRNAscan-SE, mirdeep2 and infernal
-
-
+# Integrate ncRNA results from tRNAscan-SE, miRNAture, infernal and miRanda
+ncRNA=function(tRNA.gff3=tRNA.gff3,
+               miRNAture.gff3=miRNAture.gff3,
+               miRNA.fa=miRNA.fa,
+               infernal.gff3=infernal.gff3,
+               miRanda.tsv=miRanda.tsv,
+               species=species,
+               out_dir=out_dir){
+  out_dir=sub("/$","",out_dir)
+  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "),wait=TRUE)}
+  wd=getwd();setwd(out_dir)
   
-# Update gff3 with information of microRNA target
+  cmd=paste("cp",tRNA.gff3,
+            paste(species,"_tRNA.gff3",sep=""))
+  print(cmd);system(cmd,wait=TRUE)
+  cmd=paste("cp",miRNAture.gff3,
+            paste(species,"_miRNA.gff3",sep=""))
+  print(cmd);system(cmd,wait=TRUE)
+  cmd=paste("cp",miRNA.fa,
+            paste(species,"_miRNA.fa",sep=""))
+  print(cmd);system(cmd,wait=TRUE)
+  cmd=paste("cp",infernal.gff3,
+            paste(species,"_Rfam.gff3",sep=""))
+  print(cmd);system(cmd,wait=TRUE)
+  cmd=paste("cp",miRanda.tsv,
+            paste(species,"_miRNA_target.tsv",sep=""))
+  print(cmd);system(cmd,wait=TRUE)
+  setwd(wd)
+}
+
 
 # 6-frame translation (DNA to protein)
 # hmmer build (protein)

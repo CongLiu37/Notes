@@ -50,6 +50,13 @@ SplitFQ=function(fq1=fq1,fq2=fq2,
   # out_dir/*part_001*
   print(cmd);system(cmd,wait=TRUE)
 }
+#hisat2 --dta -x /flash/BourguignonU/Cong/termite_genome_annotation/Hisat/Coatitermes/Coatitermes -p 1 
+#-1 /flash/BourguignonU/Cong/termite_genome_annotation/Hisat/Coatitermes/split/GT155_S90_R1_001.part_001.fastq.gz 
+#-2 /flash/BourguignonU/Cong/termite_genome_annotation/Hisat/Coatitermes/split/GT155_S90_R2_001.part_001.fastq.gz | 
+#samtools view -@ 1 -bS | samtools sort -@ 1 
+#-o /flash/BourguignonU/Cong/termite_genome_annotation/Hisat/Coatitermes/1_GT155_S90_R1_001.fastq.gz.bam
+
+#hisat2 --dta -x /flash/BourguignonU/Cong/termite_genome_annotation/Hisat/Coatitermes/Coatitermes -p 1 -1 /flash/BourguignonU/Cong/termite_genome_annotation/Hisat/Coatitermes/split/GT155_S90_R1_001.part_002.fastq.gz -2 /flash/BourguignonU/Cong/termite_genome_annotation/Hisat/Coatitermes/split/GT155_S90_R2_001.part_002.fastq.gz | samtools view -@ 1 -bS | samtools sort -@ 1 -o /flash/BourguignonU/Cong/termite_genome_annotation/Hisat/Coatitermes/2_GT155_S90_R1_001.fastq.gz.bam
 
 # Split fasta
 # Dependencies: seqkit
@@ -93,10 +100,10 @@ repeatmodeler=function(fna=fna,
                        out_dir=out_dir,
                        out_prefix=out_prefix,
                        Threads=Threads){
-  pwd_begin=getwd();setwd(out_dir)
-  Threads=as.character(Threads)
   out_dir=sub("/$","",out_dir)
   if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "),wait=TRUE)}
+  pwd_begin=getwd();setwd(out_dir)
+  Threads=as.character(Threads)
   
   system(paste("cp",fna,out_dir,sep=" "),wait=TRUE)
   fna_name=unlist(strsplit(fna,"/"));fna_name=fna_name[length(fna_name)]
@@ -194,11 +201,6 @@ miniprot=function(fna=fna,
   if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "),wait=TRUE)}
   wd_begin=getwd();setwd(out_dir)
   
-  prot=unlist(strsplit(faa,","))
-  for (i in prot){
-    system(paste("cat",i,">","proteins.faa",sep=" "),wait=TRUE)
-  }
-  
   # Compute gene models by spliced alignments
   if (!file.exists("genome.mpi")){
     cmd=paste("miniprot",
@@ -208,14 +210,21 @@ miniprot=function(fna=fna,
               sep=" ")
     print(cmd);system(cmd,wait=TRUE)
   }
+  
+  prot=unlist(strsplit(faa,","))
+  for (i in prot){
+    system(paste("cat",i,">>","proteins.faa",sep=" "),wait=TRUE)
+  }
+  
   cmd=paste("miniprot",
             "-t",threads,
             "--gff",
             "genome.mpi",
             "proteins.faa",
-            ">","miniprot.gff3", # mRNA, CDS, stip_codon features
+            ">>","miniprot.gff3", # mRNA, CDS, stip_codon features
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
+  system("rm proteins.faa")
   
   # separate genes by blank lines
   cmd="sed 's/.*##PAF.*//' miniprot.gff3 > gene_models.gff3"
@@ -235,7 +244,7 @@ miniprot=function(fna=fna,
   system("rm protein_align.gff3")
   system("mv protein.gff protein_align.gff3")
   
-  system("rm proteins.faa",wait=TRUE)
+  #system("rm proteins.faa",wait=TRUE)
   system("rm genome.mpi",wait=TRUE)
   system("rm miniprot.gff3",wait=TRUE)
   
@@ -296,7 +305,6 @@ Hisat = function(fq1=fq1,fq2=fq2, # Input fq files. Make fq2="None" if single-en
 
   cmd=paste("samtools","index",
             paste(out_prefix,".bam",sep=""),
-            "-@",threads,
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
 
@@ -336,22 +344,19 @@ MergeBAM=function(BAMs=BAMs,# SPACE-separated list of bam files.
             "-",
             BAMs,"|",
             "samtools","sort",
-            "-@",threads,
+            "-@",Threads,
             "-o",paste(out_prefix,".bam",sep=""),
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   
   cmd=paste("samtools","index",
             paste(out_prefix,".bam",sep=""),
-            "-@",threads,
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   
   return(0)
 }
 
-# Assemble transcripts from BAM.
-# Dependencies: StringTie, script from EvidenceModeler
 StringTie = function(input_bam=input_bam, # Input BAM.
                      output_prefix=out_prefix,
                      threads=threads){
@@ -370,17 +375,12 @@ StringTie = function(input_bam=input_bam, # Input BAM.
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   
-  cmd=paste("awk -F '\t' -v OFS='\t' '{if ($2==\"Cufflinks\")  $2=\"StringTie\";print$0}'",
+  cmd=paste("awk -F '\t' -v OFS='\t' '{if ($2==\"Cufflinks\")  $2=\"TRANSCRIPT\";print$0}'",
             paste(output_prefix,"_tmp.gff3",sep=""),">",
             paste(output_prefix,".gff3",sep=""),
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   system(paste("rm"," ",output_prefix,"_tmp.gff3",sep=""),wait=TRUE)
-  
-  cmd="awk -F '\t' -v OFS='\t' '{if ($2==\"StringTie\")  $2=\"TRANSCRIPT\";print$0}' Drosophila.gff3 > transcripts.gff"
-  print(cmd);system(cmd,wait=TRUE)
-  system("rm Drosophila.gff3")
-  system("mv transcripts.gff Drosophila.gff3")
   
   return(paste(output_prefix,".gtf",sep=""))
 }
@@ -493,7 +493,6 @@ gm_ep = function(genome=genome,
   threads=as.character(threads)
   
   cmd=paste("gmes_petap.pl","--verbose",
-            "--format GFF3",
             "--EP",
             "--dbep",faa,
             "--soft_mask","auto",
@@ -502,16 +501,15 @@ gm_ep = function(genome=genome,
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   
-  cmd=paste("agat_convert_sp_gxf2gxf.pl",
-            "--gff genemark.gff3",
-            "-o sorted_tmp.gff3",
-            sep=" ")
+  cmd="agat_convert_sp_gxf2gxf.pl --gff genemark.gtf -o sorted_tmp.gff3"
   print(cmd);system(cmd,wait=TRUE)
   
   cmd="awk -F '\t' -v OFS='\t' '{if ($2==\"GeneMark.hmm3\")  $2=\"GeneMark_EP\";print$0}' sorted_tmp.gff3 > sorted.gff3"
   print(cmd)
   system(cmd,wait=TRUE)
   
+  system("mv prothint/prothint_augustus.gff .")
+  system("rm -r prothint")
   system("rm sorted_tmp.gff3")
   system("rm -r data")
   system("rm genemark.agat.log")
@@ -574,7 +572,6 @@ gm_et = function(genome=genome, # soft masked
   # GeneMark-ET
   # generating trained gmhmm.mod for GeneMarkHMM
   cmd=paste("gmes_petap.pl","--verbose",
-            "--format GFF3",
             "--ET","introns.f.gff",      
             "--soft_mask","auto",
             "--cores",threads,
@@ -583,7 +580,7 @@ gm_et = function(genome=genome, # soft masked
   print(cmd);system(cmd,wait=TRUE)
   
   cmd=paste("agat_convert_sp_gxf2gxf.pl",
-            "--gff genemark.gff3",
+            "--gff genemark.gtf",
             "-o sorted_tmp.gff3",
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
@@ -785,12 +782,63 @@ augustus=function(fna=fna, # genome
   setwd(wd)
 }
 
+# GALBA: gene prediction trained by protein-genome alignments
+# Dependencies: GALBA
+galba=function(genome=genome,
+               proteins=proteins, # comma list
+               species=species,
+               threads=threads,
+               out_dir=out_dir){
+  threads=as.character(threads)
+  out_dir=sub("/$","",out_dir)
+  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "),wait=TRUE)}
+  wd=getwd();setwd(out_dir)
+  
+  prot=unlist(strsplit(proteins,","))
+  for (i in prot){
+    system(paste("cat",i,">>","proteins.faa",sep=" "),wait=TRUE)
+  }
+  
+  cmd=paste("galba.pl",
+            paste("--species=",species,sep=""),
+            paste("--genome=",genome,sep=""),
+            "--prot_seq=proteins.faa",
+            paste("--workingdir=",out_dir,sep=""),
+            paste("--threads=",threads,sep=""),
+            "--skipGetAnnoFromFasta",
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  cmd=paste("agat_convert_sp_gxf2gxf.pl",
+            "--gff augustus.hints.gtf",
+            "-o sorted_tmp.gff3",
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  cmd="awk -F '\t' -v OFS='\t' '{if ($2==\"AUGUSTUS\")  $2=\"GALBA\";print$0}' sorted_tmp.gff3 > sorted.gff3"
+  print(cmd);system(cmd,wait=TRUE)
+  
+  system(paste("mv"," ","$AUGUSTUS_CONFIG_PATH/species/",species," ",
+               out_dir,sep=""))
+  
+  system("rm proteins.faa")
+  system("rm sorted_tmp.gff3")
+  system("rm -r errors")
+  system("rm genome_header.map")
+  system("rm pygustus_hints.out")
+  system("rm pygustus_hints.py")
+  system("rm what-to-cite.txt")
+  setwd(wd)
+}
+
 # BRAKER
+# if bam and ref_protein provided, run braker twice and run TSEBRA
+# else: run braker once
 braker=function(genome=genome,
-                bam=bam, # comma-list
-                ref_proteins=ref_proteins,
+                bam="none", # comma-list
+                ref_proteins="none",
                 species=species,
-                tsebra.conf=tsebra.conf, # TSEBRA/config/default.cfg 
+                tsebra.conf="none", # TSEBRA/config/default.cfg 
                 out_dir=out_dir,
                 threads=threads){
   threads=as.character(threads)
@@ -799,41 +847,64 @@ braker=function(genome=genome,
   wd=getwd();setwd(out_dir)
   
   # BRAKER with RNA-seq
-  system(paste("mkdir"," ",out_dir,"/braker_rna/",sep=""),wait=TRUE)
-  cmd=paste("braker.pl",
-            paste("--cores=",threads,sep=""),
-            paste("--workingdir=",out_dir,"/braker_rna/",sep=""),
-            paste("--species=",species,"_braker_rna",sep=""),
-            paste("--genome=",genome,sep=""),
-            paste("--bam=",bam,sep=""),
-            "--softmasking",
-            sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
+  if (bam!="none"){
+    system(paste("mkdir"," ",out_dir,"/braker_rna/",sep=""),wait=TRUE)
+    cmd=paste("braker.pl",
+              paste("--cores=",threads,sep=""),
+              paste("--workingdir=",out_dir,"/braker_rna/",sep=""),
+              paste("--species=",species,"_braker_rna",sep=""),
+              paste("--genome=",genome,sep=""),
+              #paste("--hints=",hints_genemark_et.gff,sep=""),
+              #paste("--geneMarkGtf=",genemark_et.gtf),
+              paste("--bam=",bam,sep=""),
+              "--softmasking",
+              sep=" ")
+    print(cmd);system(cmd,wait=TRUE)
+    system(paste("mv"," ","$AUGUSTUS_CONFIG_PATH/species/",species,"_braker_rna"," ",
+                 out_dir,"/braker_rna/",sep=""))
+  }
   
   # BRAKER with OrthoDB
-  system(paste("mkdir"," ",out_dir,"/braker_prot/",sep=""),wait=TRUE)
-  cmd=paste("braker.pl",
-            paste("--cores=",threads,sep=""),
-            paste("--workingdir=",out_dir,"/braker_prot/",sep=""),
-            paste("--species=",species,"_braker_prot",sep=""),
-            paste("--genome=",genome,sep=""),
-            paste("--prot_seq=",ref_proteins,sep=""),
-            "--softmasking",
-            sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
+  if (ref_proteins!="none"){
+    system(paste("mkdir"," ",out_dir,"/braker_prot/",sep=""),wait=TRUE)
+    cmd=paste("braker.pl",
+              paste("--cores=",threads,sep=""),
+              paste("--workingdir=",out_dir,"/braker_prot/",sep=""),
+              paste("--species=",species,"_braker_prot",sep=""),
+              paste("--genome=",genome,sep=""),
+              #paste("--hints=",hints_genemark_ep.gff,sep=""),
+              #paste("--geneMarkGtf=",genemark_ep.gtf),
+              paste("--prot_seq=",ref_proteins,sep=""),
+              "--softmasking",
+              sep=" ")
+    print(cmd);system(cmd,wait=TRUE)
+    system(paste("mv"," ","$AUGUSTUS_CONFIG_PATH/species/",species,"_braker_prot"," ",
+                 out_dir,"/braker_prot/",sep=""))
+  }
   
   # TSEBRA
-  cmd=paste("tsebra.py",
-            "-g",paste(out_dir,"/braker_rna/augustus.hints.gtf",",",
-                       out_dir,"/braker_prot/augustus.hints.gtf",
-                       sep=""),
-            "-c",tsebra.conf,
-            "-e",paste(out_dir,"/braker_rna/hintsfile.gff",",",
-                       out_dir,"/braker_prot/hintsfile.gff",
-                       sep=""),
-            "-o","braker_final.gtf",
-            sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
+  if (tsebra.conf!="none"){
+    cmd=paste("tsebra.py",
+              "-g",paste(out_dir,"/braker_rna/augustus.hints.gtf",",",
+                         out_dir,"/braker_prot/augustus.hints.gtf",
+                         sep=""),
+              "-c",tsebra.conf,
+              "-e",paste(out_dir,"/braker_rna/hintsfile.gff",",",
+                         out_dir,"/braker_prot/hintsfile.gff",
+                         sep=""),
+              "-o","braker_final.gtf",
+              sep=" ")
+    print(cmd);system(cmd,wait=TRUE)
+  }
+  
+  if (tsebra.conf=="none"){
+    if (bam!="none"){
+      system(paste("cp"," ",out_dir,"/braker_rna/augustus.hints.gtf"," ","braker_final.gtf",sep=""))
+    }
+    if (ref_proteins!="none"){
+      system(paste("cp"," ",out_dir,"/braker_prot/augustus.hints.gtf"," ","braker_final.gtf",sep=""))
+    }
+  }
   
   cmd=paste("agat_convert_sp_gxf2gxf.pl",
             "--gff braker_final.gtf",
@@ -842,7 +913,7 @@ braker=function(genome=genome,
   print(cmd);system(cmd,wait=TRUE)
   system("rm braker_final.agat.log")
   
-  cmd="awk -F '\t' -v OFS='\t' '{if ($2==\"AUGUSTUS\")  $2=\"TSEBRA\";print$0}' sorted_tmp.gff > sorted.gff3"
+  cmd="awk -F '\t' -v OFS='\t' '{if ($2==\"AUGUSTUS\")  $2=\"BRAKER\";print$0}' sorted_tmp.gff > sorted.gff3"
   print(cmd);system(cmd,wait=TRUE)
   
   system("rm sorted_tmp.gff")
@@ -1065,7 +1136,7 @@ evm=function(protein_alignments.gff3="none", # Absolute path. GFF3 for protein-g
 # Dependencies: pasa,sqlite3,,agat,scripts from PASAPipeline
 pasa=function(genome=genome,
               transcripts=transcripts,
-              original.gff3=original.gff3, # only protein-coding gene
+              original.gff3=original.gff3, # only protein-coding gene with 'evidence' in 9th
               pasa.alignAssembly.conf=pasa.alignAssembly.conf, # Path to PASApipeline/pasa_conf/pasa.alignAssembly.Template.txt
               pasa.annotationCompare.conf=pasa.annotationCompare.conf, # Path to PASApipeline/pasa_conf/pasa.annotationCompare.Template.txt
               threads=threads,
@@ -1155,6 +1226,7 @@ pasa=function(genome=genome,
 pasa_more=function(species=species,
                    genome=genome,
                    PASA.gff3=PASA.gff3,
+                   gene_evidence.tsv=gene_evidence.tsv, # from function evm
                    out_dir=out_dir){
   out_dir=sub("/$","",out_dir)
   if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "),wait=TRUE)}
@@ -1165,6 +1237,10 @@ pasa_more=function(species=species,
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   gff3=paste("./",species,"_genes.gff3",sep="")
+  cmd=paste("cp",gene_evidence.tsv,
+            paste("./",species,"_gene_evidence.tsv",sep=""),
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
   
   cmd=paste("maker_map_ids",
             "--iterate 0",
@@ -1176,6 +1252,8 @@ pasa_more=function(species=species,
   print(cmd);system(cmd,wait=TRUE)
   system("rm MAKER.name.map",wait=TRUE)
   
+  system(paste("cp",genome,"./genome.fa",sep=" "))
+  genome="./genome.fa"
   cmd=paste("gffread","-O",
             gff3,"-S",
             "-g",genome,
@@ -1222,6 +1300,9 @@ pasa_more=function(species=species,
   system(paste("rm",paste(species,"_transcripts.fna",sep=""),sep=" "),wait=TRUE)
   system(paste("rm",paste(species,"_cds.fna",sep=""),sep=" "),wait=TRUE)
   system(paste("rm",paste(species,"_proteins.faa",sep=""),sep=" "),wait=TRUE)
+  system("rm *.fai")
+  system("rm ./genome.fa")
+  setwd(wd)
 }
 
 # PseudoPipe for pseudogene identification

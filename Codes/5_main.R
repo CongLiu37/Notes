@@ -246,7 +246,7 @@ Quast=function(fna=fna, # FASTA of genome assembly.
     if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))
     }
     
-    cmd=paste("quast --min-contig 0",
+    cmd=paste("quast.py --min-contig 0",
               "-o",out_dir,
               "-t",threads,
               fna,
