@@ -1,5 +1,8 @@
-# Genome curation and evaluation
+# Curation and evaluation of genome and genome annotation (kmer-based genome survey, decontamination, quality of genome/genome annotation)
 
+#######################################################################
+# kmer-based genome survey
+#######################################################################
 # Build kmc database
 # Dependencies: KMC
 kmc=function(fq1=fq1, # Input fq1
@@ -234,85 +237,9 @@ merqury=function(reads=reads, # comma list
   setwd(wd)
 }
 
-# Quast: Quality of assembly.
-# Dependencies: QUAST
-Quast=function(fna=fna, # FASTA of genome assembly.
-               out_dir=out_dir,
-               threads=threads){
-  threads=as.character(threads)
-  out_dir=sub("/$","",out_dir)
-  
-  if (!file.exists(paste(out_dir,"/report.tsv",sep=""))){
-    if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))
-    }
-    
-    cmd=paste("quast.py --min-contig 0",
-              "-o",out_dir,
-              "-t",threads,
-              fna,
-              sep=" ")
-    print(cmd);system(cmd,wait=TRUE)
-  }
-  
-  res=read.table(paste(out_dir,"/report.tsv",sep=""),
-                 header=FALSE,row.names=1,sep="\t",quote="",comment.char="")
-  o=list(Assembly=fna,
-         ContigCount=res["# contigs",],
-         MaxContig=res["Largest contig",],
-         TotalSize=res["Total length",],
-         GCpercent=res["GC (%)",],
-         N50=res["N50",],
-         N90=res["N90",],
-         auN=res["auN",],
-         L50=res["L50",],
-         L90=res["L90",],
-         GapPer100kb=res["# N's per 100 kbp",])
-  return(o)
-}
-
-# BUSCO: Assess genome completeness via searching universal single-copy orthologue genes by BUSCO.
-# Dependencies: BUSCO
-BUSCO=function(fna=fna, # Fasta file of nucleotide or protein.
-               # Be consistent with Mode.
-               Mode=Mode, # genome/proteins/transcriptome
-               Lineage=Lineage, # Lineage dataset, e.g. insecta_odb10
-               # Available datasets: https://busco-data.ezlab.org/v5/data/lineages/
-               # BUSCO will download lineage dataset automatically.
-               Out_prefix=Out_prefix, # Give the analysis run a recognisable short name.
-               # Output folders and files will be labelled with this name.
-               # Cannot be path
-               out_dir=out_dir,
-               Threads=Threads){
-  Threads=as.character(Threads)
-  out_dir=sub("/$","",out_dir)
-  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
-  
-  if (!file.exists(paste(out_dir,"/",Out_prefix,"/short_summary.specific.",Lineage,".",Out_prefix,".txt",sep=""))){
-    wd_begin=getwd();setwd(out_dir)
-    cmd=paste("busco",
-              "--in",fna,
-              "--lineage_dataset",Lineage,
-              "--out",Out_prefix,
-              "--mode",Mode,
-              "--cpu",Threads,
-              sep=" ")
-    print(cmd);system(cmd,wait=TRUE)
-    setwd(wd_begin)
-  }
-
-
-  # BUSCO results
-  l=unlist(strsplit(Lineage,"/"));l=l[length(l)]
-  if (file.exists(
-    paste(out_dir,"/",Out_prefix,"/short_summary.specific.",l,".",Out_prefix,".txt",sep="")
-  )){
-    re=readLines(paste(out_dir,"/",Out_prefix,"/short_summary.specific.",l,".",Out_prefix,".txt",sep=""))[9]
-    re=sub("\t","",re);re=sub("\t   ","",re)
-    return(re)
-  }
-  
-}
-
+#######################################################################
+# Decontamination 
+#######################################################################
 # CheckM: Assess completeness and contamination of genomic bins via using collocated sets of genes that are ubiquitous and single-copy within a phylogenetic lineage by CheckM.
 # CheckM is dependent on python3, HMMER (>=3.1b1), prodigal (2.60 or >=2.6.1), pplacer (>=1.1). 
 checkm=function(bin_dir=bin_dir, # the directory in which bins are located.
@@ -332,25 +259,6 @@ checkm=function(bin_dir=bin_dir, # the directory in which bins are located.
   
   return(out_dir)
 }
-
-# Compare gff
-# Dependencies: biocode
-compare_gff=function(ref.gff=ref.gff,
-                     predicted.gff=predicted.gff,
-                     feature=feature, # Exon/CDS
-                     out_dir=out_dir){
-  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
-  
-  cmd=paste("compare_gene_structures.py",
-            "-a1",ref.gff,
-            "-a2",predicted.gff,
-            "-f",feature,
-            "-o",out_dir,
-            sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  
-}
-
 
 # Profile contaminations via reconstructing the SSU rRNAs.
 # Dependencies: PhyloFlash
@@ -583,9 +491,89 @@ Diamond_Megan=function(fna, # fna. Input DNA sequences.
   return(paste(assignment_dir,"/",out_basename,".tsv",sep=""))
 }
 
+#######################################################################
+# Quality of genome/genome annotation
+#######################################################################
+# Quast: Quality of assembly.
+# Dependencies: QUAST
+Quast=function(fna=fna, # FASTA of genome assembly.
+               out_dir=out_dir,
+               threads=threads){
+  threads=as.character(threads)
+  out_dir=sub("/$","",out_dir)
+  
+  if (!file.exists(paste(out_dir,"/report.tsv",sep=""))){
+    if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
+    cmd=paste("quast.py --min-contig 0",
+              "-o",out_dir,
+              "-t",threads,
+              fna,
+              sep=" ")
+    print(cmd);system(cmd,wait=TRUE)
+  }
+  
+  res=read.table(paste(out_dir,"/report.tsv",sep=""),
+                 header=FALSE,row.names=1,sep="\t",quote="",comment.char="")
+  o=list(Assembly=fna,
+         ContigCount=res["# contigs",],
+         MaxContig=res["Largest contig",],
+         TotalSize=res["Total length",],
+         GCpercent=res["GC (%)",],
+         N50=res["N50",],
+         N90=res["N90",],
+         auN=res["auN",],
+         L50=res["L50",],
+         L90=res["L90",],
+         GapPer100kb=res["# N's per 100 kbp",])
+  return(o)
+}
+
+BUSCO=function(fna=fna, # Fasta file of nucleotide or protein.
+               # Be consistent with Mode.
+               Mode=Mode, # genome/proteins/transcriptome
+               Lineage=Lineage, # Lineage dataset, e.g. insecta_odb10
+               # Available datasets: https://busco-data.ezlab.org/v5/data/lineages/
+               # BUSCO will download lineage dataset automatically.
+               Out_prefix=Out_prefix, # Give the analysis run a recognisable short name.
+               # Output folders and files will be labelled with this name.
+               # Cannot be path
+               out_dir=out_dir,
+               Threads=Threads){
+  Threads=as.character(Threads)
+  out_dir=sub("/$","",out_dir)
+  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
+  
+  f1=paste(out_dir,"/",Out_prefix,"/short_summary.specific.",Lineage,".",Out_prefix,".txt",sep="")
+  f2=paste(out_dir,"/",Out_prefix,"/short_summary.specific..",Out_prefix,".txt",sep="")
+  if (!file.exists(f1) & !file.exists(f2)){
+    wd_begin=getwd();setwd(out_dir)
+    if (file.exists(Out_prefix)){system(paste("rm"," -r ",Out_prefix,sep=""))}
+    cmd=paste("busco","--force",
+              "--in",fna,
+              "--lineage_dataset",Lineage,
+              "--out",Out_prefix,
+              "--mode",Mode,
+              "--cpu",Threads,
+              sep=" ")
+    print(cmd);system(cmd,wait=TRUE)
+    setwd(wd_begin)
+  }
+  
+  if (file.exists(f1)){f=f1}
+  if (file.exists(f2)){f=f2}
+  re=readLines(f)[8]
+  re=sub("\t","",re);re=sub("\t   ","",re)
+  system(paste("cat",f,sep=" "))
+  return(re)
+}
+
 # gene model statistics
 gene_model_stat=function(gff3=gff3,
-                         out=out){
+                         out=out,
+                         tmp_dir=tmp_dir){
+  if (!file.exists(tmp_dir)){system(paste("mkdir",tmp_dir,sep=" "))}
+  wd=getwd();setwd(tmp_dir)
+  
   cmd=paste("awk -F '\t' -v OFS='\t' '{if ($3==\"gene\") print $4,$5}'",
             gff3,"> gene_coordinate.tsv",
             sep=" ")
@@ -619,26 +607,28 @@ gene_model_stat=function(gff3=gff3,
                transcript_per_gene=nrow(mRNA)/nrow(gene),
                gene_less_200bp=nrow(subset(gene,gene$V3<200)))
   write.table(d,out,sep="\t",row.names=FALSE,quote=FALSE)
-  system("rm gene_coordinate.tsv")
-  system("rm exon_coordinate.tsv")
-  system("rm mRNA_coordinate.tsv")
-  
+  setwd(wd)
+  system(paste("rm -r",tmp_dir,sep=" "))
 }
 
-# gffread: Extract sequences from gff.
 gffread=function(gff=gff,
                  fna=fna, # genome
                  exons="none",
                  cds="none",
-                 pep="none"){
+                 pep="none",
+                 tmp_dir=tmp_dir){
+  tmp_dir=sub("/$","",tmp_dir)
+  if (!file.exists(tmp_dir)){system(paste("mkdir",tmp_dir,sep=" "))}
+  system(paste("cp",fna,paste(tmp_dir,"/genome.fna",sep=""),sep=" "))
   cmd=paste("gffread","-O",
             gff,
-            "-g",fna,
+            "-g",paste(tmp_dir,"/genome.fna",sep=""),
             sep=" ")
   if (exons!="none"){cmd=paste(cmd,"-w",exons,sep=" ")}
   if (cds!="none"){cmd=paste(cmd,"-x",cds,sep=" ")}
   if (pep!="none"){cmd=paste(cmd,"-y",pep,sep=" ")}
   print(cmd);system(cmd,wait=TRUE)
+  system(paste("rm -r",tmp_dir,sep=" "))
 }
 
 # Convert genbank to gff
@@ -664,7 +654,74 @@ SplitGFF=function(in.gff=in.gff,
   print(cmd);system(cmd,wait=TRUE)
 }
 
+# gFACs: filter gene models (gff3)
+gfacs=function(evm.gff3=evm.gff3, # EvidenceModeler.gff3
+               genome.fna=genome.fna,
+               out_dir=out_dir){
+  out_dir=sub("/$","",out_dir)
+  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
+  wd=getwd();setwd(out_dir)
+  system(paste("cp",genome.fna,"./genome.fa",sep=" "),wait=TRUE)
+  
+  cmd=paste("gFACs.pl",
+            "-f EVM_1.1.1_gff3 -p gFACs --create-gtf --statistics --fasta ./genome.fa",
+            "--statistics-at-every-step --splice-table --rem-all-incompletes",
+            "--allowed-inframe-stop-codons 0",
+            "--min-exon-size 20 --min-intron-size 20 --min-CDS-size 150",
+            #"--rem-genes-without-start-and-stop-codon",
+            #"--rem-genes-without-start-codon --rem-genes-without-stop-codon",
+            "-O ./",evm.gff3,
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  cmd=paste("awk -F '\t' -v OFS='\t' '{if ($3==\"gene\") print $9}' gFACs_out.gtf | sed 's/ID=//' > geneID.lst",
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  cmd=paste("agat_sp_filter_feature_from_keep_list.pl",
+            "--gff",evm.gff3,
+            "--keep_list geneID.lst --out gfacs.gff3",
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  cmd="agat_convert_sp_gxf2gxf.pl --gff gfacs.gff3 -o sorted.gff3"
+  print(cmd);system(cmd,wait=TRUE)
+  
+  system("rm geneID.lst")
+  system("rm gfacs.agat.log")
+  system("rm gFACs_gene_table.txt")
+  system("rm gfacs.gff3")
+  system("rm gFACs_out.gtf")
+  system("rm gfacs_report.txt")
+  system("rm gFACs_statistics.txt")
+  system("rm tempy.txt")
+  system("rm ./genome.fa")
+  system("rm ./genome.fa.idx")
+  setwd(wd)
+}
 
+# # Blast protein against itself and extract proteins IDs hit too many times
+# # Dependencies: blastp
+# proteinWithManyHits=function(proteins.faa=proteins.faa,
+#                              out_prefix=out_prefix,
+#                              threads=threads){
+#   threads=as.character(threads)
+#   system(paste("cp"," ",proteins.faa," ",out_prefix,".faa",sep=""))
+#   proteins=paste(out_prefix,".faa",sep="")
+#   
+#   cmd=paste("makeblastdb",
+#             "-in",proteins.faa1,
+#             "-dbtype prot",
+#             sep=" ")
+#   print(cmd);system(cmd,wait=TRUE)
+#   cmd=paste("blastp",
+#             "-num_threads",threads,
+#             "-db",proteins.faa1,
+#             "-query",proteins.faa2,
+#             "-outfmt 6",
+#             "-evalue 1e-5",
+#             "-num_alignments 20",
+#             "-out",paste(out_basename,".blast",sep=""),
+#             sep=" ")
+#   print(cmd);system(cmd,wait=TRUE)
+# }
 
 
 
@@ -784,12 +841,9 @@ ContaminationPlot=function(df, # Each row represents a scaffold.
                            title="", # plot title
                            out.pdf=out.pdf){
   library(ggplot2);library(ggExtra)
-  df=data.frame(cov=rnorm(1000,50,10),GC.content=rnorm(1000,38,5))
-  title=""
+  #df=data.frame(cov=rnorm(1000,50,10),GC.content=rnorm(1000,38,5))
+  #title=""
   p1=ggplot(df,aes(x=cov,y=GC.content))+
-    #stat_density2d(geom="raster",contour=FALSE,aes(fill=..density..))+
-    #stat_density2d(size=0.1,color="black")+
-    #scale_fill_distiller(palette="RdYlGn")+
     geom_point(size=0.01)+
     theme_classic()+
     labs(title=title,x="coverage",y="GC%")+
@@ -865,3 +919,20 @@ SprayNPray=function(fna=fna, # fna. Input DNA sequences.
 #   print(cmd);system(cmd,wait=TRUE)
 #   
 # }
+# Compare gff
+# Dependencies: biocode
+compare_gff=function(ref.gff=ref.gff,
+                     predicted.gff=predicted.gff,
+                     feature=feature, # Exon/CDS
+                     out_dir=out_dir){
+  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
+  
+  cmd=paste("compare_gene_structures.py",
+            "-a1",ref.gff,
+            "-a2",predicted.gff,
+            "-f",feature,
+            "-o",out_dir,
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+}

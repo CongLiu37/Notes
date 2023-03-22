@@ -1,5 +1,4 @@
-# Genomic analysis based on genome annotation (protein-coding)
-# Gene function annotation, genome collinearity, horizontal gene transfer
+# Genomic analysis of protein-coding genes (gene function annotation, genome collinearity, horizontal gene transfer)
 
 # For peptide sets from NCBI
 # Retain the longest protein isoform of each gene by header lines of faa.
@@ -320,7 +319,7 @@ wgdi_dot=function(blast=blast,blast_reverse="false",
   conf[10]="score = 100"
   conf[11]="evalue = 1e-5"
   conf[12]="repeat_number = 10"
-  conf[13]="position = order"
+  conf[13]="position = start"
   conf[14]=paste("blast_reverse = ",blast_reverse,sep="")
   conf[15]="ancestor_left = none"
   conf[16]="ancestor_top = none"

@@ -1,1 +1,486 @@
 # Metagenome/metatranscriptome profiling
+
+# Map DNA reads to reference
+# Dependencies: Minimap2, SAMtools
+minimap2=function(long_reads=long_reads, # space-separated list for PE
+                  lr_type=lr_type, # long read type. 
+                  # "map-pb" for PacBio
+                  # "map-hifi" for HiFi
+                  # "map-ont" for ONT reads.
+                  # "sr" for NGS
+                  # "asm5" for accurate reads diverging <5% to assembly
+                  assembly=assembly,
+                  out_prefix=out_prefix,
+                  threads=threads){
+  cmd=paste("minimap2",
+            "-ax",lr_type,
+            "-t",threads,
+            "--secondary=no","--MD","-L",
+            assembly,long_reads,"|",
+            "samtools","view","-@",threads,"-bS","|",
+            "samtools","sort",
+            "-@",threads,
+            "-o",paste(out_prefix,".bam",sep=""),
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  cmd=paste("samtools","index",paste(out_prefix,".bam",sep=""),sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+}
+
+# Map short RNA reads to reference genome.
+# Compress SAM to BAM, sort BAM, index BAM.
+# Dependencies: Hisat2, SAMtools
+Hisat = function(fq1=fq1,fq2=fq2, # Input fq files. Make fq2="None" if single-end.
+                 # Comma-separated list.
+                 fna=fna, # genome (soft masked for training AUGUSTUS)
+                 index=index, # Basename of Hisat2 index of reference genome.
+                 out_prefix=out_prefix, # Prefix of output BAM file.
+                 threads=threads){
+  threads = as.character(threads)
+  
+  if (!file.exists(paste(index,".1.ht2",sep=""))){
+    cmd = paste("hisat2-build",
+                fna,
+                index,sep=" ")
+    print(cmd);system(cmd,wait=TRUE)
+  }
+  
+  if (fq2!="None"){ # pair-end
+    cmd = paste("hisat2",
+                "--dta",
+                "-x",index,
+                "-p",threads,
+                "-1",fq1,
+                "-2",fq2,
+                "|",
+                "samtools","view",
+                "-@",threads,
+                "-bS",
+                "|",
+                "samtools","sort",
+                "-@",threads,
+                "-o",paste(out_prefix,".bam",sep=""),
+                sep=" ")
+  }else{ # single pair
+    cmd = paste("hisat2",
+                "--dta",
+                "-x",index,
+                "-p",threads,
+                "-U",fq1,
+                "|",
+                "samtools","view",
+                "-@",threads,
+                "-bS",
+                "|",
+                "samtools","sort",
+                "-@",threads,
+                "-o",paste(out_prefix,".bam",sep=""),
+                sep=" ")
+  }
+  print(cmd);system(cmd,wait=TRUE)
+  
+  cmd=paste("samtools","index",
+            paste(out_prefix,".bam",sep=""),
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  return(paste(out_prefix,".bam",sep=""))
+}
+
+# Extract reads mapped/unmapped to an assembly via SAMtools.
+# Dependencies: SAMtools
+Extract_fq=function(bam=bam,
+                    paired=paired, # logical. T for paired. 
+                    mapped=mapped, # logical. T for mapped
+                    out_prefix=out_prefix,
+                    reads_format=reads_format, # "fq" or "fa"
+                    threads=threads){
+  threads=as.character(threads)
+  if (paired){
+    if (mapped){flag="-f 2"}else{flag="-G 2"}
+    if (reads_format=="fq"){
+      samtools="samtools fastq";reads_format="fq.gz"}else{samtools="samtools fasta"}
+    cmd=paste(samtools,
+              flag,
+              "-@",threads,
+              "-1",paste(out_prefix,".1.",reads_format,sep=""),
+              "-2",paste(out_prefix,".2.",reads_format,sep=""),
+              bam,
+              sep=" ")
+  }
+  if (!paired){
+    if (mapped){flag="-f 2"}else{flag="-G 2"}
+    if (reads_format=="fq"){
+      samtools="samtools fastq";reads_format="fq.gz"}else{samtools="samtools fasta"}
+    cmd=paste(samtools,
+              flag,
+              "-@",threads,
+              bam,">",
+              paste(out_prefix,".",reads_format,sep=""),
+              sep=" ")
+  }
+  print(cmd);system(cmd,wait=TRUE)
+}
+
+# Remove rRNA from metatranscriptome by SortMeRNA
+# Dependencies: SortMeRNA
+sortmerna=function(fq1=fq1,fq2="none",
+                   reference=reference, # smr_v4.3_default_db.fasta
+                   out_dir=out_dir,
+                   threads=threads){
+  threads=as.character(threads)
+  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
+  wd=getwd();setwd(out_dir)
+  
+  cmd=paste("sortmerna",
+            "--ref",reference,
+            "--reads",fq1,
+            sep=" ")
+  if (fq2!="none"){
+    cmd=paste(cmd,
+              "--reads",fq2,
+              sep=" ")
+  }
+  cmd=paste(cmd,
+            "--workdir",out_dir,
+            "--threads",threads,
+            "--fastx True",
+            "--paired_in True") # paired-end reads as Aligned when either of them is Aligned.
+  print(cmd);system(cmd,wait=TRUE)
+  
+  setwd(wd)
+}
+
+# Meta-genome/transcriptome assembly by IDBA-UD
+# Dependencies: IDBA-UD
+idba_ud=function(fq1=fq1,fq2=fq2, # comma-list, paired
+                 out_dir=out_dir,
+                 threads=threads){
+  threads=as.character(threads)
+  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
+  wd=getwd();setwd(out_dir)
+  system("mkdir tmp")
+  system("mkdir idba_ud")
+  
+  fq1=unlist(strsplit(fq1,","))
+  fq2=unlist(strsplit(fq2,","))
+  for (i in 1:length(fq1)){
+    cmd=paste("gzip -c -d",fq1[i],">","tmp/read1.fq",sep=" ")
+    print(cmd);system(cmd,wait=TRUE)
+    cmd=paste("gzip -c -d",fq2[i],">","tmp/read2.fq",sep=" ")
+    print(cmd);system(cmd,wait=TRUE)
+    cmd=paste("fq2fa --merge --filter tmp/read1.fq tmp/read2.fq tmp/tmp.fa",sep=" ")
+    print(cmd);system(cmd,wait=TRUE)
+    system("cat tmp/tmp.fa >> tmp/read.fa")
+    system("rm tmp/read1.fq tmp/read2.fq tmp/tmp.fa")
+  }
+  
+  cmd=paste("idba_ud",
+            "-r tmp/read.fa",
+            "-o idba_ud",
+            "--num_threads",threads,
+            "--min_count 1",
+            "--mink 20",
+            "--maxk 120",
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  system("rm -r tmp/")
+  setwd(wd)
+}
+
+# IDBA-MT for metatranscriptome
+idba_mt=function(fq1=fq1,fq2=fq2, # comma-list
+                 contigs=contigs,
+                 out_dir=out_dir){
+  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
+  wd=getwd();setwd(out_dir)
+  system("mkdir tmp")
+  system("mkdir idba_mt")
+  
+  fq1=unlist(strsplit(fq1,","))
+  fq2=unlist(strsplit(fq2,","))
+  for (i in 1:length(fq1)){
+    cmd=paste("gzip -c -d",fq1[i],">","tmp/read1.fq",sep=" ")
+    print(cmd);system(cmd,wait=TRUE)
+    cmd="fq2fa tmp/read1.fq tmp/read1.fa" # tool from IDBA-UD
+    print(cmd);system(cmd,wait=TRUE)
+    system("rm tmp/read1.fq")
+    
+    cmd=paste("gzip -c -d",fq2[i],">","tmp/read2.fq",sep=" ")
+    print(cmd);system(cmd,wait=TRUE)
+    cmd="fq2fa tmp/read2.fq tmp/read2.fa"
+    print(cmd);system(cmd,wait=TRUE)
+    system("rm tmp/read2.fq")
+    
+    N1=system("seqkit grep -s -r -p 'N' tmp/read1.fa | grep '>' | sed 's/>//'",intern=TRUE)
+    N2=system("seqkit grep -s -r -p 'N' tmp/read2.fa | grep '>' | sed 's/>//'",intern=TRUE)
+    N=union(N1,N2)
+    
+    IDs=system("grep '>' tmp/read1.fa | sed 's/>//'",intern=TRUE)
+    IDs=IDs[!(IDs %in% N)]
+    writeLines(IDs,"tmp/IDs.lst")
+    
+    cmd="seqkit grep -f tmp/IDs.lst tmp/read1.fa >> tmp/1.fa"
+    print(cmd);system(cmd,wait=TRUE)
+    cmd="seqkit grep -f tmp/IDs.lst tmp/read2.fa >> tmp/2.fa"
+    print(cmd);system(cmd,wait=TRUE)
+    
+    system("rm tmp/read1.fa tmp/read2.fa tmp/IDs.lst")
+  }
+  
+  cmd=paste("idba-mt",
+            "-t tmp/1.fa",
+            "-f tmp/2.fa",
+            "-O idba_mt",
+            "-c",contigs,
+            "-r 300",# read length
+            "-i 200",# insert size
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+}
+
+# Assemble meta-genome/transcriptome into proteins by Plass
+# Dependencies: plass
+plass=function(fq1=fq1,fq2=fq2, # comma-list
+               threads=threads,
+               out_dir=out_dir){
+  threads=as.character(threads)
+  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
+  wd=getwd();setwd(out_dir)
+  system("mkdir tmp")
+  
+  fq1=unlist(strsplit(fq1,","))
+  fq2=unlist(strsplit(fq2,","))
+  fq=""
+  for (i in 1:length(fq1)){
+    fq=paste(fq,fq1[i],fq2[i],sep=" ")
+  }
+  
+  cmd=paste("plass assemble",fq,"plass.fa tmp",
+            "--threads",threads,
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  setwd(wd)
+}
+
+# SPAdes: Genome/Metagenome assembly.
+# long reads can be provided for scaffolding NGS assembly
+# Dependencies: SPAdes
+SPAdes=function(fq1=fq1,fq2=fq2, 
+                # comma-list
+                # Input NGS reads (fq). Set fq2="none" if single-end.
+                # PacBio CCS (HiFi) reads should be treated as fq1.
+                contigs.fa="none", # Reliable contigs of the same genome.
+                pacbio_clr="none",nanopore="none",sanger="none", # Long reads
+                meta=meta, # Logical. If TRUE, run metaSPAdes.
+                           # metaSPAdes supports only a single short-read library which has to be paired-end.
+                rna=rna, # Logical. TRUE for rnaSPAdes
+                bio=bio, # Logical. TRUE for biosyntheticSPAdes
+                custom_hmms=custom_hmms, # directory with custom hmms
+                out_dir=out_dir,
+                threads=threads
+){
+  threads=as.character(threads)
+  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "),wait=TRUE)}
+  wd=getwd();setwd(out_dir)
+  
+  if (fq2!="none"){ # pair-end
+    fq1=unlist(strsplit(fq1,","))
+    fq2=unlist(strsplit(fq2,","))
+    for (i in 1:length(fq1)){
+      cmd=paste("gzip -c -d",fq1[i],">>","read1.fq",sep=" ")
+      print(cmd);system(cmd,wait=TRUE)
+      cmd=paste("gzip -c -d",fq2[i],">>","read2.fq",sep=" ")
+      print(cmd);system(cmd,wait=TRUE)
+    }
+    system("gzip read1.fq")
+    system("gzip read2.fq")
+    
+    cmd=paste("spades.py",
+              "-t",threads,
+              "-1 read1.fq.gz",
+              "-2 read2.fq.gz",
+              "-o",out_dir,
+              sep=" ")
+  }else{
+    fq1=unlist(strsplit(fq1,","))
+    for (i in 1:length(fq1)){
+      cmd=paste("gzip -c -d",fq1[i],">>","read1.fq",sep=" ")
+      print(cmd);system(cmd,wait=TRUE)
+    }
+    system("gzip read1.fq")
+    cmd=paste("spades.py",
+              "-t",threads,
+              "-s read1.fq.gz",
+              "-o",out_dir,
+              sep=" ")
+  }
+  
+  if (contigs.fa!="none"){cmd=paste(cmd,"--trusted-contigs",contigs.fa,sep=" ")}
+  if (pacbio_clr!="none"){cmd=paste(cmd,"--pacbio",pacbio_clr,sep=" ")}
+  if (nanopore!="none"){cmd=paste(cmd,"--nanopore",nanopore,sep=" ")}
+  if (sanger!="none"){cmd=paste(cmd,"--sanger",sanger,sep=" ")}
+  if (meta){cmd=paste(cmd,"--meta",sep=" ")}
+  if (rna){cmd=paste(cmd,"--rna",sep=" ")}
+  if (bio){cmd=paste(cmd,"--bio",sep=" ")}
+  if (custom_hmms!="none"){cmd=paste(cmd,"--custom-hmms",custom_hmms,sep=" ")}
+  
+  print(cmd);system(cmd,wait=TRUE)
+  
+  system("rm read1.fq.gz read2.fq.gz")
+  return(out_dir)
+}
+
+# Trinity: de novo assembly of transcriptome
+trinity=function(fq1=fq1,fq2=fq2, # comma-list
+                 threads=threads,
+                 max_memory=max_memory, # 500G
+                 out_dir=out_dir){
+  threads=as.character(threads)
+  out_dir=sub("/$","",out_dir)
+  wd=getwd()
+  
+  fq1=unlist(strsplit(fq1,","))
+  fq2=unlist(strsplit(fq2,","))
+  for (i in 1:length(fq1)){
+    cmd=paste("gzip -c -d",fq1[i],">>","read1.fq",sep=" ")
+    print(cmd);system(cmd,wait=TRUE)
+    cmd=paste("gzip -c -d",fq2[i],">>","read2.fq",sep=" ")
+    print(cmd);system(cmd,wait=TRUE)
+  }
+  system("gzip read1.fq")
+  system("gzip read2.fq")
+    
+  cmd=paste("Trinity",
+            "--seqType","fq",
+            "--left read1.fq.gz",
+            "--right read2.fq.gz",
+            "--CPU",threads,
+            "--output",out_dir,
+            "--max_memory",max_memory,
+            "--full_cleanup",
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  system("rm read1.fq.gz read2.fq.gz")
+  setwd(wd)
+}
+
+# Find Coding Regions within Transcripts
+# Dependencies: TransDecoder, diamond, hmmer, AGAT
+cdsInTranscripts=function(transcripts.fna=transcripts.fna,
+                          out_dir=out_dir,
+                          dmdb=dmdb, # DIAMOND protein db, uniprot
+                          pfam=pfam, # Pfam-A.hmm
+                          threads=threads){
+  threads=as.character(threads)
+  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "),wait=TRUE)}
+  wd=getwd();setwd(out_dir)
+  
+  system(paste("cp",transcripts.fna,"transcripts.fna",sep=" "))
+  
+  cmd="TransDecoder.LongOrfs -t transcripts.fna"
+  print(cmd);system(cmd,wait=TRUE)
+  
+  cmd=paste("diamond blastp",
+            "--query","transcripts.fna.transdecoder_dir/longest_orfs.pep",
+            "--db",dmdb,
+            "--max-target-seqs 1",
+            "--outfmt 6",
+            "--evalue 1e-5",
+            "--threads",threads,
+            "--out","blastp.outfmt6",
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  cmd=paste("hmmsearch",
+            "--cpu",threads,
+            "--domtblout pfam.domtblout",
+            "-o","hmmsearch.out",
+            pfam,
+            "transcripts.fna.transdecoder_dir/longest_orfs.pep",
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  cmd=paste("TransDecoder.Predict",
+            "-t transcripts.fna",
+            "--retain_pfam_hits pfam.domtblout",
+            "--retain_blastp_hits blastp.outfmt6",
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  system("mv transcripts.fna.transdecoder.gff3 TransDecoder.gff3")
+  
+  system("rm blastp.outfmt6")
+  system("rm hmmsearch.out")
+  system("rm pfam.domtblout")
+  system("rm pipeliner.*.cmds")
+  system("rm -r transcripts.fna.transdecoder_dir")
+  system("rm -r transcripts.fna.transdecoder_dir.__checkpoints")
+
+  setwd(wd)
+  return("TransDecoder.gff3")
+}
+
+
+
+
+
+
+
+# # IDBA-MTP for metatranscriptome
+# # Dependencies: ISBA-MTP, seqkit
+# idba_mtp=function(fq1=fq1,fq2=fq2, # comma-list
+#                   proteins=proteins,
+#                   score_mat=score_mat,# https://www.ncbi.nlm.nih.gov/Class/FieldGuide/BLOSUM62.txt
+#                   out_dir=out_dir){
+#   if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
+#   wd=getwd();setwd(out_dir)
+#   system("mkdir tmp")
+#   system("mkdir idba_mtp")
+#   
+#   fq1=unlist(strsplit(fq1,","))
+#   fq2=unlist(strsplit(fq2,","))
+#   for (i in 1:length(fq1)){
+#     cmd=paste("gzip -c -d",fq1[i],">","tmp/read1.fq",sep=" ")
+#     print(cmd);system(cmd,wait=TRUE)
+#     cmd="fq2fa tmp/read1.fq tmp/read1.fa" # tool from IDBA-UD
+#     print(cmd);system(cmd,wait=TRUE)
+#     system("rm tmp/read1.fq")
+#     
+#     cmd=paste("gzip -c -d",fq2[i],">","tmp/read2.fq",sep=" ")
+#     print(cmd);system(cmd,wait=TRUE)
+#     cmd="fq2fa tmp/read2.fq tmp/read2.fa"
+#     print(cmd);system(cmd,wait=TRUE)
+#     system("rm tmp/read2.fq")
+#     
+#     N1=system("seqkit grep -s -r -p 'N' tmp/read1.fa | grep '>' | sed 's/>//'",intern=TRUE)
+#     N2=system("seqkit grep -s -r -p 'N' tmp/read2.fa | grep '>' | sed 's/>//'",intern=TRUE)
+#     N=union(N1,N2)
+#     
+#     IDs=system("grep '>' tmp/read1.fa | sed 's/>//'",intern=TRUE)
+#     IDs=IDs[!(IDs %in% N)]
+#     writeLines(IDs,"tmp/IDs.lst")
+#     
+#     cmd="seqkit grep -f tmp/IDs.lst tmp/read1.fa >> tmp/1.fa"
+#     print(cmd);system(cmd,wait=TRUE)
+#     cmd="seqkit grep -f tmp/IDs.lst tmp/read2.fa >> tmp/2.fa"
+#     print(cmd);system(cmd,wait=TRUE)
+#     
+#     system("rm tmp/read1.fa tmp/read2.fa tmp/IDs.lst")
+#   }
+#   
+#   cmd=paste("idba_mtp",
+#             "-t tmp/1.fa",
+#             "-f tmp/2.fa",
+#             "-O idba_mtp/",
+#             "-p",proteins,
+#             "-m",score_mat,
+#             sep=" ")
+#   print(cmd);system(cmd,wait=TRUE)
+#   
+#   system("rm -r tmp")
+#   setwd(wd)
+# }

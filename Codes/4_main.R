@@ -213,22 +213,20 @@ miniprot=function(fna=fna,
   
   prot=unlist(strsplit(faa,","))
   for (i in prot){
-    system(paste("cat",i,">>","proteins.faa",sep=" "),wait=TRUE)
+    system(paste("cat",i,">","proteins.faa",sep=" "),wait=TRUE)
+    prefix=unlist(strsplit(i,"/"));prefix=prefix[length(prefix)]
+    cmd=paste("miniprot",
+              "-t",threads,
+              "-P",prefix,
+              "--gff",
+              "genome.mpi",
+              "proteins.faa","|",
+              "sed '/##/d' ",
+              ">>","gene_models.gff3", # mRNA, CDS, stop_codon features
+              sep=" ")
+    print(cmd);system(cmd,wait=TRUE)
+    system("rm proteins.faa")
   }
-  
-  cmd=paste("miniprot",
-            "-t",threads,
-            "--gff",
-            "genome.mpi",
-            "proteins.faa",
-            ">>","miniprot.gff3", # mRNA, CDS, stip_codon features
-            sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  system("rm proteins.faa")
-  
-  # separate genes by blank lines
-  cmd="sed 's/.*##PAF.*//' miniprot.gff3 > gene_models.gff3"
-  print(cmd);system(cmd,wait=TRUE)
   
   # Convert gene models to protein alignments
   system("echo '##gff-version 3' > protein_align.gff3")
@@ -947,18 +945,18 @@ evm=function(protein_alignments.gff3="none", # Absolute path. GFF3 for protein-g
              gene_predictions.gff3="none", # Absolute path. GFF3 from ab initio gene prediction
              transcript_alignments.gff3="none", # Absolute path. GFF3 for transcript-genome spliced alignments
              evm_weights=evm_weights, # Absolute path
-                                      # tabular table with fields:
-                                      # class: ABINITIO_PREDICTION, PROTEIN, TRANSCRIPT, OTHER_PREDICTION
-                                      # type: the 2nd column value of gff3 files provided.
-                                      # weight: int. TRANSCRIPT >> PROTEIN > ABINITIO_PREDICTION
-                                      # An example:
-                                      # PROTEIN gth 2
-                                      # ABINITIO_PREDICTION AUGUSTUS 1
-                                      # ABINITIO_PREDICTION Glimmer 1
-                                      # TRANSCRIPT  StringTie 10
-                                      # OTHER_PREDICTION TransDecoder  10
-                                      # gff3 of AUGUSTUS, Glimmer and TransDecoder should be merged 
-                                      # into a single gff3 whose 2nd column is AUGUSTUS/Glimmer/TransDecoder
+             # tabular table with fields:
+             # class: ABINITIO_PREDICTION, PROTEIN, TRANSCRIPT, OTHER_PREDICTION
+             # type: the 2nd column value of gff3 files provided.
+             # weight: int. TRANSCRIPT >> PROTEIN > ABINITIO_PREDICTION
+             # An example:
+             # PROTEIN gth 2
+             # ABINITIO_PREDICTION AUGUSTUS 1
+             # ABINITIO_PREDICTION Glimmer 1
+             # TRANSCRIPT  StringTie 10
+             # OTHER_PREDICTION TransDecoder  10
+             # gff3 of AUGUSTUS, Glimmer and TransDecoder should be merged 
+             # into a single gff3 whose 2nd column is AUGUSTUS/Glimmer/TransDecoder
              genome=genome,
              out_dir=out_dir,
              threads=threads){
@@ -987,8 +985,12 @@ evm=function(protein_alignments.gff3="none", # Absolute path. GFF3 for protein-g
             "--genome",genome,
             cmd_part,
             "--segmentSize 100000 --overlapSize 10000 --partition_listing partitions_list.out",
+            "1>partition_EVM_inputs.stdout 2>partition_EVM_inputs.stderr",
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
+  cmd="tail -n50 partition_EVM_inputs.stdout";print(cmd);system(cmd,wait=TRUE)
+  cmd="tail -n50 partition_EVM_inputs.stderr";print(cmd);system(cmd,wait=TRUE)
+  system("rm partition_EVM_inputs.stdout");system("rm partition_EVM_inputs.stderr")
   
   cmd=paste("write_EVM_commands.pl",
             "--genome",genome,
@@ -1021,8 +1023,12 @@ evm=function(protein_alignments.gff3="none", # Absolute path. GFF3 for protein-g
   cmd=paste("convert_EVM_outputs_to_GFF3.pl",
             "--partitions partitions_list.out --output evm.out",
             "--genome",genome,
+            "1> convert_EVM_outputs_to_GFF3.stdout 2> convert_EVM_outputs_to_GFF3.stderr",
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
+  cmd="tail -n50 convert_EVM_outputs_to_GFF3.stdout";print(cmd);system(cmd,wait=TRUE)
+  cmd="tail -n50 convert_EVM_outputs_to_GFF3.stderr";print(cmd);system(cmd,wait=TRUE)
+  system("rm convert_EVM_outputs_to_GFF3.stdout");system("rm convert_EVM_outputs_to_GFF3.stderr")
   
   cmd="find . -regex '.*evm.out.gff3' -exec cat {} \\; > EvidenceModeler.gff3"
   cat(cmd,file="merge_gff3.sh")
@@ -1098,7 +1104,7 @@ evm=function(protein_alignments.gff3="none", # Absolute path. GFF3 for protein-g
                         sep=" ")
               system(cmd,wait=TRUE)
               map=system(paste("awk -F '\t' -v OFS='\t' '{print $7,$8}'",
-                            scr,sep=" "),
+                               scr,sep=" "),
                          intern=TRUE)
               sapply(map,
                      function(j){
@@ -1114,8 +1120,8 @@ evm=function(protein_alignments.gff3="none", # Absolute path. GFF3 for protein-g
               cmd=paste("cat",paste("./add_evidence/",as.character(i),".gff3",sep=""),
                         ">>","final.gff3",sep=" ")
               cat(paste(cmd,"\n",sep=""),file="../cmd.sh",append=TRUE)
-              }
-            )
+            }
+  )
   stopCluster(clus)
   setwd(out_dir)
   system("bash cmd.sh",wait=TRUE)
@@ -1131,6 +1137,43 @@ evm=function(protein_alignments.gff3="none", # Absolute path. GFF3 for protein-g
   
   setwd(wd)
 }
+
+# Filter evm out, remove hypothetical genes supported by only 1 predictor
+filterEvm=function(gene_evidence.tsv=gene_evidence.tsv, # geneID, software, evidence
+                   genome.fna=genome.fna,
+                   evm.gff3=evm.gff3,
+                   out_dir=out_dir){
+  out_dir=sub("/$","",out_dir)
+  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
+  wd=getwd();setwd(out_dir)
+  
+  geneEvidence=read.table(gene_evidence.tsv,sep="\t",header=TRUE,quote="")
+  geneID=sapply(1:nrow(geneEvidence),
+                function(i){
+                  d=geneEvidence[i,]
+                  if (d[,"evidence"]!="Hypothetical"){
+                    return(d[,"geneID"])
+                  }else{
+                    support=unlist(strsplit(d[,"software"],","))
+                    if (length(support)>1){
+                      return(d[,"geneID"])
+                    }else{
+                      return(NA)
+                    }
+                  }
+                })
+  geneID=geneID[!is.na(geneID)]
+  writeLines(geneID,"./geneID.lst")
+  
+  cmd=paste("agat_sp_filter_feature_from_keep_list.pl",
+            "--gff",evm.gff3,
+            "--keep_list ./geneID.lst",
+            "--out ./filtered.gff3",
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  setwd(wd)
+}
+
 
 # Update gff3 by PASA
 # Dependencies: pasa,sqlite3,,agat,scripts from PASAPipeline
@@ -1220,6 +1263,31 @@ pasa=function(genome=genome,
   setwd(wd)
 }
 
+filterPasa=function(genome.fna=genome.fna,
+                    pasa.gff3=pasa.gff3,
+                    out_dir=out_dir){
+  out_dir=sub("/$","",out_dir)
+  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
+  wd=getwd();setwd(out_dir)
+  
+  system(paste("cp",genome.fna,"./genome.fna",sep=" "))
+  cmd=paste("gffread","-O",pasa.gff3,
+            "-g ./genome.fna -y ./pep.faa",
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  cmd="seqkit grep -s -r -p \"[\\*\\.][A-Z]\" pep.faa | grep '>' | sed 's/>//' > ./inFrameStop.lst"
+  print(cmd);system(cmd,wait=TRUE)
+  system("rm ./genome.fna ./genome.fna.fai")
+  
+  cmd=paste("agat_sp_filter_feature_from_kill_list.pl",
+            "--gff",pasa.gff3,
+            "--kill_list ./inFrameStop.lst",
+            "--out ./filtered.gff3",
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  setwd(wd)
+}
+
 # Generate a comprehensive genomic database including:
 # genes.gff3, transcripts_rep.fna, transcripts_iso.fna, cds_rep.fna, cds_iso.fna, proteins_rep.faa, proteins_iso.faa
 # Dependencies: maker, gffread, seqkit
@@ -1232,28 +1300,39 @@ pasa_more=function(species=species,
   if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "),wait=TRUE)}
   wd=getwd();setwd(out_dir)
   
-  cmd=paste("cp",PASA.gff3,
-            paste("./",species,"_genes.gff3",sep=""),
-            sep=" ")
+  # Change gene ID
+  cmd=paste("cp",PASA.gff3,paste("./",species,"_genes.gff3",sep=""),sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   gff3=paste("./",species,"_genes.gff3",sep="")
-  cmd=paste("cp",gene_evidence.tsv,
-            paste("./",species,"_gene_evidence.tsv",sep=""),
-            sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  
-  cmd=paste("maker_map_ids",
-            "--iterate 0",
-            "--prefix",species,
-            gff3,"> MAKER.name.map",
+  cmd=paste("maker_map_ids --iterate 0",
+            "--prefix",species,gff3,"> MAKER.name.map",
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   cmd=paste("map_gff_ids","MAKER.name.map",gff3,sep=" ")
   print(cmd);system(cmd,wait=TRUE)
-  system("rm MAKER.name.map",wait=TRUE)
   
-  system(paste("cp",genome,"./genome.fa",sep=" "))
-  genome="./genome.fa"
+  # Evidence for genes
+  cmd=paste("cp",gene_evidence.tsv,paste("./",species,"_gene_evidence.tsv",sep=""),sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  a=read.table(paste("./",species,"_gene_evidence.tsv",sep=""),sep="\t",header=TRUE,quote="")
+  a=a[,c("geneID","evidence","software")]
+  b=read.table("MAKER.name.map",sep="\t",header=FALSE,quote="")
+  b=b[!grepl("-R[0-9]",b$V2),];b=b[!duplicated(b$V2),]
+  c=merge(a,b,by.x="geneID",by.y="V1",all=TRUE)
+  colnames(c)=c("oldID","evidence","software","geneID")
+  c=c[!is.na(c$geneID),]
+  for (i in 1:nrow(c)){
+    if (is.na(c[i,"evidence"]) & is.na(c[i,"software"])){
+      c[i,"evidence"]="Transcript"
+      c[i,"software"]="PASA"
+      print(c[i,])
+    }
+  }
+  write.table(c,paste("./",species,"_gene_evidence.tsv",sep=""),sep="\t",row.names=FALSE,quote=FALSE)
+  
+  # Extract transcripts, cds, proteins
+  system(paste("cp",genome,paste(species,"_genome.fna",sep=""),sep=" "))
+  genome=paste(species,"_genome.fna",sep="")
   cmd=paste("gffread","-O",
             gff3,"-S",
             "-g",genome,
@@ -1263,6 +1342,7 @@ pasa_more=function(species=species,
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   
+  # Separate alternative splicing
   f=function(fasta,rep.fa,iso.fa){
     iso=system(paste("grep '>'",fasta,sep=" "),wait=TRUE,intern=TRUE)
     iso=sub(">","",iso)
@@ -1301,7 +1381,6 @@ pasa_more=function(species=species,
   system(paste("rm",paste(species,"_cds.fna",sep=""),sep=" "),wait=TRUE)
   system(paste("rm",paste(species,"_proteins.faa",sep=""),sep=" "),wait=TRUE)
   system("rm *.fai")
-  system("rm ./genome.fa")
   setwd(wd)
 }
 
@@ -1327,9 +1406,12 @@ PseudoPipe=function(genome=genome, # soft masked
             "./input/dna/masked.fa > ./input/dna/unmasked.fa",
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
-  cmd=paste("seqkit","split2","./input/dna/unmasked.fa","-s 1","-j",threads,sep=" ")
+  cmd=paste("seqkit","split2","./input/dna/unmasked.fa","-s 1","-j",threads," 2> lst",sep=" ")
   print(cmd);system(cmd,wait=TRUE)
-  split.fa=system("ls ./input/dna/unmasked.fa.split/unmasked.part_[0-9]*.fa",intern=TRUE)
+  cmd="grep 'write 1 sequences to file:' lst"
+  split.fa=system(cmd,intern=TRUE)
+  split.fa=sub("^.*write 1 sequences to file: ","",split.fa)
+  
   split=sapply(1:length(split.fa),
                function(i){
                  seqID=system(paste("head -n1",split.fa[i],sep=" "),intern=TRUE)
@@ -1344,6 +1426,7 @@ PseudoPipe=function(genome=genome, # soft masked
                })
   system("rm -r ./input/dna/unmasked.fa.split/")
   system("rm ./input/dna/unmasked.fa")
+  system("rm lst")
   
   system("mkdir ./input/pep")
   cmd=paste("cat",protein.fa,">","./input/pep/protein.fa",sep=" ")
@@ -1379,16 +1462,14 @@ PseudoPipe=function(genome=genome, # soft masked
             "0",
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
-  print(cmd);system(cmd,wait=TRUE)
-  print(cmd);system(cmd,wait=TRUE)
   
-  system("rm -r input/")
-  system("rm -r blast/")
-  system("rm -r dna/")
-  system("rm -r pep/")
+  # system("rm -r input/")
+  # system("rm -r blast/")
+  # system("rm -r dna/")
+  # system("rm -r pep/")
   system("mv ./pgenes/*.gz ./")
   system("mv ./pgenes/*.txt ./")
-  system("rm -r pgenes/")
+  # system("rm -r pgenes/")
   setwd(wd)
 }
 
@@ -1420,7 +1501,7 @@ PseudoPipe2gff3=function(Pseudo.out.txt=Pseudo.out.txt,
 }
 
 # Trinity: de novo assembly of transcriptome
-trinity=function(fq1=fq1,fq2=fq2,
+trinity=function(fq1=fq1,fq2=fq2, # comma-list
                  threads=threads,
                  max_memory=max_memory, # 500G
                  out_dir=out_dir){
@@ -1428,10 +1509,21 @@ trinity=function(fq1=fq1,fq2=fq2,
   out_dir=sub("/$","",out_dir)
   wd=getwd()
   
+  fq1=unlist(strsplit(fq1,","))
+  fq2=unlist(strsplit(fq2,","))
+  for (i in 1:length(fq1)){
+    cmd=paste("gzip -c -d",fq1[i],">>","read1.fq",sep=" ")
+    print(cmd);system(cmd,wait=TRUE)
+    cmd=paste("gzip -c -d",fq2[i],">>","read2.fq",sep=" ")
+    print(cmd);system(cmd,wait=TRUE)
+  }
+  system("gzip read1.fq")
+  system("gzip read2.fq")
+  
   cmd=paste("Trinity",
             "--seqType","fq",
-            "--left",fq1,
-            "--right",fq2,
+            "--left read1.fq.gz",
+            "--right read2.fq.gz",
             "--CPU",threads,
             "--output",out_dir,
             "--max_memory",max_memory,
@@ -1439,6 +1531,7 @@ trinity=function(fq1=fq1,fq2=fq2,
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   
+  system("rm read1.fq.gz read2.fq.gz")
   setwd(wd)
 }
 

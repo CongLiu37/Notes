@@ -3,11 +3,11 @@ Content:
 1. Genome-based comparative transcriptome analysis
 2. Rarefaction analysis
 3. Genome assembly
-4. Genome annotation (protein-coding genes)
-5. Genome curation and evaluation
-6. Genomic analysis based on genome annotation (protein-coding)
+4. Genome annotation (protein-coding genes and pseudogenes)
+5. Curation and evaluation of genome and genome annotation (kmer-based genome survey, decontamination, quality of genome/genome annotation)
+6. Genomic analysis of protein-coding genes (gene function annotation, genome collinearity, horizontal gene transfer)
 7. Machine learning in scikit-learn (python)
-8. More genome annotation (repeat, tRNA, ncRNA etc.)
+8. More genome annotation (repeat elements and non-coding RNA)
 9. Metagenome/metatranscriptome profiling
 
 Mode of README for projects:
