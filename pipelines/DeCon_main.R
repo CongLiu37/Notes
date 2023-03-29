@@ -1,6 +1,6 @@
 # Dependencies: 
 # R, Python
-# Softwares: minimap2, SAMtools, SprayNPray, diamond, megan (blast2rma & rma2info) and its database
+# Softwares: minimap2, SAMtools, SprayNPray, diamond, megan (blast2rma & rma2info) and its database, seqkit
 # Python modules: numpy, pandas, sklearn
 # R packages: reticulate, stringr
 
