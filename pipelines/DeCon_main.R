@@ -1,8 +1,8 @@
 # Dependencies: 
 # R, Python
-# Softwares: minimap2, SAMtools, SprayNPray, diamond, megan (blast2rma & rma2info) and its database, seqkit
+# Softwares: minimap2, SAMtools, SprayNPray, diamond, megan (blast2rma & rma2info) and its database, seqkit, QUAST, BUSCO
 # Python modules: numpy, pandas, sklearn
-# R packages: reticulate, stringr
+# R packages: reticulate, stringr, ggplot2, ggExtra
 
 # Map reads to reference
 # Dependencies: Minimap2, SAMtools
@@ -116,4 +116,77 @@ Diamond_Megan=function(fna, # fna. Input DNA sequences.
   print(cmd);system(cmd,wait=TRUE)
   
   return(paste(assignment_dir,"/",out_basename,".tsv",sep=""))
+}
+
+# Quast: Quality of assembly.
+# Dependencies: QUAST
+Quast=function(fna=fna, # FASTA of genome assembly.
+               out_dir=out_dir,
+               threads=threads){
+  threads=as.character(threads)
+  out_dir=sub("/$","",out_dir)
+  
+  if (!file.exists(paste(out_dir,"/report.tsv",sep=""))){
+    if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
+    cmd=paste("quast.py --min-contig 0",
+              "-o",out_dir,
+              "-t",threads,
+              fna,
+              sep=" ")
+    print(cmd);system(cmd,wait=TRUE)
+  }
+  
+  res=read.table(paste(out_dir,"/report.tsv",sep=""),
+                 header=FALSE,row.names=1,sep="\t",quote="",comment.char="")
+  o=list(Assembly=fna,
+         ContigCount=res["# contigs",],
+         MaxContig=res["Largest contig",],
+         TotalSize=res["Total length",],
+         GCpercent=res["GC (%)",],
+         N50=res["N50",],
+         N90=res["N90",],
+         auN=res["auN",],
+         L50=res["L50",],
+         L90=res["L90",],
+         GapPer100kb=res["# N's per 100 kbp",])
+  return(o)
+}
+
+BUSCO=function(fna=fna, # Fasta file of nucleotide or protein.
+               # Be consistent with Mode.
+               Mode=Mode, # genome/proteins/transcriptome
+               Lineage=Lineage, # Lineage dataset, e.g. insecta_odb10
+               # Available datasets: https://busco-data.ezlab.org/v5/data/lineages/
+               # BUSCO will download lineage dataset automatically.
+               Out_prefix=Out_prefix, # Give the analysis run a recognisable short name.
+               # Output folders and files will be labelled with this name.
+               # Cannot be path
+               out_dir=out_dir,
+               Threads=Threads){
+  Threads=as.character(Threads)
+  out_dir=sub("/$","",out_dir)
+  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
+  
+  f1=paste(out_dir,"/",Out_prefix,"/short_summary.specific.",Lineage,".",Out_prefix,".txt",sep="")
+  f2=paste(out_dir,"/",Out_prefix,"/short_summary.specific..",Out_prefix,".txt",sep="")
+  if (!file.exists(f1) & !file.exists(f2)){
+    wd_begin=getwd();setwd(out_dir)
+    if (file.exists(Out_prefix)){system(paste("rm"," -r ",Out_prefix,sep=""))}
+    cmd=paste("busco","--force",
+              "--in",fna,
+              "--lineage_dataset",Lineage,
+              "--out",Out_prefix,
+              "--mode",Mode,
+              "--cpu",Threads,
+              sep=" ")
+    print(cmd);system(cmd,wait=TRUE)
+    setwd(wd_begin)
+  }
+  
+  if (file.exists(f1)){f=f1}
+  if (file.exists(f2)){f=f2}
+  re=readLines(f)[8]
+  re=sub("\t","",re);re=sub("\t   ","",re)
+  system(paste("cat",f,sep=" "))
+  return(re)
 }

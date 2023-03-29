@@ -1,0 +1,96 @@
+\documentclass[11pt]{article}
+
+% \usepackage[UTF8]{ctex} % for Chinese 
+
+\usepackage{setspace}
+\usepackage[colorlinks,linkcolor=blue,anchorcolor=red,citecolor=black]{hyperref}
+\usepackage{lineno}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{floatrow}
+\usepackage{subfigure}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{geometry}
+\usepackage{multirow}
+\usepackage{longtable}
+\usepackage{lscape}
+\usepackage{booktabs}
+\usepackage{natbibspacing}
+\usepackage[toc,page]{appendix}
+\usepackage{makecell}
+\usepackage{amsfonts}
+ \usepackage{amsmath}
+\usepackage[utf8]{inputenc}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{enumerate}
+\usepackage{comment}
+
+\usepackage[backend=bibtex,style=authoryear,sorting=nyt,maxnames=1]{biblatex}
+\bibliography{README} % Reference bib
+
+\title{Pipelines}
+\author{}
+\date{}
+
+\linespread{1.5}
+\geometry{left=2cm,right=2cm,top=2cm,bottom=2cm}
+
+\setlength\bibitemsep{0pt}
+
+\begin{document}
+\begin{sloppypar}
+  \maketitle
+
+  \linenumbers
+\section{Pipeline for genome decontamination (DeCon)}
+\subsection{Introduction}
+Pipeline DeCon is designed to retrieve genomic sequences of target \textbf{phylum} from metagenomic assembly of paired next generation sequencing (NGS) reads. 
+First, NGS reads are mapped to assembly by minimap2 \parencite{li2018minimap2}, generating BAM file. 
+Second, SprayNPray \parencite{garber2022spraynpray} is used to compute coverage, GC content and coding density of each contigs. 
+Third, all contigs are searched against non-redundant (nr) database by DIAMOND \parencite{buchfink2015fast} and assigned to phyla by MEGAN \parencite{huson2007megan}. 
+Forth, contigs below 400 base pair (bp) are removed. 
+Then a decision tree classifier is trained, taking coverage, GC content and coding density as training features and phylum assignment as target value. 
+This classifier is used to compute phylum assignment of contigs that DIAMOND and MEGAN failed to compute assignments. 
+Fifth, contigs assigned to the target phylum are retrieved. 
+QUAST \parencite{gurevich2013quast} and BUSCO \parencite{simao2015busco} are used to evaluate retrieved genome. 
+Distributions of contig coverage and GC content of retrieved genome are plotted. 
+\subsection{Dependencies}
+\textbf{Softwares} \newline
+R \newline
+Python \newline
+minimap2 \newline
+SAMtools \newline
+SprayNPray \newline
+DIAMOND \newline
+MEGAN (blast2rma & rma2info scripts) \newline
+seqkit \newline
+QUAST \newline
+BUSCO \newline
+\par
+\textbf{Databases} \newline
+DIAMOND database (nr) \newline
+MEGAN database \newline
+BUSCO database \newline
+\par
+\textbf{Python modules} \newline
+numpy \newline
+pandas \newline
+scikit-learn \newline
+\par
+\textbf{R packages} \newline
+reticulate \newline
+stringr \newline
+ggplot2 \newline
+ggExtra
+\subsection{Usage}
+Modify configuration file (templated as DeCon.conf), and run \newline
+Rscript \textif{path}/DeCon\_pipeline.R \textif{path}/DeCon\_main.R \textif{path}/DeCon\_main.py \textif{path}/DeCon.conf
+
+\section{Pipeline for calling protein-coding genes from genome (ProtGeneCall)}
+
+\printbibliography
+\end{sloppypar}
+\end{document}
