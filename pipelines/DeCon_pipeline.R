@@ -5,7 +5,6 @@ main.py=arg[2]
 conf=arg[3]
 
 source(main.R)
-source(main.py)
 source(conf)
 
 out_dir=sub("/$","",out_dir)

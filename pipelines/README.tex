@@ -84,12 +84,130 @@ scikit-learn \newline
 reticulate \newline
 stringr \newline
 ggplot2 \newline
-ggExtra
+ggExtra \newline
+\par
 \subsection{Usage}
-Modify configuration file (templated as DeCon.conf), and run \newline
-Rscript \textif{path}/DeCon\_pipeline.R \textif{path}/DeCon\_main.R \textif{path}/DeCon\_main.py \textif{path}/DeCon.conf
+Modify configuration file (templated as DeCon\_conf.R), and run \newline
+Rscript \textif{path}/DeCon\_pipeline.R \textif{path}/DeCon\_main.R \textif{path}/DeCon\_main.py \textif{path}/DeCon\_conf.R
 
 \section{Pipeline for calling protein-coding genes from genome (ProtGeneCall)}
+\subsection{Introduction}
+Pipeline ProtGeneCall is designed to call protein-coding genes from genome, combining protein-genome alignments, transcriptome-genome alignments and \textit{ab initio} gene predictions. 
+First, repeat elements are identified by RepeatModeler \parencite{smit2015repeatmodeler} and masked by RepeatMasker \parencite{smit2015repeatmasker}. 
+Masked genome is used for downstream analysis. 
+Second, proteins of closely related species are mapped to the masked genome by miniprot \parencite{li2023protein}. 
+Third, paired RNA-sequencing (RNA-seq) reads are mapped to masked genome by Hisat2 \parencite{kim2019graph}. 
+Forth, transcriptome-genome alignments are computed by StringTie \parencite{pertea2015stringtie}. 
+Fifth, gene structures are predicted from transcriptome-genome alignments by TransDecoder \parencite{haas2016transdecoder}, combining searching against UniRef and PfamA databases. 
+Sixth, AUGUSTUS \parencite{stanke2003gene} is trained with gene structures from TransDecoder to compute gene predictions. 
+Seventh, BRAKER \parencite{hoff2019whole} is trained with RNA-seq mapping to call genes. 
+Eighth, GALBA \parencite{hoff2019whole} is trained with proteins of closely related species. 
+Ninth, protein-genome alignments from miniprot, transcript-genome alignments from Hisat2-StringTie, and \textit{ab initio} gene predictions from TransDecoder, AUGUSTUS, BRAKER and GALBA are integrated into consensus gene structures by EvidenceModeler \parencite{haas2008automated}. 
+Tenth, genes supported by only one \textit{ab initio} predictor and lack protein/RNA-seq evidence are removed. 
+Eleventh, PASA \parencite{haas2008automated} is run twice to update filtered gene structures from EvidenceModeler. 
+Twelfth, genes with in-frame stop codons are removed and the predicted peptide set is evaluated by BUSCO \parencite{simao2015busco}.
+\subsection{Dependencies}
+\textbf{Softwares} \newline
+R \newline
+Python \newline
+RepeatModeler \newline
+RepeatMasker \newline
+miniprot \newline
+Hisat2 \newline
+SAMtools \newline
+StringTie \newline
+TransDecoder \newline
+HMMER \newline
+DIAMOND \newline
+AGAT \newline
+AUGUSTUS \newline
+BLAST+ \newline
+GALBA \newline
+BRAKER \newline
+EvidenceModeler \newline
+BUSCO \newline
+gffread \newline
+seqkit \newline
+MAKER \newline
+\par
+\textbf{Databases} \newline
+DIAMOND database (UniRef) \newline
+Pfam-A \newline
+\par
+\textbf{External scrpts} \newline
+cufflinks\_gtf\_to\_alignment\_gff3.pl from EvidenceModeler \newline
+augustus\_GFF3\_to\_EVM\_GFF3.pl from EvidenceModeler \newline
+gth2gtf.pl from AUGUSTUS \newline
+computeFlankingRegion.pl from AUGUSTUS \newline
+gff2gbSmallDNA.pl from AUGUSTUS \newline
+gtf2aa.pl from AUGUSTUS \newline
+simplifyFastaHeaders.pl from AUGUSTUS \newline
+aa2nonred.pl from AUGUSTUS \newline
+filterGenesIn.pl from AUGUSTUS \newline
+autoAug.pl from AUGUSTUS \newline
+evm\_evidence.py in this GitHub \newline
+\par
+\textbf{R packages} \newline
+stringr \newline
+parallel \newline
+\par
+\subsection{Usage}
+Modify configuration file (templated as ProtGeneCall\_conf.R), and run \newline
+Rscript \textif{path}/ProtGeneCall\_pipeline.R \textif{path}/ProtGeneCall\_main.R \textif{path}/ProtGeneCall\_conf.R
+
+\section{Pipeline for calling repeat elements from genome (RepCall)}
+\subsection{Introduction}
+Pipeline RepCall is designed to call repeat elements genes from genome. 
+First, miniature inverted-repeat transposable elements (MITE) are called by MITE-Hunter \parencite{han2010mite}. 
+Second, long terminal repeats (LTRs) are identified by incorporating LTR\_FINDER\_parallel \parencite{ou2019ltr_finder_parallel}, LTRharvest \parencite{ellinghaus2008ltrharvest} and LTR\_retriever \parencite{ou2018ltr_retriever}. 
+Third, identified MITEs and LTRs are masked by RepeatMasker \parencite{smit2015repeatmasker}. 
+Forth, RepeatModeler \parencite{smit2015repeatmodeler} is used to further identify repeats in the masked genome. 
+Fifth, the locations of MITEs, LTRs and repeats from RepeatModeler are identified by RepeatMasker and all repeats are incorporated into a consensus library. 
+\subsection{Dependencies}
+\textbf{Softwares} \newline
+R \newline
+seqkit \newline
+MITE-Hunter \newline
+LTR\_FINDER\_parallel \newline
+LTRharvest \newline
+LTR\_retriever \newline
+RepeatMasker \newline
+RepeatModeler \newline
+\par
+\subsection{Usage}
+Modify configuration file (templated as RepCall\_conf.R), and run \newline
+Rscript \textif{path}/RepCall\_pipeline.R \textif{path}/RepCall\_main.R \textif{path}/RepCall\_conf.R
+
+\section{Pipeline for calling non-coding RNA (ncRNAcall)}
+\subsection{Introduction}
+Pipeline ncRNAcall is designed to call non-coding RNA (ncRNA) from genome. 
+First, transfer RNA (tRNA) is identified by tRNAscan-SE \parencite{lowe1997trnascan}. 
+Second, microRNA is called by miRNAture \parencite{velandia2021mirnature}. 
+Third, target genes of microRNA are identified by searching microRNA against annotated three prime untranslated regions (3'UTR) by miRanda \parencite{enright2003microrna}. 
+Forth, Infernal \parencite{nawrocki2013infernal} searches against Rfam \parencite{kalvari2021rfam} database to call other non-coding RNA, \textit{e.g.} ribosomal RNA (rRNA) and small nuclear RNA (snRNA). 
+Fifth, all results are incorporated together. 
+\subsection{Dependencies}
+\textbf{Softwares} \newline
+R \newline
+tRNAscan-SE \newline
+biocode \newline
+miRNAture \newline
+miRanda \newline
+bedtools \newline
+seqkit \newline
+Infernal \newline
+\par
+\textbf{Databases} \newline
+miRNAture database \newline
+Rfam database \newline
+\par
+\textbf{R packages}
+parallel \newline
+stringr \newline
+\par
+\subsection{Usage}
+Modify configuration file (templated as ncRNAcall\_conf.R), and run \newline
+Rscript \textif{path}/ncRNAcall\_pipeline.R \textif{path}/ncRNAcall\_main.R \textif{path}/ncRNAcall\_conf.R
 
 \printbibliography
 \end{sloppypar}

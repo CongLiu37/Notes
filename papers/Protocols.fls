@@ -1,8 +1,8 @@
 PWD /Users/congliu/Desktop/Notes/papers
 INPUT /opt/homebrew/Cellar/texlive/20220321_4/share/texmf-dist/web2c/texmf.cnf
 INPUT /opt/homebrew/Cellar/texlive/20220321_4/share/texmf-var/web2c/pdftex/pdflatex.fmt
-INPUT /Users/congliu/Desktop/Notes/papers/Blattodea.tex
-OUTPUT Blattodea.log
+INPUT /Users/congliu/Desktop/Notes/papers/Protocols.tex
+OUTPUT Protocols.log
 INPUT /opt/homebrew/Cellar/texlive/20220321_4/share/texmf-dist/tex/latex/base/article.cls
 INPUT /opt/homebrew/Cellar/texlive/20220321_4/share/texmf-dist/tex/latex/base/article.cls
 INPUT /opt/homebrew/Cellar/texlive/20220321_4/share/texmf-dist/tex/latex/base/article.cls
