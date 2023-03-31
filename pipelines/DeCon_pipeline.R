@@ -12,6 +12,18 @@ threads=as.character(threads)
 if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
 
 #####
+# Remove contigs < 400 bp
+#####
+if (!file.exists(paste(out_dir,"/filter_genome",sep=""))){
+  system(paste("mkdir"," ",out_dir,"/filter_genome",sep=""))
+}
+if (!file.exists(paste(out_dir,"/filter_genome/",label,sep=""))){
+  system(paste("mkdir"," ",out_dir,"/filter_genome/",label,sep=""))
+}
+cmd=paste("seqkit seq --min-len 400 ",genome," > ",out_dir,"/filter_genome/",label,"_400bp.fna",sep="")
+print(cmd);system(cmd,wait=TRUE)
+genome=paste(out_dir,"/filter_genome/",label,"_400bp.fna",sep="")
+#####
 # Map reads to assembly
 #####
 if (!file.exists(paste(out_dir,"/minimap2",sep=""))){
@@ -107,7 +119,7 @@ if (file.exists(paste(out_dir,"/sklearn/",label,"_classification.finished",sep="
   dm=dm[!is.na(dm[,"assign"]),]
 
   df=merge(dm,spr,by="contig",all=TRUE)
-  df=df[df[,"length"]>400,] # Remove contigs below 400 bp
+  #df=df[df[,"length"]>400,] # Remove contigs below 400 bp
 
   training=df[!is.na(df[,"assign"]),]
   training_contig=training[,"contig"]

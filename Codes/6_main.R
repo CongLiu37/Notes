@@ -71,6 +71,9 @@ Isoform_filter=function(faa_in=faa_in,
   system(paste("rm","-r",tmp,sep=" "),wait=TRUE)
 }
 
+#####
+# Gene function annotation
+#####
 # OrthoFinder
 # OrthoFinder creates a results directory called ‘OrthoFinder’ inside the input proteome directory and puts the results here.
 # Orthofinder with "-M msa" infers phylogeny by mafft & fasttree
@@ -179,6 +182,9 @@ interpro=function(proteins.faa=proteins.faa,
   setwd(wd)
 }
 
+#####
+# genome collinearity
+#####
 # WGDI input files
 # Dependencies: blastp
 wgdi_input=function(genome.fna1=genome.fna1,gff1=gff1,proteins.faa1=proteins.faa1,cds.fna1=cds.fna1,
@@ -553,8 +559,9 @@ wgdi_kspeak=function(wgdi_BlockInfo=wgdi_BlockInfo,
 #           sep=" ")
 # print(cmd);system(cmd,wait=TRUE)
 
-
-
+#####
+# HGT
+#####
 # Incomplete
 # AvP
 # Detect horizontal gene transfer (HGT)
