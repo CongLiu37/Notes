@@ -140,14 +140,21 @@ sortmerna=function(fq1=fq1,fq2="none",
   if (fq2!="none"){
     cmd=paste(cmd,
               "--reads",fq2,
+              "--out2 True",
+              "--paired_in True",# paired-end reads as Aligned when either of them is Aligned.
               sep=" ")
   }
   cmd=paste(cmd,
             "--workdir",out_dir,
             "--threads",threads,
             "--fastx True",
-            "--paired_in True") # paired-end reads as Aligned when either of them is Aligned.
+            "--aligned",paste(getwd(),"/rRNA",sep=""),
+            "--other",paste(getwd(),"/noRrna",sep=""),
+            "--otu_map True",
+            sep=" ") 
   print(cmd);system(cmd,wait=TRUE)
+  
+  system("rm -r idx/ kvdb/ readb/")
   
   setwd(wd)
 }
@@ -178,7 +185,7 @@ idba_ud=function(fq1=fq1,fq2=fq2, # comma-list, paired
   
   cmd=paste("idba_ud",
             "-r tmp/read.fa",
-            "-o idba_ud",
+            "-o",paste(getwd(),"/idba_ud",sep=""),
             "--num_threads",threads,
             "--min_count 1",
             "--mink 20",
@@ -188,57 +195,6 @@ idba_ud=function(fq1=fq1,fq2=fq2, # comma-list, paired
   
   system("rm -r tmp/")
   setwd(wd)
-}
-
-# IDBA-MT for metatranscriptome
-idba_mt=function(fq1=fq1,fq2=fq2, # comma-list
-                 contigs=contigs,
-                 out_dir=out_dir){
-  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
-  wd=getwd();setwd(out_dir)
-  system("mkdir tmp")
-  system("mkdir idba_mt")
-  
-  fq1=unlist(strsplit(fq1,","))
-  fq2=unlist(strsplit(fq2,","))
-  for (i in 1:length(fq1)){
-    cmd=paste("gzip -c -d",fq1[i],">","tmp/read1.fq",sep=" ")
-    print(cmd);system(cmd,wait=TRUE)
-    cmd="fq2fa tmp/read1.fq tmp/read1.fa" # tool from IDBA-UD
-    print(cmd);system(cmd,wait=TRUE)
-    system("rm tmp/read1.fq")
-    
-    cmd=paste("gzip -c -d",fq2[i],">","tmp/read2.fq",sep=" ")
-    print(cmd);system(cmd,wait=TRUE)
-    cmd="fq2fa tmp/read2.fq tmp/read2.fa"
-    print(cmd);system(cmd,wait=TRUE)
-    system("rm tmp/read2.fq")
-    
-    N1=system("seqkit grep -s -r -p 'N' tmp/read1.fa | grep '>' | sed 's/>//'",intern=TRUE)
-    N2=system("seqkit grep -s -r -p 'N' tmp/read2.fa | grep '>' | sed 's/>//'",intern=TRUE)
-    N=union(N1,N2)
-    
-    IDs=system("grep '>' tmp/read1.fa | sed 's/>//'",intern=TRUE)
-    IDs=IDs[!(IDs %in% N)]
-    writeLines(IDs,"tmp/IDs.lst")
-    
-    cmd="seqkit grep -f tmp/IDs.lst tmp/read1.fa >> tmp/1.fa"
-    print(cmd);system(cmd,wait=TRUE)
-    cmd="seqkit grep -f tmp/IDs.lst tmp/read2.fa >> tmp/2.fa"
-    print(cmd);system(cmd,wait=TRUE)
-    
-    system("rm tmp/read1.fa tmp/read2.fa tmp/IDs.lst")
-  }
-  
-  cmd=paste("idba-mt",
-            "-t tmp/1.fa",
-            "-f tmp/2.fa",
-            "-O idba_mt",
-            "-c",contigs,
-            "-r 300",# read length
-            "-i 200",# insert size
-            sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
 }
 
 # Assemble meta-genome/transcriptome into proteins by Plass
@@ -270,7 +226,7 @@ plass=function(fq1=fq1,fq2=fq2, # comma-list
 # long reads can be provided for scaffolding NGS assembly
 # Dependencies: SPAdes
 SPAdes=function(fq1=fq1,fq2=fq2, 
-                # comma-list
+                # comma-list or R vector
                 # Input NGS reads (fq). Set fq2="none" if single-end.
                 # PacBio CCS (HiFi) reads should be treated as fq1.
                 contigs.fa="none", # Reliable contigs of the same genome.
@@ -279,7 +235,7 @@ SPAdes=function(fq1=fq1,fq2=fq2,
                            # metaSPAdes supports only a single short-read library which has to be paired-end.
                 rna=rna, # Logical. TRUE for rnaSPAdes
                 bio=bio, # Logical. TRUE for biosyntheticSPAdes
-                custom_hmms=custom_hmms, # directory with custom hmms
+                custom_hmms="none", # directory with custom hmms for biosyntheticSPAdes
                 out_dir=out_dir,
                 threads=threads
 ){
@@ -335,13 +291,14 @@ SPAdes=function(fq1=fq1,fq2=fq2,
 }
 
 # Trinity: de novo assembly of transcriptome
-trinity=function(fq1=fq1,fq2=fq2, # comma-list
+trinity=function(fq1=fq1,fq2=fq2, # comma-list/R vector
                  threads=threads,
                  max_memory=max_memory, # 500G
                  out_dir=out_dir){
   threads=as.character(threads)
   out_dir=sub("/$","",out_dir)
-  wd=getwd()
+  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "),wait=TRUE)}
+  wd=getwd();setwd(out_dir)
   
   fq1=unlist(strsplit(fq1,","))
   fq2=unlist(strsplit(fq2,","))
@@ -353,19 +310,48 @@ trinity=function(fq1=fq1,fq2=fq2, # comma-list
   }
   system("gzip read1.fq")
   system("gzip read2.fq")
-    
+  
+  system("mkdir trinity")
   cmd=paste("Trinity",
             "--seqType","fq",
             "--left read1.fq.gz",
             "--right read2.fq.gz",
             "--CPU",threads,
-            "--output",out_dir,
+            "--output",paste(out_dir,"/trinity",sep=""),
             "--max_memory",max_memory,
             "--full_cleanup",
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   
   system("rm read1.fq.gz read2.fq.gz")
+  system("rm -r ./trinity")
+  setwd(wd)
+}
+
+# MMseq2: redundancy filter sequences with identical length and 100% length overlap
+# Dependencies: mmseq2
+seqNR=function(in.fasta=in.fasta,
+               out_dir=out_dir,
+               threads=threads){
+  threads=as.character(threads)
+  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "),wait=TRUE)}
+  wd=getwd();setwd(out_dir)
+  
+  cmd=paste("mmseqs createdb",in.fasta,"sequenceDB",sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  cmd=paste("mmseqs clusthash sequenceDB resultDB --min-seq-id 0.98 --max-seq-len 65535 --threads",threads,sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  cmd=paste("mmseqs clust sequenceDB resultDB clusterDB --threads",threads,sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  cmd="mmseqs createsubdb clusterDB clusterDB_rep"
+  print(cmd);system(cmd,wait=TRUE)
+  
+  cmd="mmseqs convert2fasta clusterDB_rep rep.fasta"
+  print(cmd);system(cmd,wait=TRUE)
+  
   setwd(wd)
 }
 
@@ -417,6 +403,7 @@ cdsInTranscripts=function(transcripts.fna=transcripts.fna,
   system("rm hmmsearch.out")
   system("rm pfam.domtblout")
   system("rm pipeliner.*.cmds")
+  #system("rm transcripts.fna")
   system("rm -r transcripts.fna.transdecoder_dir")
   system("rm -r transcripts.fna.transdecoder_dir.__checkpoints")
 
@@ -429,8 +416,59 @@ cdsInTranscripts=function(transcripts.fna=transcripts.fna,
 
 
 
-
-# # IDBA-MTP for metatranscriptome
+# # IDBA-MT for metatranscriptome
+# idba_mt=function(fq1=fq1,fq2=fq2, # comma-list
+#                  contigs=contigs, # IDBA-UD
+#                  threads=threads,
+#                  out_dir=out_dir){
+#   threads=as.character(threads)
+#   if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
+#   wd=getwd();setwd(out_dir)
+#   system("mkdir tmp")
+#   system("mkdir idba_mt")
+#   
+#   fq1=unlist(strsplit(fq1,","))
+#   fq2=unlist(strsplit(fq2,","))
+#   for (i in 1:length(fq1)){
+#     cmd=paste("gzip -c -d",fq1[i],">","tmp/read1.fq",sep=" ")
+#     print(cmd);system(cmd,wait=TRUE)
+#     cmd="fq2fa --filter tmp/read1.fq tmp/read1.fa" # tool from IDBA-UD
+#     print(cmd);system(cmd,wait=TRUE)
+#     system("rm tmp/read1.fq")
+#     
+#     cmd=paste("gzip -c -d",fq2[i],">","tmp/read2.fq",sep=" ")
+#     print(cmd);system(cmd,wait=TRUE)
+#     cmd="fq2fa --filter tmp/read2.fq tmp/read2.fa"
+#     print(cmd);system(cmd,wait=TRUE)
+#     system("rm tmp/read2.fq")
+#     
+#     ID1=system("grep '>' tmp/read1.fa | sed 's/>//'",intern=TRUE)
+#     ID2=system("grep '>' tmp/read2.fa | sed 's/>//'",intern=TRUE)
+#     IDs=intersect(ID1,ID2)
+#     writeLines(IDs,"tmp/IDs.lst")
+#     
+#     cmd=paste("seqkit grep --threads ",threads," -n -w0 -f tmp/IDs.lst tmp/read1.fa >> tmp/1.fa",sep="")
+#     print(cmd);system(cmd,wait=TRUE)
+#     cmd=paste("seqkit grep --threads ",threads," -n -w0 -f tmp/IDs.lst tmp/read2.fa >> tmp/2.fa",sep="")
+#     print(cmd);system(cmd,wait=TRUE)
+#     
+#     system("rm tmp/read1.fa tmp/read2.fa tmp/IDs.lst")
+#   }
+#   
+#   cmd=paste("idba-mt",
+#             "-t tmp/1.fa",
+#             "-f tmp/2.fa",
+#             "-O",paste(getwd(),"/idba_mt",sep=""),
+#             "-c",contigs,
+#             "-r 300",# read length
+#             "-i 200",# insert size
+#             sep=" ")
+#   print(cmd);system(cmd,wait=TRUE)
+#   
+#   system("rm -r tmp")
+#   setwd(wd)
+# }
+# # # IDBA-MTP for metatranscriptome
 # # Dependencies: ISBA-MTP, seqkit
 # idba_mtp=function(fq1=fq1,fq2=fq2, # comma-list
 #                   proteins=proteins,

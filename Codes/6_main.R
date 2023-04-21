@@ -1,4 +1,5 @@
-# Genomic analysis of protein-coding genes (gene function annotation, genome collinearity, horizontal gene transfer)
+# Genomic analysis of protein-coding genes: 
+# genome collinearity, HGT, phylogeny, condon/AA usage, exon-intron, protein domain, gene family, selection, etc.
 
 # For peptide sets from NCBI
 # Retain the longest protein isoform of each gene by header lines of faa.
@@ -72,123 +73,78 @@ Isoform_filter=function(faa_in=faa_in,
 }
 
 #####
-# Gene function annotation
-#####
-# OrthoFinder
-# OrthoFinder creates a results directory called ‘OrthoFinder’ inside the input proteome directory and puts the results here.
-# Orthofinder with "-M msa" infers phylogeny by mafft & fasttree
-# Dependencies: Orthofinder, mafft, fasttree
-Orthofinder=function(in_dir=in_dir, # Input proteome directory. 
-                                    # One file per species with extension '.faa'
-                     threads=threads){
-  threads=as.character(threads)
-  
-  cmd=paste("orthofinder.py",
-            "-f",in_dir,
-            "-M msa",
-            "-t",threads,
-            "-a",threads,
-            sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-}
-
-# Re-run orthofinder with designated phylogenetic tree
-Re_orthofinder=function(previous_orthofinder_result_dir=previous_orthofinder_result_dir,
-                        tree=tree,
-                        threads=threads){
-  threads=as.character(threads)
-  
-  cmd=paste("orthofinder",
-            "-t",threads,
-            "-a",threads,
-            "-ft",previous_orthofinder_result_dir,
-            "-s",tree,
-            sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-}
-
-# Best protein-protein hit by blast
-best_blastp=function(query.faa=query.faa,
-                     reference.faa=reference.faa,
-                     out_dir=out_dir,
-                     out_basename=out_basename,
-                     threads=threads){
-  threads=as.character(threads)
-  out_dir=sub("/$","",out_dir)
-  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
-  wd=getwd();setwd(out_dir)
-  
-  cmd=paste("cp",query.faa,out_dir,sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  query.faa=unlist(strsplit(query.faa,"/"));query.faa=query.faa[length(query.faa)]
-  
-  cmd=paste("cp",reference.faa,out_dir,sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  reference.faa=unlist(strsplit(reference.faa,"/"));reference.faa=reference.faa[length(reference.faa)]
-  
-  cmd=paste("makeblastdb",
-            "-in",reference.faa,
-            "-dbtype","prot",
-            "-parse_seqids",
-            sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  
-  cmd=paste("blastp",
-            "-num_threads",threads,
-            "-db",reference.faa,
-            "-query",query.faa,
-            "-outfmt 6",
-            "-evalue 1e-5",
-            "-num_alignments 1",
-            "-out",paste(out_dir,"/",out_basename,".blast",sep=""),
-            sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  
-  system(paste("rm",query.faa,sep=" "),wait=TRUE)
-  system(paste("rm",reference.faa,sep=" "),wait=TRUE)
-  system(paste("rm"," ",reference.faa,".*",sep=""),wait=TRUE)
-  setwd(wd)
-}
-
-# Interproscan
-interpro=function(proteins.faa=proteins.faa,
-                  out_dir=out_dir,
-                  out_basename=out_basename,
-                  threads=threads){
-  threads=as.character(threads)
-  out_dir=sub("/$","",out_dir)
-  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
-  wd=getwd();setwd(out_dir)
-  
-  cmd=paste("cp",proteins.faa,out_dir,sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  proteins.faa=unlist(strsplit(proteins.faa,"/"));proteins.faa=proteins.faa[length(proteins.faa)]
-  
-  cmd=paste("sed -i 's/*/X/g'",proteins.faa,sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  
-  cmd=paste("interproscan.sh",
-            "-dp",
-            "-b",out_basename,
-            "-cpu",threads,
-            "-f TSV",
-            "-goterms",
-            "-i",proteins.faa,
-            "--pathways",
-            sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  
-  system(paste("rm",proteins.faa,sep=" "),wait=TRUE)
-  setwd(wd)
-}
-
-#####
 # genome collinearity
 #####
+# MCScanX: classify duplicated gene pairs
+# Dependencies: blastp, MCScanX, stringr (R)
+MCScanX_dupliClass=function(gff=gff,
+                            proteins.faa=proteins.faa, # NO isoform, same ID with genes in gff
+                            out_dir=out_dir,
+                            out_basename=out_basename,
+                            threads=threads){
+  threads=as.character(threads)
+  out_dir=sub("/$","",out_dir)
+  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
+  wd=getwd();setwd(out_dir)
+  
+  system("mkdir tmp");setwd("tmp")
+  cmd=paste("cp"," ",proteins.faa," ",".",sep="");print(cmd);system(cmd,wait=TRUE)
+  proteins.faa=unlist(strsplit(proteins.faa,"/"));proteins.faa=proteins.faa[length(proteins.faa)]
+  cmd=paste("makeblastdb",
+            "-in",proteins.faa,
+            "-dbtype prot",
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  cmd=paste("blastp",
+            "-num_threads",threads,
+            "-db",proteins.faa,
+            "-query",proteins.faa,
+            "-outfmt 6",
+            "-evalue 1e-5",
+            "-num_alignments 5",
+            "-out",paste(out_basename,".blast",sep=""),
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  system(paste("mv"," ",out_basename,".blast"," ","..",sep=""))
+  setwd(out_dir)
+  system("rm -r tmp")
+  
+  library(stringr)
+  cmd=paste("awk -F '\t' -v OFS='\t' '{if ($3==\"gene\") print $1,$9,$4,$5}' ",gff," > ",out_basename,".gff",sep="")
+  print(cmd);system(cmd,wait=TRUE)
+  df=read.table(paste(out_basename,".gff",sep=""),sep="\t",header=FALSE,quote="")
+  oldChr=names(table(df[,1]));newChr=1:length(oldChr);names(newChr)=oldChr
+  IDs=sapply(1:nrow(df),function(i){return( paste("sp",as.character(newChr[df[i,1]]),sep="") )})
+  df[,1]=IDs
+  geneIDs=str_extract(df[,2],"ID=[^;]*;");geneIDs=sub(";$","",geneIDs);geneIDs=sub("ID=","",geneIDs)
+  df[,2]=geneIDs
+  write.table(df,paste(out_basename,".gff",sep=""),sep="\t",row.names=FALSE,col.names=FALSE,quote=FALSE)
+  
+  cmd=paste("MCScanx"," ",out_dir,"/",out_basename,sep="")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  cmd=paste("duplicate_gene_classifier"," ",out_dir,"/",out_basename,sep="")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  df=read.table(paste(out_basename,".gene_type",sep=""),sep="\t",header=FALSE,quote="")
+  types=sapply(1:nrow(df),function(i){
+                            code=df[i,2]
+                            if (code==0){return("singleton")}
+                            if (code==1){return("dispersed")}
+                            if (code==2){return("proximal")}
+                            if (code==3){return("tandem")}
+                            if (code==4){return("segmental")}})
+  df[,3]=types
+  write.table(df,paste(out_basename,".gene_type",sep=""),sep="\t",row.names=FALSE,col.names=FALSE,quote=FALSE)
+  
+  setwd(wd)
+}
+
+
 # WGDI input files
 # Dependencies: blastp
-wgdi_input=function(genome.fna1=genome.fna1,gff1=gff1,proteins.faa1=proteins.faa1,cds.fna1=cds.fna1,
-                    genome.fna2=genome.fna2,gff2=gff2,proteins.faa2=proteins.faa2,cds.fna2=cds.fna2,
+wgdi_input=function(genome.fna1=genome.fna1,gff1=gff1,proteins.faa1=proteins.faa1,cds.fna1=cds.fna1, # NO protein isoform
+                    genome.fna2=genome.fna2,gff2=gff2,proteins.faa2=proteins.faa2,cds.fna2=cds.fna2, # NO protein isoform
                     threads=threads,
                     out_dir=out_dir,
                     out_basename=out_basename){
@@ -520,7 +476,6 @@ wgdi_kspeak=function(wgdi_BlockInfo=wgdi_BlockInfo,
   setwd(wd)
 }
 
-
 # # Ks peaks
 # cmd="wgdi -kp \\?"
 # conf=system(cmd,wait=TRUE,intern=TRUE)
@@ -619,5 +574,72 @@ Avp=function(query.faa=query.faa,
   
   setwd(wd)
 }
+
+#####
+# Phylogeny
+#####
+# MAFFT: multiple sequence alignment
+# Dependencies: MAFFT
+mafft=function(in.fa=in.faa,
+               align.fa=align.fa,
+               threads=threads){
+  threads=as.character(threads)
+  cmd=paste("mafft",
+            "--auto",
+            "--thread",threads,
+            in.fa,">",
+            align.fa,
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+}
+
+# Convert protein alignments to CDS alignments
+# Dependencies: PAL2NAL, seqkit
+pal2nal=function(protAlign.fa=protAlign.fa,
+                 cds.fna=cds.fna, # Including IDs in protAlign.fa
+                 outAlign.fa=outAlign.fa){
+  cmd=paste("grep '>' ",protAlign.fa," | sed 's/>//' > ",outAlign.fa,".lst",sep="")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  cmd=paste("seqkit faidx ",cds.fna," --infile-list ",outAlign.fa,".lst > ",outAlign.fa,"_CDS.fa",sep="")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  cmd=paste("pal2nal.pl",
+            protAlign.fa,
+            paste(outAlign.fa,"_CDS.fa",sep=""),">",
+            outAlign.fa,
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  system(paste("rm ",outAlign.fa,".lst",sep=""))
+  system(paste("rm ",outAlign.fa,"_CDS.fa",sep=""))
+}
+
+# concatenate sequences with same ID from multiple files
+# Dependencies: seqkit
+catMSA=function(align.fa=align.fa, # comma list
+                cat.fa=cat.fa){
+  align.fa=unlist(strsplit(align.fa,","))
+  align.fa=paste(align.fa,collapse=" ")
+  cmd=paste("seqkit concat",align.fa,">",cat.fa,sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+}
+
+# Phylogenetic tree
+# Dependencies: iqtree
+iqtree=function(msa.fa=msa.fa,
+                out_prefix=out_prefix,
+                threads=threads){
+  threads=as.character(threads)
+  cmd=paste("iqtree",
+            "-s",msa.fa,
+            "--prefix",out_prefix,
+            "-T",threads,
+            "-m MFP",
+            "-B 1000",
+            sep-" ")
+  print(cmd);system(cmd,wait=TRUE)
+}
+
 
 

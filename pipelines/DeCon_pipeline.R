@@ -20,7 +20,7 @@ if (!file.exists(paste(out_dir,"/filter_genome",sep=""))){
 if (!file.exists(paste(out_dir,"/filter_genome/",label,sep=""))){
   system(paste("mkdir"," ",out_dir,"/filter_genome/",label,sep=""))
 }
-cmd=paste("seqkit seq --min-len 400 ",genome," > ",out_dir,"/filter_genome/",label,"_400bp.fna",sep="")
+cmd=paste("seqkit seq --min-len 400 --threads ",threads," ",genome," > ",out_dir,"/filter_genome/",label,"_400bp.fna",sep="")
 print(cmd);system(cmd,wait=TRUE)
 genome=paste(out_dir,"/filter_genome/",label,"_400bp.fna",sep="")
 #####

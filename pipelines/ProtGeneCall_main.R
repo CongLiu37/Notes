@@ -977,9 +977,8 @@ BUSCO=function(fna=fna, # Fasta file of nucleotide or protein.
   out_dir=sub("/$","",out_dir)
   if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
   
-  f1=paste(out_dir,"/",Out_prefix,"/short_summary.specific.",Lineage,".",Out_prefix,".txt",sep="")
-  f2=paste(out_dir,"/",Out_prefix,"/short_summary.specific..",Out_prefix,".txt",sep="")
-  if (!file.exists(f1) & !file.exists(f2)){
+  f=paste(out_dir,"/",Out_prefix,"/short_summary*.txt",sep="")
+  if (system(paste("if [ -e ",f," ]; then echo TRUE; fi",sep=""),intern=TRUE)!="TRUE"){
     wd_begin=getwd();setwd(out_dir)
     if (file.exists(Out_prefix)){system(paste("rm"," -r ",Out_prefix,sep=""))}
     cmd=paste("busco","--force",
@@ -992,10 +991,9 @@ BUSCO=function(fna=fna, # Fasta file of nucleotide or protein.
     print(cmd);system(cmd,wait=TRUE)
     setwd(wd_begin)
   }
-  
-  if (file.exists(f1)){f=f1}
-  if (file.exists(f2)){f=f2}
-  re=readLines(f)[8]
+  f=system(paste("ls",f,sep=" "),intern=TRUE)
+  re=readLines(f)
+  re=re[grepl("C:.*$",re)]
   re=sub("\t","",re);re=sub("\t   ","",re)
   system(paste("cat",f,sep=" "))
   return(re)
@@ -1201,8 +1199,8 @@ pasa_more=function(species=species,
   write.table(c,paste("./",species,"_gene_evidence.tsv",sep=""),sep="\t",row.names=FALSE,quote=FALSE)
   
   # Extract transcripts, cds, proteins
-  system(paste("cp",genome,paste(species,"_genome.fna",sep=""),sep=" "))
-  genome=paste(species,"_genome.fna",sep="")
+  system(paste("cp",genome,paste(species,"_maskedGenome.fna",sep=""),sep=" "))
+  genome=paste(species,"_maskedGenome.fna",sep="")
   cmd=paste("gffread","-O",
             gff3,"-S",
             "-g",genome,

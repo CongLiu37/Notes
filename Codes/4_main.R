@@ -1331,8 +1331,8 @@ pasa_more=function(species=species,
   write.table(c,paste("./",species,"_gene_evidence.tsv",sep=""),sep="\t",row.names=FALSE,quote=FALSE)
   
   # Extract transcripts, cds, proteins
-  system(paste("cp",genome,paste(species,"_genome.fna",sep=""),sep=" "))
-  genome=paste(species,"_genome.fna",sep="")
+  system(paste("cp",genome,paste(species,"_maskedGenome.fna",sep=""),sep=" "))
+  genome=paste(species,"_maskedGenome.fna",sep="")
   cmd=paste("gffread","-O",
             gff3,"-S",
             "-g",genome,
@@ -1376,6 +1376,13 @@ pasa_more=function(species=species,
   f(paste(species,"_proteins.faa",sep=""),
     paste(species,"_proteins_rep.faa",sep=""),
     paste(species,"_proteins_iso.faa",sep=""))
+  
+  # cmd=paste("sed -i 's/-R0//' ",species,"_transcripts_rep.fna",sep="")
+  # print(cmd);system(cmd,wait=TRUE)
+  # cmd=paste("sed -i 's/-R0//' ",species,"_cds_rep.fna",sep="")
+  # print(cmd);system(cmd,wait=TRUE)
+  # cmd=paste("sed -i 's/-R0//' ",species,"_proteins_rep.faa",sep="")
+  # print(cmd);system(cmd,wait=TRUE)
   
   system(paste("rm",paste(species,"_transcripts.fna",sep=""),sep=" "),wait=TRUE)
   system(paste("rm",paste(species,"_cds.fna",sep=""),sep=" "),wait=TRUE)
@@ -1501,13 +1508,14 @@ PseudoPipe2gff3=function(Pseudo.out.txt=Pseudo.out.txt,
 }
 
 # Trinity: de novo assembly of transcriptome
-trinity=function(fq1=fq1,fq2=fq2, # comma-list
+trinity=function(fq1=fq1,fq2=fq2, # comma-list/R vector
                  threads=threads,
                  max_memory=max_memory, # 500G
                  out_dir=out_dir){
   threads=as.character(threads)
   out_dir=sub("/$","",out_dir)
-  wd=getwd()
+  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "),wait=TRUE)}
+  wd=getwd();setwd(out_dir)
   
   fq1=unlist(strsplit(fq1,","))
   fq2=unlist(strsplit(fq2,","))
@@ -1520,18 +1528,20 @@ trinity=function(fq1=fq1,fq2=fq2, # comma-list
   system("gzip read1.fq")
   system("gzip read2.fq")
   
+  system("mkdir trinity")
   cmd=paste("Trinity",
             "--seqType","fq",
             "--left read1.fq.gz",
             "--right read2.fq.gz",
             "--CPU",threads,
-            "--output",out_dir,
+            "--output",paste(out_dir,"/trinity",sep=""),
             "--max_memory",max_memory,
             "--full_cleanup",
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   
   system("rm read1.fq.gz read2.fq.gz")
+  system("rm -r ./trinity")
   setwd(wd)
 }
 

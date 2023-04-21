@@ -13,7 +13,7 @@ if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
 
 genome_file=unlist(strsplit(genome,"/"))
 genome_file=genome_file[length(genome_file)]
-masked_genome=paste(save_dir,"/masking/",label,"/",genome_file,".masked",sep="")
+masked_genome=paste(save_dir,"/masking/",label,"/",label,".fasta.masked",sep="")
 
 ############################################
 # Repeat masking
@@ -35,6 +35,9 @@ if (1 %in% step){
                  out_dir=paste(out_dir,"/masking/",label,sep=""),
                  RepeatLib.fa=paste(out_dir,"/masking/",label,"/",label,"_RepeatModeler.db-families.fa",sep=""),
                  Threads=threads)
+    system(paste("mv"," ",
+                 out_dir,"/masking/",label,"/",genome_file,".masked"," ",
+                 out_dir,"/masking/",label,"/",label,".fasta.masked",sep=""))
     system(paste("touch",Stamp1,sep=" "))
   }
 }

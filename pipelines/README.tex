@@ -48,11 +48,10 @@
 \section{Pipeline for genome decontamination (DeCon)}
 \subsection{Introduction}
 Pipeline DeCon is designed to retrieve genomic sequences of target \textbf{phylum} from metagenomic assembly of paired next generation sequencing (NGS) reads. 
-First, NGS reads are mapped to assembly by minimap2 \parencite{li2018minimap2}, generating BAM file. 
+First, contigs below 400 base pair (bp) are removed and NGS reads are mapped to assembly by minimap2 \parencite{li2018minimap2}, generating BAM file. 
 Second, SprayNPray \parencite{garber2022spraynpray} is used to compute coverage, GC content and coding density of each contigs. 
 Third, all contigs are searched against non-redundant (nr) database by DIAMOND \parencite{buchfink2015fast} and assigned to phyla by MEGAN \parencite{huson2007megan}. 
-Forth, contigs below 400 base pair (bp) are removed. 
-Then a decision tree classifier is trained, taking coverage, GC content and coding density as training features and phylum assignment as target value. 
+Forth, a decision tree classifier is trained, taking coverage, GC content and coding density as training features and phylum assignment as target value. 
 This classifier is used to compute phylum assignment of contigs that DIAMOND and MEGAN failed to compute assignments. 
 Fifth, contigs assigned to the target phylum are retrieved. 
 QUAST \parencite{gurevich2013quast} and BUSCO \parencite{simao2015busco} are used to evaluate retrieved genome. 
