@@ -276,30 +276,54 @@ Extract_fq=function(bam=bam,
 # SPAdes: Genome/Metagenome assembly.
 # long reads can be provided for scaffolding NGS assembly
 # Dependencies: SPAdes
-SPAdes=function(fq1=fq1,fq2=fq2, # Input NGS reads (fq). Set fq2="none" if single-end.
-                                 # PacBio CCS (HiFi) reads should be treated as fq1.
+SPAdes=function(fq1=fq1,fq2=fq2, 
+                # comma-list or R vector
+                # Input NGS reads (fq). Set fq2="none" if single-end.
+                # PacBio CCS (HiFi) reads should be treated as fq1.
                 contigs.fa="none", # Reliable contigs of the same genome.
                 pacbio_clr="none",nanopore="none",sanger="none", # Long reads
                 meta=meta, # Logical. If TRUE, run metaSPAdes.
-                           # metaSPAdes supports only a single short-read library which has to be paired-end.
+                # metaSPAdes supports only a single short-read library which has to be paired-end.
+                rna=rna, # Logical. TRUE for rnaSPAdes
+                bio=bio, # Logical. TRUE for biosyntheticSPAdes
+                custom_hmms="none", # directory with custom hmms for biosyntheticSPAdes
                 out_dir=out_dir,
-                threads=threads
-){
+                threads=threads,
+                memory=500){
   threads=as.character(threads)
-  
   if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "),wait=TRUE)}
+  wd=getwd();setwd(out_dir)
   
   if (fq2!="none"){ # pair-end
+    fq1=unlist(strsplit(fq1,","))
+    fq2=unlist(strsplit(fq2,","))
+    for (i in 1:length(fq1)){
+      cmd=paste("gzip -c -d",fq1[i],">>","read1.fq",sep=" ")
+      print(cmd);system(cmd,wait=TRUE)
+      cmd=paste("gzip -c -d",fq2[i],">>","read2.fq",sep=" ")
+      print(cmd);system(cmd,wait=TRUE)
+    }
+    system("gzip read1.fq")
+    system("gzip read2.fq")
+    
     cmd=paste("spades.py",
               "-t",threads,
-              "-1",fq1,
-              "-2",fq2,
+              "-m",as.character(memory),
+              "-1 read1.fq.gz",
+              "-2 read2.fq.gz",
               "-o",out_dir,
               sep=" ")
   }else{
+    fq1=unlist(strsplit(fq1,","))
+    for (i in 1:length(fq1)){
+      cmd=paste("gzip -c -d",fq1[i],">>","read1.fq",sep=" ")
+      print(cmd);system(cmd,wait=TRUE)
+    }
+    system("gzip read1.fq")
     cmd=paste("spades.py",
               "-t",threads,
-              "-s",fq1,
+              "-m",as.character(memory),
+              "-s read1.fq.gz",
               "-o",out_dir,
               sep=" ")
   }
@@ -309,8 +333,13 @@ SPAdes=function(fq1=fq1,fq2=fq2, # Input NGS reads (fq). Set fq2="none" if singl
   if (nanopore!="none"){cmd=paste(cmd,"--nanopore",nanopore,sep=" ")}
   if (sanger!="none"){cmd=paste(cmd,"--sanger",sanger,sep=" ")}
   if (meta){cmd=paste(cmd,"--meta",sep=" ")}
+  if (rna){cmd=paste(cmd,"--rna",sep=" ")}
+  if (bio){cmd=paste(cmd,"--bio",sep=" ")}
+  if (custom_hmms!="none"){cmd=paste(cmd,"--custom-hmms",custom_hmms,sep=" ")}
   
   print(cmd);system(cmd,wait=TRUE)
+  
+  system("rm read1.fq.gz read2.fq.gz")
   return(out_dir)
 }
 

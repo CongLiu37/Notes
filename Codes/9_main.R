@@ -88,6 +88,42 @@ Hisat = function(fq1=fq1,fq2=fq2, # Input fq files. Make fq2="None" if single-en
   return(paste(out_prefix,".bam",sep=""))
 }
 
+# Compute coverage of each scaffold
+# Dependencies: SAMtools
+coverage=function(bam=bam,
+                  output=output){
+  # tabular
+  # #rname  Reference name / chromosome
+  # startpos	Start position
+  # endpos	End position (or sequence length)
+  # numreads	Number reads aligned to the region (after filtering)
+  # covbases	Number of covered bases with depth >= 1
+  # coverage	Percentage of covered bases [0..100]
+  # meandepth	Mean depth of coverage
+  # meanbaseq	Mean baseQ in covered region
+  # meanmapq	Mean mapQ of selected reads
+  
+  cmd=paste("samtools","coverage",
+            "-o",output,
+            bam,
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+}
+
+# GC content & length of each sequence
+# Dependencies: seqkit
+GC_length=function(fna=fna,out=out,threads=threads){
+  cmd=paste("printf","'rname\tlength\tGC.content'",">",out)
+  system(cmd,wait=TRUE)
+  
+  cmd=paste("seqkit","fx2tab",
+            "--name --only-id --gc --length",
+            "--threads",as.character(threads),
+            fna,">>",out,
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+}
+
 # Extract reads mapped/unmapped to an assembly via SAMtools.
 # Dependencies: SAMtools
 Extract_fq=function(bam=bam,
@@ -98,7 +134,7 @@ Extract_fq=function(bam=bam,
                     threads=threads){
   threads=as.character(threads)
   if (paired){
-    if (mapped){flag="-f 2"}else{flag="-G 2"}
+    if (mapped){flag="-f 2 -F 256"}else{flag="-f 12 -F 256"}
     if (reads_format=="fq"){
       samtools="samtools fastq";reads_format="fq.gz"}else{samtools="samtools fasta"}
     cmd=paste(samtools,
@@ -237,8 +273,8 @@ SPAdes=function(fq1=fq1,fq2=fq2,
                 bio=bio, # Logical. TRUE for biosyntheticSPAdes
                 custom_hmms="none", # directory with custom hmms for biosyntheticSPAdes
                 out_dir=out_dir,
-                threads=threads
-){
+                threads=threads,
+                memory=500){
   threads=as.character(threads)
   if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "),wait=TRUE)}
   wd=getwd();setwd(out_dir)
@@ -257,6 +293,7 @@ SPAdes=function(fq1=fq1,fq2=fq2,
     
     cmd=paste("spades.py",
               "-t",threads,
+              "-m",as.character(memory),
               "-1 read1.fq.gz",
               "-2 read2.fq.gz",
               "-o",out_dir,
@@ -270,6 +307,7 @@ SPAdes=function(fq1=fq1,fq2=fq2,
     system("gzip read1.fq")
     cmd=paste("spades.py",
               "-t",threads,
+              "-m",as.character(memory),
               "-s read1.fq.gz",
               "-o",out_dir,
               sep=" ")
@@ -300,31 +338,62 @@ trinity=function(fq1=fq1,fq2=fq2, # comma-list/R vector
   if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "),wait=TRUE)}
   wd=getwd();setwd(out_dir)
   
-  fq1=unlist(strsplit(fq1,","))
-  fq2=unlist(strsplit(fq2,","))
-  for (i in 1:length(fq1)){
-    cmd=paste("gzip -c -d",fq1[i],">>","read1.fq",sep=" ")
-    print(cmd);system(cmd,wait=TRUE)
-    cmd=paste("gzip -c -d",fq2[i],">>","read2.fq",sep=" ")
-    print(cmd);system(cmd,wait=TRUE)
-  }
-  system("gzip read1.fq")
-  system("gzip read2.fq")
+  fq1=paste(fq1,collapse=",")
+  fq2=paste(fq2,collapse=",")
   
   system("mkdir trinity")
+  if (!file.exists("normalization.finished")){
   cmd=paste("Trinity",
             "--seqType","fq",
-            "--left read1.fq.gz",
-            "--right read2.fq.gz",
+            "--left",fq1,
+            "--right",fq2,
+            "--CPU",threads,
+            "--output",paste(out_dir,"/trinity",sep=""),
+            "--max_memory",max_memory,
+            "--no_run_inchworm",
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  system("touch normalization.finished")
+  }
+  if (!file.exists("inchworm.finished")){
+    cmd=paste("Trinity",
+              "--seqType","fq",
+              "--left",fq1,
+              "--right",fq2,
+              "--CPU",threads,
+              "--output",paste(out_dir,"/trinity",sep=""),
+              "--max_memory",max_memory,
+              "--no_run_chrysalis",
+              sep=" ")
+    print(cmd);system(cmd,wait=TRUE)
+    system("touch inchworm.finished")
+  }
+  if (!file.exists("chrysalis.finished")){
+    cmd=paste("Trinity",
+              "--seqType","fq",
+              "--left",fq1,
+              "--right",fq2,
+              "--CPU",threads,
+              "--output",paste(out_dir,"/trinity",sep=""),
+              "--max_memory",max_memory,
+              "--no_distributed_trinity_exec",
+              sep=" ")
+    print(cmd);system(cmd,wait=TRUE)
+    system("touch chrysalis.finished")
+  }
+  if (!file.exists("assembly.finished")){
+  cmd=paste("Trinity",
+            "--seqType","fq",
+            "--left",fq1,
+            "--right",fq2,
             "--CPU",threads,
             "--output",paste(out_dir,"/trinity",sep=""),
             "--max_memory",max_memory,
             "--full_cleanup",
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
-  
-  system("rm read1.fq.gz read2.fq.gz")
-  system("rm -r ./trinity")
+  system("touch assembly.finished")
+  }
   setwd(wd)
 }
 
@@ -332,6 +401,12 @@ trinity=function(fq1=fq1,fq2=fq2, # comma-list/R vector
 # Dependencies: mmseq2
 seqNR=function(in.fasta=in.fasta,
                out_dir=out_dir,
+               Identity=Identity, # [0.0,1.0]
+               cov_mode=cov_mode, # 0: alignment covers ${coverage} of target and of query
+                                  # 1: alignment covers ${coverage} of target
+                                  # 2: alignment covers ${coverage} of query
+                                  # 3: target is of ${coverage} query length
+               coverage=coverage, # [0.0,1.0]
                threads=threads){
   threads=as.character(threads)
   if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "),wait=TRUE)}
@@ -340,13 +415,18 @@ seqNR=function(in.fasta=in.fasta,
   cmd=paste("mmseqs createdb",in.fasta,"sequenceDB",sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   
-  cmd=paste("mmseqs clusthash sequenceDB resultDB --min-seq-id 0.98 --max-seq-len 65535 --threads",threads,sep=" ")
+  cov_mode=as.character(cov_mode)
+  coverage=as.character(coverage)
+  Identity=as.character(Identity)
+  cmd=paste("mmseqs cluster sequenceDB clusterDB", out_dir,
+            "--cov-mode",cov_mode,
+            "-c",coverage,
+            "--min-seq-id",Identity,
+            "--threads",threads,
+            sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   
-  cmd=paste("mmseqs clust sequenceDB resultDB clusterDB --threads",threads,sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  
-  cmd="mmseqs createsubdb clusterDB clusterDB_rep"
+  cmd="mmseqs createsubdb clusterDB sequenceDB clusterDB_rep"
   print(cmd);system(cmd,wait=TRUE)
   
   cmd="mmseqs convert2fasta clusterDB_rep rep.fasta"
@@ -411,7 +491,44 @@ cdsInTranscripts=function(transcripts.fna=transcripts.fna,
   return("TransDecoder.gff3")
 }
 
-
+# Protein-protein search by DIAMOND and assign to taxa by MEGAN
+# Dependencies: DIAMOND
+diamond_p_megan=function(query.faa=query.faa,
+                         diamond.db=diamond.db, # nr
+                         megan.db=megan.db,
+                         out_prefix=out_prefix,
+                         threads=threads){
+  threads=as.character(threads)
+  cmd=paste("diamond blastp",
+            "-p",threads,
+            "-d",diamond.db,
+            "-q",query.faa,
+            "--out",paste(out_prefix,".blast",sep=""),
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  cmd=paste("blast2rma",
+            "-i",paste(out_prefix,".blast",sep=""),
+            "-o",paste(out_prefix,".rma",sep=""),
+            "-f","BlastTab",
+            "-bm","BlastP",
+            "--paired","false",
+            "-lg","false",
+            "-mdb",megan.db,
+            "-t",threads,
+            "-ram","readCount",
+            "-supp","0",sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  cmd=paste("rma2info",
+            "-i",paste(out_prefix,".rma",sep=""),
+            "-o",paste(out_prefix,"_taxon.tsv",sep=""),
+            "-r2c Taxonomy",
+            "-n true",
+            "-p true",
+            "-r true",
+            "-mro","true",
+            "-u false",sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+}
 
 
 

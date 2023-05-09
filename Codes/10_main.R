@@ -5,7 +5,7 @@
 #####
 # OrthoFinder
 # OrthoFinder creates a results directory called ‘OrthoFinder’ inside the input proteome directory and puts the results here.
-# Orthofinder with "-M msa" infers phylogeny by mafft & fasttree
+# Orthofinder with "-M msa" infers phylogeny by mafft & fasttree (too slow)
 # Dependencies: Orthofinder, mafft, fasttree
 Orthofinder=function(in_dir=in_dir, # Input proteome directory. 
                      # One file per species with extension '.faa'
@@ -14,7 +14,6 @@ Orthofinder=function(in_dir=in_dir, # Input proteome directory.
   
   cmd=paste("orthofinder.py",
             "-f",in_dir,
-            "-M msa",
             "-t",threads,
             "-a",threads,
             sep=" ")
@@ -27,7 +26,7 @@ Re_orthofinder=function(previous_orthofinder_result_dir=previous_orthofinder_res
                         threads=threads){
   threads=as.character(threads)
   
-  cmd=paste("orthofinder",
+  cmd=paste("orthofinder.py",
             "-t",threads,
             "-a",threads,
             "-ft",previous_orthofinder_result_dir,

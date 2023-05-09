@@ -87,15 +87,14 @@ Diamond_Megan=function(fna, # fna. Input DNA sequences.
             "-d",ref_diamond,
             "-q",fna,
             "--long-reads",
-            "--out",paste(blast_dir,"/",out_basename,".blast",sep=""),
+            "-f 100",
+            "--out",paste(blast_dir,"/",out_basename,".blast.daa",sep=""),
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   
-  cmd=paste("blast2rma",
-            "-i",paste(blast_dir,"/",out_basename,".blast",sep=""),
+  cmd=paste("daa2rma",
+            "-i",paste(blast_dir,"/",out_basename,".blast.daa",sep=""),
             "-o",paste(rma_dir,"/",out_basename,".rma",sep=""),
-            "-f","BlastTab",
-            "-bm","BlastX",
             "--paired","false",
             "-lg","true",
             "-mdb",ref_megan,
@@ -168,7 +167,7 @@ BUSCO=function(fna=fna, # Fasta file of nucleotide or protein.
   if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
   
   f=paste(out_dir,"/",Out_prefix,"/short_summary*.txt",sep="")
-  if (system(paste("if [ -e ",f," ]; then echo TRUE; fi",sep=""),intern=TRUE)!="TRUE"){
+  if (system(paste("if [ -e ",f," ]; then echo TRUE; else echo FALSE; fi",sep=""),intern=TRUE)!="TRUE"){
     wd_begin=getwd();setwd(out_dir)
     if (file.exists(Out_prefix)){system(paste("rm"," -r ",Out_prefix,sep=""))}
     cmd=paste("busco","--force",

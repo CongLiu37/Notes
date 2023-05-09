@@ -146,8 +146,10 @@ if (file.exists(paste(out_dir,"/sklearn/",label,"_classification.finished",sep="
 if (!file.exists(paste(out_dir,"/retrievedGenome",sep=""))){
   system(paste("mkdir"," ",out_dir,"/retrievedGenome",sep=""))
 }
+cmd=paste("head -n1 ",out_dir,"/sklearn/",label,".tsv > ",out_dir,"/retrievedGenome/",label,"_",target,".tsv",sep="")
+print(cmd);system(cmd,wait=TRUE)
 cmd=paste("awk -F '\t' -v OFS='\t' '{if ($2==\"",target,"\") print $0}' ",
-          out_dir,"/sklearn/",label,".tsv"," > ",
+          out_dir,"/sklearn/",label,".tsv"," >> ",
           out_dir,"/retrievedGenome/",label,"_",target,".tsv",sep="")
 print(cmd);system(cmd,wait=TRUE)
 cmd=paste("awk -F '\t' -v OFS='\t' '{if ($2==\"",target,"\") print $1}' ",

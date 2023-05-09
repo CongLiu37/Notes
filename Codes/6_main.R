@@ -78,37 +78,13 @@ Isoform_filter=function(faa_in=faa_in,
 # MCScanX: classify duplicated gene pairs
 # Dependencies: blastp, MCScanX, stringr (R)
 MCScanX_dupliClass=function(gff=gff,
-                            proteins.faa=proteins.faa, # NO isoform, same ID with genes in gff
+                            blast=blast, # self2self blast of proteins; IDs same with gene ID in gff
                             out_dir=out_dir,
-                            out_basename=out_basename,
-                            threads=threads){
-  threads=as.character(threads)
+                            out_basename=out_basename){
   out_dir=sub("/$","",out_dir)
   if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
   wd=getwd();setwd(out_dir)
-  
-  system("mkdir tmp");setwd("tmp")
-  cmd=paste("cp"," ",proteins.faa," ",".",sep="");print(cmd);system(cmd,wait=TRUE)
-  proteins.faa=unlist(strsplit(proteins.faa,"/"));proteins.faa=proteins.faa[length(proteins.faa)]
-  cmd=paste("makeblastdb",
-            "-in",proteins.faa,
-            "-dbtype prot",
-            sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  cmd=paste("blastp",
-            "-num_threads",threads,
-            "-db",proteins.faa,
-            "-query",proteins.faa,
-            "-outfmt 6",
-            "-evalue 1e-5",
-            "-num_alignments 5",
-            "-out",paste(out_basename,".blast",sep=""),
-            sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  system(paste("mv"," ",out_basename,".blast"," ","..",sep=""))
-  setwd(out_dir)
-  system("rm -r tmp")
-  
+  system(paste("cp",blast,".",sep=" "))
   library(stringr)
   cmd=paste("awk -F '\t' -v OFS='\t' '{if ($3==\"gene\") print $1,$9,$4,$5}' ",gff," > ",out_basename,".gff",sep="")
   print(cmd);system(cmd,wait=TRUE)
@@ -120,7 +96,7 @@ MCScanX_dupliClass=function(gff=gff,
   df[,2]=geneIDs
   write.table(df,paste(out_basename,".gff",sep=""),sep="\t",row.names=FALSE,col.names=FALSE,quote=FALSE)
   
-  cmd=paste("MCScanx"," ",out_dir,"/",out_basename,sep="")
+  cmd=paste("MCScanX"," ",out_dir,"/",out_basename,sep="")
   print(cmd);system(cmd,wait=TRUE)
   
   cmd=paste("duplicate_gene_classifier"," ",out_dir,"/",out_basename,sep="")
@@ -140,11 +116,12 @@ MCScanX_dupliClass=function(gff=gff,
   setwd(wd)
 }
 
-
 # WGDI input files
 # Dependencies: blastp
-wgdi_input=function(genome.fna1=genome.fna1,gff1=gff1,proteins.faa1=proteins.faa1,cds.fna1=cds.fna1, # NO protein isoform
-                    genome.fna2=genome.fna2,gff2=gff2,proteins.faa2=proteins.faa2,cds.fna2=cds.fna2, # NO protein isoform
+wgdi_input=function(genome.fna1=genome.fna1,gff1=gff1,proteins.faa1=proteins.faa1,cds.fna1=cds.fna1, 
+                    genome.fna2=genome.fna2,gff2=gff2,proteins.faa2=proteins.faa2,cds.fna2=cds.fna2,
+                    # No protein isoforms on proteins.faa[12] and cds.fna[12]
+                    # Corresponding proetin & cds has same ID
                     threads=threads,
                     out_dir=out_dir,
                     out_basename=out_basename){
@@ -152,66 +129,7 @@ wgdi_input=function(genome.fna1=genome.fna1,gff1=gff1,proteins.faa1=proteins.faa
   out_dir=sub("/$","",out_dir)
   if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
   wd=getwd();setwd(out_dir)
-  system("mkdir tmp",wait=TRUE)
-  
   self2self=genome.fna1==genome.fna2
-  setwd("tmp/")
-  
-  cmd=paste("cp"," ",proteins.faa1," ",".",sep="")
-  print(cmd);system(cmd,wait=TRUE)
-  proteins.faa1=unlist(strsplit(proteins.faa1,"/"));proteins.faa1=proteins.faa1[length(proteins.faa1)]
-  if (!self2self){
-    cmd=paste("cp"," ",proteins.faa2," ",".",sep="")
-    print(cmd);system(cmd,wait=TRUE)
-  }
-  proteins.faa2=unlist(strsplit(proteins.faa2,"/"));proteins.faa2=proteins.faa2[length(proteins.faa2)]
-  
-  cmd=paste("makeblastdb",
-            "-in",proteins.faa1,
-            "-dbtype prot",
-            sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  cmd=paste("blastp",
-            "-num_threads",threads,
-            "-db",proteins.faa1,
-            "-query",proteins.faa2,
-            "-outfmt 6",
-            "-evalue 1e-5",
-            "-num_alignments 20",
-            "-out",paste(out_basename,".blast",sep=""),
-            sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  blast1=paste(out_basename,".blast",sep="")
-  if (!self2self){
-    cmd=paste("makeblastdb",
-              "-in",proteins.faa2,
-              "-dbtype prot",
-              sep=" ")
-    print(cmd);system(cmd,wait=TRUE)
-    cmd=paste("blastp",
-              "-num_threads",threads,
-              "-db",proteins.faa2,
-              "-query",proteins.faa1,
-              "-outfmt 6",
-              "-evalue 1e-5",
-              "-num_alignments 20",
-              "-out",paste(out_basename,"_reverse.blast",sep=""),
-              sep=" ")
-    print(cmd);system(cmd,wait=TRUE)
-    blast2=paste(out_basename,"_reverse.blast",sep="")
-  }else{
-    #blast2=paste(out_dir,"/",out_basename,".blast",sep="")
-    blast2="false"
-  }
-  
-  system(paste("mv",proteins.faa1,"../",sep=" "),wait=TRUE)
-  if (!self2self){system(paste("mv",proteins.faa2,"../",sep=" "),wait=TRUE)}
-  system(paste("mv",blast1,"../",sep=" "),wait=TRUE)
-  if (!self2self){system(paste("mv",blast2,"../",sep=" "),wait=TRUE)}
-  setwd("../")
-  system("rm -r tmp",wait=TRUE)
-  system(paste("cp"," ",cds.fna1," ",".",sep=""),wait=TRUE)
-  system(paste("cp"," ",cds.fna2," ",".",sep=""),wait=TRUE)
   
   # Prepare fake gff and len file required by wgdi
   # Dependencies: https://github.com/xuzhougeng/myscripts/blob/master/comparative/generate_conf.py
@@ -223,35 +141,91 @@ wgdi_input=function(genome.fna1=genome.fna1,gff1=gff1,proteins.faa1=proteins.faa
               genome.fna,gff,
               sep=" ")
     print(cmd);system(cmd,wait=TRUE)
-    
-    cmd=paste("awk -F '\t' -v OFS='\t' '{$2=$7; print $0}'",paste(out_prefix,".gff",sep=""),
-              ">",paste(out_prefix,"_tmp.gff",sep=""),sep=" ")
-    print(cmd);system(cmd,wait=TRUE)
-    
-    system(paste("rm",paste(out_prefix,".gff",sep=""),sep=" "),wait=TRUE)
-    system(paste("mv",
-                 paste(out_prefix,"_tmp.gff",sep=""),
-                 paste(out_prefix,".gff",sep=""),
-                 sep=" "),wait=TRUE)
   }
-  genome_prefix1=unlist(strsplit(genome.fna1,"/"));genome_prefix1=genome_prefix1[length(genome_prefix1)]
   wgdi_input(genome.fna=genome.fna1,
              gff=gff1,
-             out_prefix=genome_prefix1)
-  fake_gff1=paste(out_dir,"/",genome_prefix1,".gff",sep="")
-  len1=paste(out_dir,"/",genome_prefix1,".len",sep="")
+             out_prefix=out_basename)
+  fake_gff1=paste(out_dir,"/",out_basename,".gff",sep="")
+  len1=paste(out_dir,"/",out_basename,".len",sep="")
+  # Remove contigs without genes
+  cmd=paste("awk -F '\t' -v OFS='\t' '{if ($3!=0) print $0}'",len1,"> len1",sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  system(paste("rm",len1,sep=" "));system(paste("mv","len1",len1,sep=" "))
   if (!self2self){
-    genome_prefix2=unlist(strsplit(genome.fna2,"/"));genome_prefix2=genome_prefix2[length(genome_prefix2)]
     wgdi_input(genome.fna=genome.fna2,
                gff=gff2,
-               out_prefix=genome_prefix2)
-    fake_gff2=paste(out_dir,"/",genome_prefix2,".gff",sep="")
-    len2=paste(out_dir,"/",genome_prefix2,".len",sep="")
+               out_prefix=out_basename)
+    fake_gff2=paste(out_dir,"/",out_basename,".gff",sep="")
+    len2=paste(out_dir,"/",out_basename,".len",sep="")
+    # Remove contigs without genes
+    cmd=paste("awk -F '\t' -v OFS='\t' '{if ($3!=0) print $0}'",len2,"> len2",sep=" ")
+    print(cmd);system(cmd,wait=TRUE)
+    system(paste("rm",len2,sep=" "));system(paste("mv","len2",len2,sep=" "))
   }else{
-    genome_prefix2=genome_prefix1
-    fake_gff2=paste(out_dir,"/",genome_prefix1,".gff",sep="")
-    len2=paste(out_dir,"/",genome_prefix1,".len",sep="")
+    fake_gff2=paste(out_dir,"/",out_basename,".gff",sep="")
+    len2=paste(out_dir,"/",out_basename,".len",sep="")
   }
+  
+  # Run blast
+  system("mkdir tmp",wait=TRUE)
+  setwd("tmp/")
+  cmd=paste("cp"," ",proteins.faa1," ",".",sep="")
+  print(cmd);system(cmd,wait=TRUE)
+  proteins.faa1=unlist(strsplit(proteins.faa1,"/"));proteins.faa1=proteins.faa1[length(proteins.faa1)]
+  if (!self2self){
+    cmd=paste("cp"," ",proteins.faa2," ",".",sep="")
+    print(cmd);system(cmd,wait=TRUE)
+  }
+  proteins.faa2=unlist(strsplit(proteins.faa2,"/"));proteins.faa2=proteins.faa2[length(proteins.faa2)]
+  if (!file.exists(paste("../",out_basename,".blast",sep=""))){
+    cmd=paste("makeblastdb",
+              "-in",proteins.faa1,
+              "-dbtype prot",
+              sep=" ")
+    print(cmd);system(cmd,wait=TRUE)
+    cmd=paste("blastp",
+              "-num_threads",threads,
+              "-db",proteins.faa1,
+              "-query",proteins.faa2,
+              "-outfmt 6",
+              "-evalue 1e-5",
+              "-num_alignments 20",
+              "-out",paste(out_basename,".blast",sep=""),
+              sep=" ")
+    print(cmd);system(cmd,wait=TRUE)
+    blast1=paste(out_basename,".blast",sep="")
+    system(paste("mv",blast1,"../",sep=" "),wait=TRUE)
+  }
+  if (!self2self){
+    if (!file.exists(paste("../",out_basename,"_reverse.blast",sep=""))){
+      cmd=paste("makeblastdb",
+                "-in",proteins.faa2,
+                "-dbtype prot",
+                sep=" ")
+      print(cmd);system(cmd,wait=TRUE)
+      cmd=paste("blastp",
+                "-num_threads",threads,
+                "-db",proteins.faa2,
+                "-query",proteins.faa1,
+                "-outfmt 6",
+                "-evalue 1e-5",
+                "-num_alignments 20",
+                "-out",paste(out_basename,"_reverse.blast",sep=""),
+                sep=" ")
+      print(cmd);system(cmd,wait=TRUE)
+      blast2=paste(out_basename,"_reverse.blast",sep="")
+      system(paste("mv",blast2,"../",sep=" "),wait=TRUE)
+    }
+  }else{
+    #blast2=paste(out_dir,"/",out_basename,".blast",sep="")
+    blast2="false"
+  }
+  system(paste("mv",proteins.faa1,"../",sep=" "),wait=TRUE)
+  if (!self2self){system(paste("mv",proteins.faa2,"../",sep=" "),wait=TRUE)}
+  setwd("../")
+  system("rm -r tmp",wait=TRUE)
+  system(paste("cp"," ",cds.fna1," ",".",sep=""),wait=TRUE)
+  system(paste("cp"," ",cds.fna2," ",".",sep=""),wait=TRUE)
   
   setwd(wd)
 }
@@ -268,6 +242,8 @@ wgdi_dot=function(blast=blast,blast_reverse="false",
   if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
   wd=getwd();setwd(out_dir)
   
+  getFile=function(i){i=unlist(strsplit(i,"/"));return(i[length(i)])}
+  
   cmd="wgdi -d \\?"
   conf=system(cmd,wait=TRUE,intern=TRUE)
   conf[2]=paste("blast = ",blast,sep="")
@@ -281,11 +257,11 @@ wgdi_dot=function(blast=blast,blast_reverse="false",
   conf[10]="score = 100"
   conf[11]="evalue = 1e-5"
   conf[12]="repeat_number = 10"
-  conf[13]="position = start"
+  conf[13]="position = order"
   conf[14]=paste("blast_reverse = ",blast_reverse,sep="")
   conf[15]="ancestor_left = none"
   conf[16]="ancestor_top = none"
-  conf[17]="markersize = 0.5"
+  conf[17]="markersize = 20"
   conf[18]="figsize = 100,100"
   conf[19]=paste("savefig = ",out_basename,"_dotplot.pdf",sep="")
   writeLines(conf,paste(out_basename,"_dotplot.conf",sep=""))
@@ -427,9 +403,9 @@ wgdi_bk=function(wgdi_BlockInfo=wgdi_BlockInfo,
   conf[7]=paste("pvalue = ",as.character(p_block),sep="")
   conf[8]="tandem = true"
   conf[9]="tandem_length = 200"
-  conf[10]="markersize = 1"  
+  conf[10]="markersize = 20"  
   conf[11]="area = 0,10"
-  conf[12]="block_length = 5"
+  conf[12]="block_length = 0"
   conf[13]="figsize = 100,100"   
   conf[14]=paste("savefig = ",out_basename,"_BlockKs.pdf",sep="")
   writeLines(conf,paste(out_basename,"_BlockKs.conf",sep=""))
@@ -606,7 +582,8 @@ pal2nal=function(protAlign.fa=protAlign.fa,
   
   cmd=paste("pal2nal.pl",
             protAlign.fa,
-            paste(outAlign.fa,"_CDS.fa",sep=""),">",
+            paste(outAlign.fa,"_CDS.fa",sep=""),
+            "-output fasta",">",
             outAlign.fa,
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
@@ -627,7 +604,7 @@ catMSA=function(align.fa=align.fa, # comma list
 
 # Phylogenetic tree
 # Dependencies: iqtree
-iqtree=function(msa.fa=msa.fa,
+iqtree=function(msa.fa=msa.fa, 
                 out_prefix=out_prefix,
                 threads=threads){
   threads=as.character(threads)
@@ -635,7 +612,9 @@ iqtree=function(msa.fa=msa.fa,
             "-s",msa.fa,
             "--prefix",out_prefix,
             "-T",threads,
-            "-m MFP",
+            #"-m MFP", # test all feasible models
+            "--mset GTR", # test GTR+... models only
+            # "--msub nuclear", # (nuclear, mitochondrial, chloroplast or viral)
             "-B 1000",
             sep-" ")
   print(cmd);system(cmd,wait=TRUE)

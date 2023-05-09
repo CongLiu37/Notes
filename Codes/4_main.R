@@ -1517,38 +1517,80 @@ trinity=function(fq1=fq1,fq2=fq2, # comma-list/R vector
   if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "),wait=TRUE)}
   wd=getwd();setwd(out_dir)
   
-  fq1=unlist(strsplit(fq1,","))
-  fq2=unlist(strsplit(fq2,","))
-  for (i in 1:length(fq1)){
-    cmd=paste("gzip -c -d",fq1[i],">>","read1.fq",sep=" ")
-    print(cmd);system(cmd,wait=TRUE)
-    cmd=paste("gzip -c -d",fq2[i],">>","read2.fq",sep=" ")
-    print(cmd);system(cmd,wait=TRUE)
-  }
-  system("gzip read1.fq")
-  system("gzip read2.fq")
+  fq1=paste(fq1,collapse=",")
+  fq2=paste(fq2,collapse=",")
   
   system("mkdir trinity")
-  cmd=paste("Trinity",
-            "--seqType","fq",
-            "--left read1.fq.gz",
-            "--right read2.fq.gz",
-            "--CPU",threads,
-            "--output",paste(out_dir,"/trinity",sep=""),
-            "--max_memory",max_memory,
-            "--full_cleanup",
-            sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  
-  system("rm read1.fq.gz read2.fq.gz")
-  system("rm -r ./trinity")
+  if (!file.exists("normalization.finished")){
+    cmd=paste("Trinity",
+              "--seqType","fq",
+              "--left",fq1,
+              "--right",fq2,
+              "--CPU",threads,
+              "--output",paste(out_dir,"/trinity",sep=""),
+              "--max_memory",max_memory,
+              "--no_run_inchworm",
+              sep=" ")
+    print(cmd);system(cmd,wait=TRUE)
+    system("touch normalization.finished")
+  }
+  if (!file.exists("inchworm.finished")){
+    cmd=paste("Trinity",
+              "--seqType","fq",
+              "--left",fq1,
+              "--right",fq2,
+              "--CPU",threads,
+              "--output",paste(out_dir,"/trinity",sep=""),
+              "--max_memory",max_memory,
+              "--no_run_chrysalis",
+              sep=" ")
+    print(cmd);system(cmd,wait=TRUE)
+    system("touch inchworm.finished")
+  }
+  if (!file.exists("chrysalis.finished")){
+    cmd=paste("Trinity",
+              "--seqType","fq",
+              "--left",fq1,
+              "--right",fq2,
+              "--CPU",threads,
+              "--output",paste(out_dir,"/trinity",sep=""),
+              "--max_memory",max_memory,
+              "--no_distributed_trinity_exec",
+              sep=" ")
+    print(cmd);system(cmd,wait=TRUE)
+    system("touch chrysalis.finished")
+  }
+  if (!file.exists("assembly.finished")){
+    cmd=paste("Trinity",
+              "--seqType","fq",
+              "--left",fq1,
+              "--right",fq2,
+              "--CPU",threads,
+              "--output",paste(out_dir,"/trinity",sep=""),
+              "--max_memory",max_memory,
+              "--full_cleanup",
+              sep=" ")
+    print(cmd);system(cmd,wait=TRUE)
+    system("touch assembly.finished")
+  }
   setwd(wd)
 }
 
-
-
-
-
+# # NCBI cds: convert ID to protein ID
+# cds="GCF_000001215.4_Release_6_plus_ISO1_MT_cds_from_genomic.fna"
+# origin=system(paste("grep","'>'",cds,sep=" "),intern=TRUE)
+# origin=sub(">","",origin)
+# new=sapply(origin,
+#            function(i){
+#              i=unlist(strsplit(i," "))
+#              return(
+#                      sub("\\]","",
+#                          sub("\\[protein_id=","",i[grepl("protein_id=",i)]))
+#              )
+#            })
+# new=unname(new)
+# write.table(data.frame(origin,new),"alias.tsv",sep="\t",row.names=FALSE,quote=FALSE)
+# seqkit replace -p "(.+)" -r '{kv}' --kv-file alias.tsv GCF_000001215.4_Release_6_plus_ISO1_MT_cds_from_genomic.fna > Drosophila_melanogaster_GCF_000001215.4.cds.fna
 
 
 
