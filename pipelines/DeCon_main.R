@@ -69,7 +69,8 @@ SprayNPray=function(fna=fna, # fna. Input DNA sequences.
 # Compute taxonomy at major ranks by Megan.
 # Diamond and Megan in long-read mode.
 # Dependencies: DIAMOND, MEGAN
-Diamond_Megan=function(fna, # fna. Input DNA sequences.
+## fna 2 daa 2 tsv
+Diamond_Megan=function(fna, # fna. DNA assembly.
                        out_basename=out_basename,
                        blast_dir=blast_dir, # Directory for diamond output.
                        rma_dir=rma_dir, # Directory for rma output of megan.
@@ -92,26 +93,26 @@ Diamond_Megan=function(fna, # fna. Input DNA sequences.
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   
-  cmd=paste("daa2rma",
+  cmd=paste("daa-meganizer",
             "-i",paste(blast_dir,"/",out_basename,".blast.daa",sep=""),
-            "-o",paste(rma_dir,"/",out_basename,".rma",sep=""),
-            "--paired","false",
-            "-lg","true",
+            "-lg",
             "-mdb",ref_megan,
             "-t",threads,
-            "-ram","readCount",
-            "-supp","0",sep=" ")
+            "-ram readCount",
+            "-supp 0",
+            sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   
-  cmd=paste("rma2info",
-            "-i",paste(rma_dir,"/",out_basename,".rma",sep=""),
+  cmd=paste("daa2info",
+            "-i",paste(blast_dir,"/",out_basename,".blast.daa",sep=""),
             "-o",paste(assignment_dir,"/",out_basename,".tsv",sep=""),
             "-r2c Taxonomy",
             "-n true",
             "-p true",
             "-r true",
-            "-mro","true",
-            "-u false",sep=" ")
+            "-mro true",
+            "-u false",
+            sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   
   return(paste(assignment_dir,"/",out_basename,".tsv",sep=""))

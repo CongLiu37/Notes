@@ -442,57 +442,8 @@ blastn_blobtools=function(fna=fna, # fna. Input DNA sequences.
 # Compute taxonomy at major ranks by Megan.
 # Diamond and Megan in long-read mode.
 # Dependencies: DIAMOND, MEGAN
-##fna 2 blast 2 rma
-Diamond_Megan=function(fna, # fna. Input DNA sequences.
-                       out_basename=out_basename,
-                       blast_dir=blast_dir, # Directory for diamond output.
-                       rma_dir=rma_dir, # Directory for rma output of megan.
-                       assignment_dir=assignment_dir, # Directory for taxonomy table.
-                       ref_diamond=ref_diamond, # Diamond database.
-                       ref_megan=ref_megan, # Megan database.
-                       threads=threads){
-  threads=as.character(threads)
-  blast_dir=sub("/$","",blast_dir)
-  rma_dir=sub("/$","",rma_dir)
-  assignment_dir=sub("/$","",assignment_dir)
-  
-  cmd=paste("diamond blastx",
-            "-p",threads,
-            "-d",ref_diamond,
-            "-q",fna,
-            "--long-reads",
-            "--out",paste(blast_dir,"/",out_basename,".blast",sep=""),
-            sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  
-  cmd=paste("blast2rma",
-            "-i",paste(blast_dir,"/",out_basename,".blast",sep=""),
-            "-o",paste(rma_dir,"/",out_basename,".rma",sep=""),
-            "-f","BlastTab",
-            "-bm","BlastX",
-            "--paired","false",
-            "-lg","true",
-            "-mdb",ref_megan,
-            "-t",threads,
-            "-ram","readCount",
-            "-supp","0",sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  
-  cmd=paste("rma2info",
-            "-i",paste(rma_dir,"/",out_basename,".rma",sep=""),
-            "-o",paste(assignment_dir,"/",out_basename,".tsv",sep=""),
-            "-r2c Taxonomy",
-            "-n true",
-            "-p true",
-            "-r true",
-            "-mro","true",
-            "-u false",sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  
-  return(paste(assignment_dir,"/",out_basename,".tsv",sep=""))
-}
-##fna 2 daa 2 rma
-Diamond_Megan=function(fna, # fna. Input DNA sequences.
+## fna 2 daa 2 tsv
+Diamond_Megan=function(fna, # fna. DNA assembly.
                        out_basename=out_basename,
                        blast_dir=blast_dir, # Directory for diamond output.
                        rma_dir=rma_dir, # Directory for rma output of megan.
@@ -515,26 +466,26 @@ Diamond_Megan=function(fna, # fna. Input DNA sequences.
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   
-  cmd=paste("daa2rma",
+  cmd=paste("daa-meganizer",
             "-i",paste(blast_dir,"/",out_basename,".blast.daa",sep=""),
-            "-o",paste(rma_dir,"/",out_basename,".rma",sep=""),
-            "--paired","false",
-            "-lg","true",
+            "-lg",
             "-mdb",ref_megan,
             "-t",threads,
-            "-ram","readCount",
-            "-supp","0",sep=" ")
+            "-ram readCount",
+            "-supp 0",
+            sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   
-  cmd=paste("rma2info",
-            "-i",paste(rma_dir,"/",out_basename,".rma",sep=""),
+  cmd=paste("daa2info",
+            "-i",paste(blast_dir,"/",out_basename,".blast.daa",sep=""),
             "-o",paste(assignment_dir,"/",out_basename,".tsv",sep=""),
             "-r2c Taxonomy",
             "-n true",
             "-p true",
             "-r true",
-            "-mro","true",
-            "-u false",sep=" ")
+            "-mro true",
+            "-u false",
+            sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   
   return(paste(assignment_dir,"/",out_basename,".tsv",sep=""))
@@ -966,20 +917,117 @@ SprayNPray=function(fna=fna, # fna. Input DNA sequences.
 #   print(cmd);system(cmd,wait=TRUE)
 #   
 # }
-# Compare gff
-# Dependencies: biocode
-compare_gff=function(ref.gff=ref.gff,
-                     predicted.gff=predicted.gff,
-                     feature=feature, # Exon/CDS
-                     out_dir=out_dir){
-  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
-  
-  cmd=paste("compare_gene_structures.py",
-            "-a1",ref.gff,
-            "-a2",predicted.gff,
-            "-f",feature,
-            "-o",out_dir,
-            sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  
-}
+# # Compare gff
+# # Dependencies: biocode
+# compare_gff=function(ref.gff=ref.gff,
+#                      predicted.gff=predicted.gff,
+#                      feature=feature, # Exon/CDS
+#                      out_dir=out_dir){
+#   if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
+#   
+#   cmd=paste("compare_gene_structures.py",
+#             "-a1",ref.gff,
+#             "-a2",predicted.gff,
+#             "-f",feature,
+#             "-o",out_dir,
+#             sep=" ")
+#   print(cmd);system(cmd,wait=TRUE)
+#   
+# }
+##fna 2 daa 2 rma
+# Diamond_Megan=function(fna, # fna. Input DNA sequences.
+#                        out_basename=out_basename,
+#                        blast_dir=blast_dir, # Directory for diamond output.
+#                        rma_dir=rma_dir, # Directory for rma output of megan.
+#                        assignment_dir=assignment_dir, # Directory for taxonomy table.
+#                        ref_diamond=ref_diamond, # Diamond database.
+#                        ref_megan=ref_megan, # Megan database.
+#                        threads=threads){
+#   threads=as.character(threads)
+#   blast_dir=sub("/$","",blast_dir)
+#   rma_dir=sub("/$","",rma_dir)
+#   assignment_dir=sub("/$","",assignment_dir)
+#   
+#   cmd=paste("diamond blastx",
+#             "-p",threads,
+#             "-d",ref_diamond,
+#             "-q",fna,
+#             "--long-reads",
+#             "-f 100",
+#             "--out",paste(blast_dir,"/",out_basename,".blast.daa",sep=""),
+#             sep=" ")
+#   print(cmd);system(cmd,wait=TRUE)
+#   
+#   cmd=paste("daa2rma",
+#             "-i",paste(blast_dir,"/",out_basename,".blast.daa",sep=""),
+#             "-o",paste(rma_dir,"/",out_basename,".rma",sep=""),
+#             "--paired","false",
+#             "-lg","true",
+#             "-mdb",ref_megan,
+#             "-t",threads,
+#             "-ram","readCount",
+#             "-supp","0",sep=" ")
+#   print(cmd);system(cmd,wait=TRUE)
+#   
+#   cmd=paste("rma2info",
+#             "-i",paste(rma_dir,"/",out_basename,".rma",sep=""),
+#             "-o",paste(assignment_dir,"/",out_basename,".tsv",sep=""),
+#             "-r2c Taxonomy",
+#             "-n true",
+#             "-p true",
+#             "-r true",
+#             "-mro","true",
+#             "-u false",sep=" ")
+#   print(cmd);system(cmd,wait=TRUE)
+#   
+#   return(paste(assignment_dir,"/",out_basename,".tsv",sep=""))
+# }
+##fna 2 blast 2 rma
+# Diamond_Megan=function(fna, # fna. Input DNA sequences.
+#                        out_basename=out_basename,
+#                        blast_dir=blast_dir, # Directory for diamond output.
+#                        rma_dir=rma_dir, # Directory for rma output of megan.
+#                        assignment_dir=assignment_dir, # Directory for taxonomy table.
+#                        ref_diamond=ref_diamond, # Diamond database.
+#                        ref_megan=ref_megan, # Megan database.
+#                        threads=threads){
+#   threads=as.character(threads)
+#   blast_dir=sub("/$","",blast_dir)
+#   rma_dir=sub("/$","",rma_dir)
+#   assignment_dir=sub("/$","",assignment_dir)
+#   
+#   cmd=paste("diamond blastx",
+#             "-p",threads,
+#             "-d",ref_diamond,
+#             "-q",fna,
+#             "--long-reads",
+#             "--out",paste(blast_dir,"/",out_basename,".blast",sep=""),
+#             sep=" ")
+#   print(cmd);system(cmd,wait=TRUE)
+#   
+#   cmd=paste("blast2rma",
+#             "-i",paste(blast_dir,"/",out_basename,".blast",sep=""),
+#             "-o",paste(rma_dir,"/",out_basename,".rma",sep=""),
+#             "-f","BlastTab",
+#             "-bm","BlastX",
+#             "--paired","false",
+#             "-lg","true",
+#             "-mdb",ref_megan,
+#             "-t",threads,
+#             "-ram","readCount",
+#             "-supp","0",sep=" ")
+#   print(cmd);system(cmd,wait=TRUE)
+#   
+#   cmd=paste("rma2info",
+#             "-i",paste(rma_dir,"/",out_basename,".rma",sep=""),
+#             "-o",paste(assignment_dir,"/",out_basename,".tsv",sep=""),
+#             "-r2c Taxonomy",
+#             "-n true",
+#             "-p true",
+#             "-r true",
+#             "-mro","true",
+#             "-u false",sep=" ")
+#   print(cmd);system(cmd,wait=TRUE)
+#   
+#   return(paste(assignment_dir,"/",out_basename,".tsv",sep=""))
+# }

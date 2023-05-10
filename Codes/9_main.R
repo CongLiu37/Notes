@@ -503,30 +503,28 @@ diamond_p_megan=function(query.faa=query.faa,
             "-p",threads,
             "-d",diamond.db,
             "-q",query.faa,
-            "--out",paste(out_prefix,".blast",sep=""),
+            "-f 100",
+            "--out",paste(out_prefix,".blast.daa",sep=""),
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
-  cmd=paste("blast2rma",
-            "-i",paste(out_prefix,".blast",sep=""),
-            "-o",paste(out_prefix,".rma",sep=""),
-            "-f","BlastTab",
-            "-bm","BlastP",
-            "--paired","false",
-            "-lg","false",
+  cmd=paste("daa-meganizer",
+            "-i",paste(out_prefix,".blast.daa",sep=""),
             "-mdb",megan.db,
             "-t",threads,
-            "-ram","readCount",
-            "-supp","0",sep=" ")
+            "-ram readCount",
+            "-supp 0",
+            sep=" ")
   print(cmd);system(cmd,wait=TRUE)
-  cmd=paste("rma2info",
-            "-i",paste(out_prefix,".rma",sep=""),
+  cmd=paste("daa2info",
+            "-i",paste(out_prefix,".blast.daa",sep=""),
             "-o",paste(out_prefix,"_taxon.tsv",sep=""),
             "-r2c Taxonomy",
             "-n true",
             "-p true",
             "-r true",
             "-mro","true",
-            "-u false",sep=" ")
+            "-u false",
+            sep=" ")
   print(cmd);system(cmd,wait=TRUE)
 }
 
