@@ -1033,7 +1033,7 @@ gene_model_stat=function(gff3=gff3,
                max_gene_length=max(gene$V3),
                average_gene_length=mean(gene$V3),
                exon_number=nrow(exon),
-               exon_per_gene=nrow(exon)/nrow(gene),
+               exon_per_transcript=nrow(exon)/nrow(mRNA),
                average_exon_length=mean(exon$V3),
                transcript_number=nrow(mRNA),
                transcript_per_gene=nrow(mRNA)/nrow(gene),
@@ -1210,40 +1210,44 @@ pasa_more=function(species=species,
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   
-  # Separate alternative splicing
-  f=function(fasta,rep.fa,iso.fa){
-    iso=system(paste("grep '>'",fasta,sep=" "),wait=TRUE,intern=TRUE)
-    iso=sub(">","",iso)
-    iso=sub(" .*$","",iso)
-    writeLines(iso,"IDs")
-    system("grep '.*-R[1-9]*$' IDs > iso_IDs",wait=TRUE)
-    system("grep '.*-R0' IDs > rep_IDs",wait=TRUE)
-    system("rm IDs",wait=TRUE)
-    
-    cmd=paste("seqkit grep",
-              "-f rep_IDs",
-              fasta,">",rep.fa,
-              sep=" ")
-    system(cmd,wait=TRUE)
-    system("rm rep_IDs",wait=TRUE)
-    
-    cmd=paste("seqkit grep",
-              "-f iso_IDs",
-              fasta,">",iso.fa,
-              sep=" ")
-    system(cmd,wait=TRUE)
-    system("rm iso_IDs",wait=TRUE)
-  }
-  
-  f(paste(species,"_transcripts.fna",sep=""),
-    paste(species,"_transcripts_rep.fna",sep=""),
-    paste(species,"_transcripts_iso.fna",sep=""))
-  f(paste(species,"_cds.fna",sep=""),
-    paste(species,"_cds_rep.fna",sep=""),
-    paste(species,"_cds_iso.fna",sep=""))
-  f(paste(species,"_proteins.faa",sep=""),
-    paste(species,"_proteins_rep.faa",sep=""),
-    paste(species,"_proteins_iso.faa",sep=""))
+  # Pick longest transcript as representative
+  cmd=paste("seqkit fx2tab -l -n -i -H ",paste(species,"_transcripts.fna",sep="")," > ","length.tsv",sep="\t")
+  print(cmd);system(cmd,wait=TRUE)
+  d=read.table("length.tsv",header=FALSE,sep="\t",quote="")
+  colnames(d)=c("transcript","length") #Cmer00015458      Cmer000154580
+  d[,"gene"]=sub("-R[0-9]*","",d[,"transcript"])
+  longest=sapply(names(table(d[,"gene"])),
+                 function(gene){
+                   gene=d[d[,"gene"]==gene,]
+                   gene=gene[gene[,"length"]==max(gene[,"length"]),]
+                   return(gene[1,"transcript"])
+                 })
+  writeLines(unname(longest),"longest.lst")
+  iso=setdiff(d[,"transcript"],longest)
+  writeLines(iso,"isoform.lst")
+  # cmd=paste("agat_sp_filter_feature_from_keep_list.pl",
+  #           "--gff",gff3,
+  #           "--keep_list ./longest.lst",
+  #           "--out",paste(species,"_genesNoIso.gff3",sep=""),
+  #           sep=" ");system(cmd,wait=TRUE)
+  cmd=paste("seqkit grep -f longest.lst -n",
+            paste(species,"_transcripts.fna",sep=""),">",paste(species,"_transcripts_rep.fna",sep=""),
+            sep=" ");system(cmd,wait=TRUE)
+  cmd=paste("seqkit grep -f isoform.lst -n",
+            paste(species,"_transcripts.fna",sep=""),">",paste(species,"_transcripts_iso.fna",sep=""),
+            sep=" ");system(cmd,wait=TRUE)
+  cmd=paste("seqkit grep -f longest.lst -n",
+            paste(species,"_cds.fna",sep=""),">",paste(species,"_cds_rep.fna",sep=""),
+            sep=" ");system(cmd,wait=TRUE)
+  cmd=paste("seqkit grep -f isoform.lst -n",
+            paste(species,"_cds.fna",sep=""),">",paste(species,"_cds_iso.fna",sep=""),
+            sep=" ");system(cmd,wait=TRUE)
+  cmd=paste("seqkit grep -f longest.lst -n",
+            paste(species,"_proteins.faa",sep=""),">",paste(species,"_proteins_rep.faa",sep=""),
+            sep=" ");system(cmd,wait=TRUE)
+  cmd=paste("seqkit grep -f isoform.lst -n",
+            paste(species,"_proteins.faa",sep=""),">",paste(species,"_proteins_iso.faa",sep=""),
+            sep=" ");system(cmd,wait=TRUE)
   
   system(paste("rm",paste(species,"_transcripts.fna",sep=""),sep=" "),wait=TRUE)
   system(paste("rm",paste(species,"_cds.fna",sep=""),sep=" "),wait=TRUE)
