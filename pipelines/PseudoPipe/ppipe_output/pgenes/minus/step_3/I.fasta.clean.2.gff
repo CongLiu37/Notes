@@ -1,0 +1,2 @@
+#chr	clean2	clean2	chrom_start	chrom_end	strand	query	gene_name	unique_name	query_start	query_end	querylen	expect	score	ident
+I	clean2	clean2	226356	226586	-	Y53F4B.43.1	Y53F4B.43.1===1	Y53F4B.43.1===I===226356	43	120	121	3e-08	209	0.450

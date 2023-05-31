@@ -1,0 +1,1 @@
+"( cd /home/c/c-liu/Softwares/PseudoPipe/ppipe_output/blast; touch stamps/split0003.Start ; ( /home/c/c-liu/miniconda3/bin/blastall -a 1 -p tblastn -m 8 -z 3.1e9 -e .1 -d /home/c/c-liu/Softwares/PseudoPipe/ppipe_input/caenorhabditis_elegans_62_220a/dna/dna_rm.fa -i split0003 -o output/split0003.Out ; touch stamps/split0003.Stamp ) >status/split0003.Status 2>&1 )"

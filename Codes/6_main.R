@@ -151,6 +151,10 @@ wgdi_input=function(genome.fna1=genome.fna1,gff1=gff1,proteins.faa1=proteins.faa
   cmd=paste("awk -F '\t' -v OFS='\t' '{if ($3!=0) print $0}'",len1,"> len1",sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   system(paste("rm",len1,sep=" "));system(paste("mv","len1",len1,sep=" "))
+  # Format gff
+  cmd=paste("awk -F '\t' -v OFS='\t' '{print $1,$7,$3,$4,$5,$6,$2}'",fake_gff1,"> fake_gff1",sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  system(paste("rm",fake_gff1,sep=" "));system(paste("mv","fake_gff1",fake_gff1,sep=" "))
   if (!self2self){
     wgdi_input(genome.fna=genome.fna2,
                gff=gff2,
@@ -161,6 +165,10 @@ wgdi_input=function(genome.fna1=genome.fna1,gff1=gff1,proteins.faa1=proteins.faa
     cmd=paste("awk -F '\t' -v OFS='\t' '{if ($3!=0) print $0}'",len2,"> len2",sep=" ")
     print(cmd);system(cmd,wait=TRUE)
     system(paste("rm",len2,sep=" "));system(paste("mv","len2",len2,sep=" "))
+    # Format gff
+    cmd=paste("awk -F '\t' -v OFS='\t' '{print $1,$7,$3,$4,$5,$6,$2}'",fake_gff2,"> fake_gff2",sep=" ")
+    print(cmd);system(cmd,wait=TRUE)
+    system(paste("rm",fake_gff2,sep=" "));system(paste("mv","fake_gff2",fake_gff2,sep=" "))
   }else{
     fake_gff2=paste(out_dir,"/",out_basename,".gff",sep="")
     len2=paste(out_dir,"/",out_basename,".len",sep="")
@@ -554,6 +562,29 @@ Avp=function(query.faa=query.faa,
 #####
 # Phylogeny
 #####
+# Collect single-copy busco sequences from busco runs
+# Dependencies:
+getBuscoSeq=function(tab=tab, # tsv. 
+                              # First column is species label and second column is run_/busco_sequences/single_copy_busco_sequences/
+                     out_dir=out_dir){
+  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
+  
+  tab=read.table(tab,sep="\t",header=TRUE,quote="")
+  system(paste("mkdir"," ",out_dir,"/seqs",sep=""))
+  for (i in 1:nrow(tab)){
+    sp=tab[i,1]
+    seqs=system(paste("ls",tab[i,2],sep=" "),intern=TRUE)
+    seqs=paste(tab[i,2],"/",seqs,sep="")
+    for (j in seqs){
+      out=unlist(strsplit(j,"/"));out=paste(out_dir,"/seqs/",out[length(out)],sep="")
+      sed=paste("'s/>.*/>",sp,"/'",sep="")
+      cmd=paste("sed",sed,j,">>",out,sep=" ")
+      system(cmd,wait=TRUE)
+    }
+  }
+  system("mv seqs/* ./")
+}
+
 # MAFFT: multiple sequence alignment
 # Dependencies: MAFFT
 mafft=function(in.fa=in.faa,
@@ -602,9 +633,25 @@ catMSA=function(align.fa=align.fa, # comma list
   print(cmd);system(cmd,wait=TRUE)
 }
 
+# trimAL: curate multiple sequence alignments for phylogenetic analysis
+# Dependencies: trimAL, seqkit
+trimAL=function(inMSA.fa=inMSA.fa,
+                outMSA.fa=outMSA.fa){
+  cmd=paste("trimal",
+            "-in",inMSA.fa,
+            "-automated1",
+            "-keepheader",
+            "| seqkit seq -u",
+            ">",outMSA.fa,
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+}
+
+
 # Phylogenetic tree
 # Dependencies: iqtree
 iqtree=function(msa.fa=msa.fa, 
+                type="dna", # dna/protein
                 out_prefix=out_prefix,
                 threads=threads){
   threads=as.character(threads)
@@ -612,12 +659,45 @@ iqtree=function(msa.fa=msa.fa,
             "-s",msa.fa,
             "--prefix",out_prefix,
             "-T",threads,
-            #"-m MFP", # test all feasible models
-            "--mset GTR", # test GTR+... models only
-            # "--msub nuclear", # (nuclear, mitochondrial, chloroplast or viral)
+            # "-m TEST", # Standard model selection followed by tree inference
+            # "-m MFP", # Extended model selection followed by tree inference
+            # "-mset GTR", # test GTR+... models only
+            # "--msub nuclear", # Amino-acid model source (nuclear, mitochondrial, chloroplast or viral)
             "-B 1000",
-            sep-" ")
+            sep=" ")
+  if (type=="dna"){cmd=paste(cmd,"-mset GTR",sep=" ")}
+  if (type=="protein"){cmd=paste(cmd,"--msub nuclear",sep=" ")}
   print(cmd);system(cmd,wait=TRUE)
+}
+
+# ASTRAL: supertree
+# Dependencies: ASTRAL
+astral=function(trees=trees, # comma-list, nwk trees
+                path2astral="/home/c/c-liu/Softwares/ASTRAL/astral.5.7.8.jar",
+                out_prefix=out_prefix){
+  trees=unlist(strsplit(trees,","))
+  for (tree in trees){
+    cmd=paste("cat ",tree," >> ",out_prefix,"_inTrees.nwk",sep="")
+    system(cmd,wait=TRUE)
+  }
+  cmd=paste("java -jar",path2astral,
+            "-i",paste(out_prefix,"_inTrees.nwk",sep=""),
+            "-o",paste(out_prefix,"_astralTree.nwk",sep=""),
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+}
+
+# STAG: supertree
+# Dependencies: STAG
+stag=function(gene2species.txt=gene2species.txt,# space-separated
+              path2Stag="/home/c/c-liu/Softwares/STAG-1.0.0/stag/stag.py",
+              tree_dir=tree_dir,
+              out_dir=out_dir){
+  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
+  wd=getwd();setwd(out_dir)
+  cmd=paste("python2",path2Stag,gene2species.txt,tree_dir,sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  setwd(wd)
 }
 
 

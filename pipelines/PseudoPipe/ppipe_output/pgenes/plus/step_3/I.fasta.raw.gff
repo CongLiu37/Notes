@@ -1,0 +1,2 @@
+#chr	extd	alned	chrom_start	chrom_end	strand	query	match_id	exonRank	num_of_exons	unique_name	query_start	query_end	query_len	expect	score	ident
+I	extd	alned	242759	243076	+	Y53F4B.43.1	Y53F4B.43.1===1	1	1	Y53F4B.43.1===I===242780	17	120	121	4e-08	212	0.373

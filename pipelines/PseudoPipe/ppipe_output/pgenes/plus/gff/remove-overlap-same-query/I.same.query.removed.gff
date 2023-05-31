@@ -1,0 +1,2 @@
+#query	chr	ident	overlap	positives	gaps	strand	query_start	query_end	query_len	match_start	match_end	eval	score
+Y53F4B.43.1	I	36.89	103	59	3	+	24	120	121	242780	243076	4e-08	55.8

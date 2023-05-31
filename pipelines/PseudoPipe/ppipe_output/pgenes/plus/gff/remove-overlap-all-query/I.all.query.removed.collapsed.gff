@@ -1,0 +1,2 @@
+#chr	merged	collapsed	chrom_start	chrom_end	strand	query	gene_id	num_of_exons	unique_name	query_start	query_end	query_len	frac	expect	score	exon_bound
+I	merged	merged	242780	243076	+	Y53F4B.43.1	Y53F4B.43.1===1	1	Y53F4B.43.1===I===242780	24	120	121	0.80	4e-08	55.80	242780..243076

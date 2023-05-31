@@ -1,0 +1,2 @@
+#chr	pgene	pgene	band	chrom_start	chrom_end	strand	query	gene_id	unique_name	query_start	query_end	query_len	frac	num_of_ins	num_of_dels	num_of_shifts	num_of_stops	expect	ident	polya	disable	num_of_exons	exon_bound	exon_len	intron_bound	intron_len	class_old	class_new	short_ID	comment	comment2
+I	pgene	pgene	NoBandData	242846	243076	+	Y53F4B.43.1	I===Y53F4B.43.1===1	Y53F4B.43.1===I===242780	43	120	121	0.64	3	4	0	1	4e-08	0.450	0	D	1	(242846..243076)	231	.	.	FP	FP			

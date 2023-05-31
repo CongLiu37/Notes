@@ -1,0 +1,2 @@
+#chr	merged	extned	chrom_start	chrom_end	strand	query	match_id	exonRank	num_of_exons	unique_name	query_start	query_end	query_len	expect	score
+I	merged	extd	242651	243139	+	Y53F4B.43.1	Y53F4B.43.1===1	1	1	Y53F4B.43.1===I===242780	24	120	121	4e-08	55.8

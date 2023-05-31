@@ -1,0 +1,1 @@
+"(cd /home/c/c-liu/Softwares/PseudoPipe/ppipe_output/blast/processed; /apps/free72/python/2.7.3/bin/python /home/c/c-liu/Softwares/PseudoPipe/pseudopipe/core/processBlastOutput.py /home/c/c-liu/Softwares/PseudoPipe/ppipe_input/caenorhabditis_elegans_62_220a/pep/Caenorhabditis_elegans.WS220.62.pep.fa split0002.Out ../output)"

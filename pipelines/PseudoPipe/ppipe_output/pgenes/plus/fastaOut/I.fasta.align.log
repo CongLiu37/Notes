@@ -1,0 +1,107 @@
+# /apps/free72/fasta/35.4.12/bin/tfasty35 -m 10 /tmp/query_2960139.protein.fa /tmp/blastmatch_2960139.dna.fa
+TFASTY compares a protein to a translated DNA data bank
+ version 35.04 Feb. 20, 2010
+Please cite:
+ Pearson et al, Genomics (1997) 46:24-36
+
+Query: /tmp/query_2960139.protein.fa
+  1>>>Y53F4B.43.1 pep:known chromosome:WS220:II:14988395:14992591:1 gene:Y53F4B.43 transcript:Y - 121 aa
+Library: /tmp/blastmatch_2960139.dna.fa     489 residues in     1 sequences
+
+    489 residues in     1 sequences
+Statistics: (shuffled [500]) MLE statistics: Lambda= 0.2572;  K=0.02717
+Algorithm: TFASTY (3.5 Feb 2010) [optimized]
+Parameters: BL50 matrix (15:-5) ktup: 2
+ join: 42, opt: 40, open/ext: -12/ -2 shift: -20, subs: -24 width:  16
+ Scan time:  0.010
+
+The best scores are:                             initn opt bits E(1)
+seq_0                                 ( 489) [f]  203  212 83.9 3.4e-21
+seq_0                                 ( 489) [r]   25   25 14.5    0.93
+
+>>>Y53F4B.43.1, 121 aa vs /tmp/blastmatch_2960139.dna.fa library
+; pg_name: /apps/free72/fasta/35.4.12/bin/tfasty35
+; pg_ver: 35.04
+; pg_argv: /apps/free72/fasta/35.4.12/bin/tfasty35 -m 10 /tmp/query_2960139.protein.fa /tmp/blastmatch_2960139.dna.fa
+; pg_name_alg: TFASTY
+; pg_ver_rel: 3.5 Feb 2010
+; pg_matrix: BL50 (15:-5)
+; pg_open-ext: -12 -2
+; pg_ktup: 2
+; pg_optcut: 40
+; pg_cgap: 42
+; mp_extrap: 60000 500
+; mp_stats: (shuffled [500]) MLE statistics: Lambda= 0.2572;  K=0.02717
+; mp_KS: -0.0000 (N=0) at   0
+; mp_Algorithm: TFASTY (3.5 Feb 2010) [optimized]
+; mp_Parameters: BL50 matrix (15:-5) ktup: 2  join: 42, opt: 40, open/ext: -12/ -2 shift: -20, subs: -24 width:  16
+>>seq_0
+; tfy_frame: f
+; tfy_initn: 203
+; tfy_init1: 144
+; tfy_opt: 212
+; tfy_z-score: 413.0
+; tfy_bits: 83.9
+; tfy_expect: 3.4e-21
+; sy_score: 212
+; sy_ident: 0.373
+; sy_sim: 0.673
+; sy_overlap: 110
+>Y53F4B.43.1 ..
+; sq_len: 121
+; sq_offset: 1
+; sq_type: p
+; al_start: 17
+; al_stop: 120
+; al_display_start: 17
+NKVFGNRAIVSVILENVSNQMEPLLG---LRMINKLFNTEVLHKIRSAHR
+EIQIHNFQACV---ERVIYPFDRPITPPPPLPENYERPPCTCTLNINAHK
+TDMSKVKRLF
+>seq_0 ..
+; sq_len: 489
+; sq_offset: 1
+; sq_type: p
+; al_start: 109
+; al_stop: 426
+; al_display_start: 109
+NKKNQYSGLISLIIDRYQNCVQFYFNSLFFQLINKLFSEEVLHKIRNEHR
+KIQIHSFKTCKN*RKRSIF-INNQVDPELPLKQPRR---CTCSFLINALE
+INKNKVKHLF
+>>seq_0
+; tfy_frame: r
+; tfy_initn:  25
+; tfy_init1:  25
+; tfy_opt:  25
+; tfy_z-score: 38.1
+; tfy_bits: 14.5
+; tfy_expect:   0.93
+; sy_score: 43
+; sy_ident: 0.261
+; sy_sim: 0.717
+; sy_overlap: 46
+>Y53F4B.43.1 ..
+; sq_len: 121
+; sq_offset: 1
+; sq_type: p
+; al_start: 30
+; al_stop: 74
+; al_display_start: 30
+LENVSNQMEPLLGLRMINKLFNTEVLHKIRSAHREI-QI-HNFQACV
+>seq_0 ..
+; sq_len: 489
+; sq_offset: 490
+; sq_type: p
+; al_start: 282
+; al_stop: 149
+; al_display_start: 282
+LETV-NLYFSMLISNFVQNFFAEQFIYQLKKERIKV/QIEHNFDTCL
+>>><<<
+
+
+121 residues in 1 query   sequences
+489 residues in 1 library sequences
+ Scomplib [35.04]
+ start: Sat Mar 25 16:38:45 2023 done: Sat Mar 25 16:38:45 2023
+ Total Scan time:  0.010 Total Display time:  0.000
+
+Function used was TFASTY [version 35.04 Feb. 20, 2010]

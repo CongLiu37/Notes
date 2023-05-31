@@ -1,0 +1,2 @@
+#query	chr	ident	overlap	del	insert	strand	query_start	query_end	query_len	chr_start	chr_end	eval	score
+Y53F4B.43.1	I	36.89	103	59	3	-	24	120	121	226356	226652	3e-08	56.2

@@ -20,7 +20,8 @@ if (!file.exists(paste(out_dir,"/filter_genome",sep=""))){
 if (!file.exists(paste(out_dir,"/filter_genome/",label,sep=""))){
   system(paste("mkdir"," ",out_dir,"/filter_genome/",label,sep=""))
 }
-cmd=paste("seqkit seq --min-len 400 --threads ",threads," ",genome," > ",out_dir,"/filter_genome/",label,"_400bp.fna",sep="")
+cmd=paste("seqkit seq --min-len 400 --threads ",threads," ",genome,
+          " > ",out_dir,"/filter_genome/",label,"_400bp.fna",sep="")
 print(cmd);system(cmd,wait=TRUE)
 genome=paste(out_dir,"/filter_genome/",label,"_400bp.fna",sep="")
 #####
@@ -175,15 +176,15 @@ BUSCO(fna=paste(out_dir,"/retrievedGenome/",label,"_",target,".fna",sep=""), # F
                # Cannot be path
       out_dir=paste(out_dir,"/retrievedGenome/",sep=""),
       Threads=threads)
-library(ggplot2);library(ggExtra)
-df=read.table(paste(out_dir,"/retrievedGenome/",label,"_",target,".tsv",sep=""),sep="\t",header=TRUE,quote="")
-p1=ggplot(df,aes(x=coverage,y=GC))+
-  geom_point(size=0.01)+
-  theme_classic()+
-  labs(title=label,x="coverage",y="GC%")+
-  scale_x_continuous(limits=c(0,max(df$cov)),expand=c(0,0))+
-  scale_y_continuous(limits=c(0,100),expand=c(0,0))
-p=ggMarginal(p1,type="histogram",size=10,
-             xparams=list(bins=100),
-             yparams=list(bins=100))
-pdf(paste(out_dir,"/retrievedGenome/",label,"_",target,".pdf",sep=""));print(p);dev.off()
+# library(ggplot2);library(ggExtra)
+# df=read.table(paste(out_dir,"/retrievedGenome/",label,"_",target,".tsv",sep=""),sep="\t",header=TRUE,quote="")
+# p1=ggplot(df,aes(x=coverage,y=GC))+
+#   geom_point(size=0.01)+
+#   theme_classic()+
+#   labs(title=label,x="coverage",y="GC%")+
+#   scale_x_continuous(limits=c(0,max(df$cov)),expand=c(0,0))+
+#   scale_y_continuous(limits=c(0,100),expand=c(0,0))
+# p=ggMarginal(p1,type="histogram",size=10,
+#              xparams=list(bins=100),
+#              yparams=list(bins=100))
+# pdf(paste(out_dir,"/retrievedGenome/",label,"_",target,".pdf",sep=""));print(p);dev.off()

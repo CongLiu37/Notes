@@ -1,0 +1,1 @@
+"(cd /home/c/c-liu/Softwares/PseudoPipe/ppipe_output/pgenes/plus; /apps/free72/python/2.7.3/bin/python /home/c/c-liu/Softwares/PseudoPipe/pseudopipe/core/runScripts.py I > log/I.log 2>&1;)"

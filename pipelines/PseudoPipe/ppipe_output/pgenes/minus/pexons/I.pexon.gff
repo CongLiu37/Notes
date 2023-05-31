@@ -1,0 +1,2 @@
+#chr	pexon	pexon	band	chrom_start	chrom_end	strand	query	match_id	gene_id	exon_rank	num_of_exons	unique_name	query_start	query_end	query_len	frac	numInserts	numDeletes	numShifts	numStops	expect	ident	polya	disable
+I	exon	exon	INoBandData	226356	226586	-	Y53F4B.43.1	I===Y53F4B.43.1===1	I===Y53F4B.43.1===1	1	1	Y53F4B.43.1===I===226356	43	120	121	0.64	3	4	0	1	3e-08	0.450	0	D

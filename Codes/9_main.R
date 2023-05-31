@@ -435,6 +435,16 @@ seqNR=function(in.fasta=in.fasta,
   setwd(wd)
 }
 
+# seqNR(in.fasta="/flash/BourguignonU/Cong/termite_genome_annotation/proteins.faa",
+#       out_dir="/flash/BourguignonU/Cong/termite_genome_annotation/proteins.seqNR",
+#       Identity=0.95, # [0.0,1.0]
+#       cov_mode=0, # 0: alignment covers ${coverage} of target and of query
+#                # 1: alignment covers ${coverage} of target
+#                # 2: alignment covers ${coverage} of query
+#                # 3: target is of ${coverage} query length
+#       coverage=0.95, # [0.0,1.0]
+#       threads=64)
+  
 # Find Coding Regions within Transcripts
 # Dependencies: TransDecoder, diamond, hmmer, AGAT
 cdsInTranscripts=function(transcripts.fna=transcripts.fna,

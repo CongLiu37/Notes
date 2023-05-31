@@ -45,17 +45,16 @@
   \maketitle
 
   \linenumbers
-\section{Pipeline for genome decontamination (DeCon)}
+\section{DeCon}
 \subsection{Introduction}
-Pipeline DeCon is designed to retrieve genomic sequences of target \textbf{phylum} from metagenomic assembly of paired next generation sequencing (NGS) reads. 
-First, contigs below 400 base pair (bp) are removed and NGS reads are mapped to assembly by minimap2 \parencite{li2018minimap2}, generating BAM file. 
+DeCon is designed to retrieve genomic sequences of a target \textbf{phylum} from metagenomic assembly of paired next generation sequencing (NGS) reads. 
+First, contigs below 400 base pair (bp) are removed and NGS reads are mapped to filtered assembly by minimap2 \parencite{li2018minimap2}. 
 Second, SprayNPray \parencite{garber2022spraynpray} is used to compute coverage, GC content and coding density of each contigs. 
-Third, all contigs are searched against non-redundant (nr) database by DIAMOND \parencite{buchfink2015fast} and assigned to phyla by MEGAN \parencite{huson2007megan}. 
-Forth, a decision tree classifier is trained, taking coverage, GC content and coding density as training features and phylum assignment as target value. 
-This classifier is used to compute phylum assignment of contigs that DIAMOND and MEGAN failed to compute assignments. 
+Third, contigs are searched against non-redundant (nr) database by DIAMOND \parencite{buchfink2015fast} in long read mode and assigned to phyla by MEGAN \parencite{huson2007megan} in long read mode. 
+Forth, a decision tree classifier is trained, taking coverage, GC content and coding density of contigs as training features and phylum assignments from MEGAN as target value. 
+This classifier is used to compute phylum assignments of contigs that are not determined by MEGAN. 
 Fifth, contigs assigned to the target phylum are retrieved. 
 QUAST \parencite{gurevich2013quast} and BUSCO \parencite{simao2015busco} are used to evaluate retrieved genome. 
-Distributions of contig coverage and GC content of retrieved genome are plotted. 
 \subsection{Dependencies}
 \textbf{Softwares} \newline
 R \newline
@@ -64,7 +63,7 @@ minimap2 \newline
 SAMtools \newline
 SprayNPray \newline
 DIAMOND \newline
-MEGAN (blast2rma & rma2info scripts) \newline
+MEGAN tools (daa-meganizer & daa2info) \newline
 seqkit \newline
 QUAST \newline
 BUSCO \newline
@@ -82,28 +81,26 @@ scikit-learn \newline
 \textbf{R packages} \newline
 reticulate \newline
 stringr \newline
-ggplot2 \newline
-ggExtra \newline
 \par
 \subsection{Usage}
 Modify configuration file (templated as DeCon\_conf.R), and run \newline
 Rscript \textif{path}/DeCon\_pipeline.R \textif{path}/DeCon\_main.R \textif{path}/DeCon\_main.py \textif{path}/DeCon\_conf.R
 
-\section{Pipeline for calling protein-coding genes from genome (ProtGeneCall)}
+\section{ProtGeneCall}
 \subsection{Introduction}
-Pipeline ProtGeneCall is designed to call protein-coding genes from genome, combining protein-genome alignments, transcriptome-genome alignments and \textit{ab initio} gene predictions. 
+ProtGeneCall is designed to call protein-coding genes from genome, combining protein-genome alignments, transcriptome-genome alignments and \textit{ab initio} gene predictions. 
 First, repeat elements are identified by RepeatModeler \parencite{smit2015repeatmodeler} and masked by RepeatMasker \parencite{smit2015repeatmasker}. 
 Masked genome is used for downstream analysis. 
 Second, proteins of closely related species are mapped to the masked genome by miniprot \parencite{li2023protein}. 
 Third, paired RNA-sequencing (RNA-seq) reads are mapped to masked genome by Hisat2 \parencite{kim2019graph}. 
 Forth, transcriptome-genome alignments are computed by StringTie \parencite{pertea2015stringtie}. 
-Fifth, gene structures are predicted from transcriptome-genome alignments by TransDecoder \parencite{haas2016transdecoder}, combining searching against UniRef and PfamA databases. 
+Fifth, gene structures are predicted from transcriptome-genome alignments by TransDecoder \parencite{haas2016transdecoder}, combining searching against UniRef \parencite{suzek2007uniref} by \parencite{buchfink2015fast} and PfamA \parencite{mistry2021pfam} by HMMER \parencite{eddy1992hmmer}. 
 Sixth, AUGUSTUS \parencite{stanke2003gene} is trained with gene structures from TransDecoder to compute gene predictions. 
 Seventh, BRAKER \parencite{hoff2019whole} is trained with RNA-seq mapping to call genes. 
 Eighth, GALBA \parencite{hoff2019whole} is trained with proteins of closely related species. 
 Ninth, protein-genome alignments from miniprot, transcript-genome alignments from Hisat2-StringTie, and \textit{ab initio} gene predictions from TransDecoder, AUGUSTUS, BRAKER and GALBA are integrated into consensus gene structures by EvidenceModeler \parencite{haas2008automated}. 
-Tenth, genes supported by only one \textit{ab initio} predictor and lack protein/RNA-seq evidence are removed. 
-Eleventh, PASA \parencite{haas2008automated} is run twice to update filtered gene structures from EvidenceModeler. 
+Tenth, genes from EvidenceModeler are removed if they (1) contain in-frame stop codons or (2) supported by only one \textit{ab initio} predictor and lack protein/RNA-seq evidence. 
+Eleventh, two iterations of PASA \parencite{haas2008automated} is used to update filtered gene structures from EvidenceModeler. 
 Twelfth, genes with in-frame stop codons are removed and the predicted peptide set is evaluated by BUSCO \parencite{simao2015busco}.
 \subsection{Dependencies}
 \textbf{Softwares} \newline
@@ -177,9 +174,9 @@ RepeatModeler \newline
 Modify configuration file (templated as RepCall\_conf.R), and run \newline
 Rscript \textif{path}/RepCall\_pipeline.R \textif{path}/RepCall\_main.R \textif{path}/RepCall\_conf.R
 
-\section{Pipeline for calling non-coding RNA (ncRNAcall)}
+\section{ncRNAcall}
 \subsection{Introduction}
-Pipeline ncRNAcall is designed to call non-coding RNA (ncRNA) from genome. 
+ncRNAcall is designed to call non-coding RNA (ncRNA) from genome. 
 First, transfer RNA (tRNA) is identified by tRNAscan-SE \parencite{lowe1997trnascan}. 
 Second, microRNA is called by miRNAture \parencite{velandia2021mirnature}. 
 Third, target genes of microRNA are identified by searching microRNA against annotated three prime untranslated regions (3'UTR) by miRanda \parencite{enright2003microrna}. 
@@ -207,6 +204,65 @@ stringr \newline
 \subsection{Usage}
 Modify configuration file (templated as ncRNAcall\_conf.R), and run \newline
 Rscript \textif{path}/ncRNAcall\_pipeline.R \textif{path}/ncRNAcall\_main.R \textif{path}/ncRNAcall\_conf.R
+
+\section{buscoProt2Phylo}
+\subsection{Introduction}
+buscoProt2Phylo infers phylogenetic tree using single-copy genes defined by BUSCO \parencite{simao2015busco}. 
+First, from BUSCO runs complete single-copy protein sequences are collected and classified according to protein families that they belong to. 
+Second, for protein famiies that are identified in above 4 BUSCO runs, protein sequences are aligned by MAFFT \parencite{katoh2002mafft}. 
+Third, multiple sequence alignments from MAFFT are trimmed by trimAl \parencite{capella2009trimal}. 
+Forth, gene trees are inferred from trimmed multiple sequence alignments by IQ-TREE \parencite{minh2020iq} with 1,000 bootstrap replicates. 
+Fifth, species tree is inferred from gene trees by ASTRAL \parencite{zhang2018astral}.
+\subsection{Dependencies}
+\textbf{Softwares} \newline
+R \newline
+MAFFT \newline
+trimAl \newline
+seqkit \newline
+IQ-TREE \newline
+ASTRAL \newline
+\par
+\textbf{R packages} \newline
+parallel \newline
+\par
+\subsection{Usage}
+Modify configuration file (templated as buscoProt2Phylo\_conf.R), and run \newline
+Rscript \textif{path}/buscoProt2Phylo\_pipeline.R \textif{path}/nbuscoProt2Phylo\_main.R \textif{path}/buscoProt2Phylo\_conf.R
+
+\section{metaTrans}
+\subsection{Introduction}
+metaTrans is designed for taxonomic profiling of metatranscriptomic sequencing of paired NGS reads. 
+First, metatranscriptomic reads are mapped to corresponding host genome by Hisat2 \parencite{kim2019graph} and unmapped reads are extracted by SAMtools \parencite{li2009sequence}. 
+Second, ribosomal RNA reads are removed by SortMeRNA \parencite{kopylova2012sortmerna}. 
+Third, all reads are pooled together and assembled by rnaSPAdes \parencite{bushmanova2019rnaspades}. 
+Forth, MMseqs2 \parencite{steinegger2017mmseqs2} (--cov-mode 1 -c 0.75 --min-seq-id 0.75) is used to remove redundancy in assembly from rnaSPAdes. 
+Fifth, coding regions of assembled transcripts are identified by TransDecoder \parencite{haas2016transdecoder}, combining searching against UniRef \parencite{suzek2007uniref} by \parencite{buchfink2015fast} and PfamA \parencite{mistry2021pfam} by HMMER \parencite{eddy1992hmmer}. 
+Sixth, protein sequences transcribed by assembled transcripts are searched against nr database by DIAMOND \parencite{buchfink2015fast} and assigned to taxa by MEGAN \parencite{huson2007megan}. 
+Seventh, reads are mapped to assembled transcripts by minimap2 \parencite{li2018minimap2}. 
+SAMtools is used to compute coverage and depth of transcripts. 
+Eighth, coverage, depth, coordinates of coding regions and taxonomy assignments of transcripts are taken together as comprehensive tables (\textbf{To be continued...}).
+\subsection{Dependencies}
+\subsection{Usage}
+Modify configuration file (templated as ncRNAcall\_conf.R), and run \newline
+Rscript \textif{path}/ncRNAcall\_pipeline.R \textif{path}/ncRNAcall\_main.R \textif{path}/ncRNAcall\_conf.R
+
+\section{PseudoCall}
+\subsection{Introduction}
+PseudoCall is designed to call pseudogenes with PseudoPipe that has been modified to (1) use stricter criteria for filtering blast hits, (2) run commands in parallel and (3) enable restarting. (\textbf{To be continued...})
+\subsection{Dependencies}
+\subsection{Usage}
+Modify configuration file (templated as PseudoCall\_conf.R), and run \newline
+Rscript \textif{path}/PseudoCall\_pipeline.R \textif{path}/PseudoCall\_main.R \textif{path}/PseudoCall\_conf.R
+
+% Modify configuration file (templated as ncRNAcall\_conf.R), and run \newline
+% Rscript \textif{path}/ncRNAcall\_pipeline.R \textif{path}/ncRNAcall\_main.R \textif{path}/ncRNAcall\_conf.R
+
+% \section{ncRNAcall}
+% \subsection{Introduction}
+% \subsection{Dependencies}
+% \subsection{Usage}
+% Modify configuration file (templated as ncRNAcall\_conf.R), and run \newline
+% Rscript \textif{path}/ncRNAcall\_pipeline.R \textif{path}/ncRNAcall\_main.R \textif{path}/ncRNAcall\_conf.R
 
 \printbibliography
 \end{sloppypar}

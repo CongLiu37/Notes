@@ -1,0 +1,2 @@
+#chr	clean3	clean3	chrom_start	chrom_end	strand	query	match_id	gene_id	exon_rank	num_of_exons	unique_name	query_start	query_end	query_len	expect	ident
+I	clean3	clean3	242846	243076	+	Y53F4B.43.1	I===Y53F4B.43.1===1	I===Y53F4B.43.1===1	1	1	Y53F4B.43.1===I===242780	43	120	121	4e-08	0.450

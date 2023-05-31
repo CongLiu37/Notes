@@ -1405,12 +1405,12 @@ PseudoPipe=function(genome=genome, # soft masked
   system("mkdir ./input/dna")
   cmd=paste("cp",genome,"./input/dna/masked.fa",sep=" ")
   print(cmd);system(cmd,wait=TRUE)
-  cmd=paste("seqkit","seq","-u",
-            "-j",threads,
-            "./input/dna/masked.fa > ./input/dna/unmasked.fa",
-            sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  cmd=paste("seqkit","split2","./input/dna/unmasked.fa","-s 1","-j",threads," 2> lst",sep=" ")
+  # cmd=paste("seqkit","seq","-u",
+  #           "-j",threads,
+  #           "./input/dna/masked.fa > ./input/dna/unmasked.fa",
+  #           sep=" ")
+  # print(cmd);system(cmd,wait=TRUE)
+  cmd=paste("seqkit","split2","./input/dna/masked.fa","-s 1","-j",threads," 2> lst",sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   cmd="grep 'write 1 sequences to file:' lst"
   split.fa=system(cmd,intern=TRUE)
@@ -1423,13 +1423,12 @@ PseudoPipe=function(genome=genome, # soft masked
                  seqID=sub(" .*$","",seqID)
                  
                  cmd=paste("mv",split.fa[i],
-                           paste("./input/dna/unmasked.",seqID,".fa",sep=""),
+                           paste("./input/dna/masked.",seqID,".fa",sep=""),
                            sep=" ")
                  system(cmd,wait=TRUE)
-                 return(paste("./input/dna/unmasked.",seqID,".fa",sep=""))
+                 return(paste("./input/dna/masked.",seqID,".fa",sep=""))
                })
-  system("rm -r ./input/dna/unmasked.fa.split/")
-  system("rm ./input/dna/unmasked.fa")
+  system("rm -r ./input/dna/masked.fa.split/")
   system("rm lst")
   
   system("mkdir ./input/pep")
@@ -1460,10 +1459,10 @@ PseudoPipe=function(genome=genome, # soft masked
   cmd=paste("pseudopipe.sh",
             getwd(),
             paste(getwd(),"/input/dna/masked.fa",sep=""),
-            paste(getwd(),"/input/dna/unmasked.%s.fa",sep=""),
+            paste(getwd(),"/input/dna/masked.%s.fa",sep=""),
             paste(getwd(),"/input/pep/protein.fa",sep=""),
             paste(getwd(),"/input/mysql/gff.%s.tsv",sep=""),
-            "0",
+            "0",threads,
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   
