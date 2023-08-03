@@ -438,7 +438,7 @@ blastn_blobtools=function(fna=fna, # fna. Input DNA sequences.
   print(cmd);system(cmd,wait=TRUE)
 }
 
-# DNA-protein search by diamond.
+# Scaffolds-protein search by diamond.
 # Compute taxonomy at major ranks by Megan.
 # Diamond and Megan in long-read mode.
 # Dependencies: DIAMOND, MEGAN
@@ -457,6 +457,7 @@ Diamond_Megan=function(fna, # fna. DNA assembly.
   assignment_dir=sub("/$","",assignment_dir)
   
   cmd=paste("diamond blastx",
+            "--outfmt 100",
             "-p",threads,
             "-d",ref_diamond,
             "-q",fna,
@@ -652,48 +653,48 @@ SplitGFF=function(in.gff=in.gff,
   print(cmd);system(cmd,wait=TRUE)
 }
 
-# gFACs: filter gene models (gff3)
-gfacs=function(evm.gff3=evm.gff3, # EvidenceModeler.gff3
-               genome.fna=genome.fna,
-               out_dir=out_dir){
-  out_dir=sub("/$","",out_dir)
-  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
-  wd=getwd();setwd(out_dir)
-  system(paste("cp",genome.fna,"./genome.fa",sep=" "),wait=TRUE)
-  
-  cmd=paste("gFACs.pl",
-            "-f EVM_1.1.1_gff3 -p gFACs --create-gtf --statistics --fasta ./genome.fa",
-            "--statistics-at-every-step --splice-table --rem-all-incompletes",
-            "--allowed-inframe-stop-codons 0",
-            "--min-exon-size 20 --min-intron-size 20 --min-CDS-size 150",
-            #"--rem-genes-without-start-and-stop-codon",
-            #"--rem-genes-without-start-codon --rem-genes-without-stop-codon",
-            "-O ./",evm.gff3,
-            sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  cmd=paste("awk -F '\t' -v OFS='\t' '{if ($3==\"gene\") print $9}' gFACs_out.gtf | sed 's/ID=//' > geneID.lst",
-            sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  cmd=paste("agat_sp_filter_feature_from_keep_list.pl",
-            "--gff",evm.gff3,
-            "--keep_list geneID.lst --out gfacs.gff3",
-            sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  cmd="agat_convert_sp_gxf2gxf.pl --gff gfacs.gff3 -o sorted.gff3"
-  print(cmd);system(cmd,wait=TRUE)
-  
-  system("rm geneID.lst")
-  system("rm gfacs.agat.log")
-  system("rm gFACs_gene_table.txt")
-  system("rm gfacs.gff3")
-  system("rm gFACs_out.gtf")
-  system("rm gfacs_report.txt")
-  system("rm gFACs_statistics.txt")
-  system("rm tempy.txt")
-  system("rm ./genome.fa")
-  system("rm ./genome.fa.idx")
-  setwd(wd)
-}
+# # gFACs: filter gene models (gff3)
+# gfacs=function(evm.gff3=evm.gff3, # EvidenceModeler.gff3
+#                genome.fna=genome.fna,
+#                out_dir=out_dir){
+#   out_dir=sub("/$","",out_dir)
+#   if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
+#   wd=getwd();setwd(out_dir)
+#   system(paste("cp",genome.fna,"./genome.fa",sep=" "),wait=TRUE)
+#   
+#   cmd=paste("gFACs.pl",
+#             "-f EVM_1.1.1_gff3 -p gFACs --create-gtf --statistics --fasta ./genome.fa",
+#             "--statistics-at-every-step --splice-table --rem-all-incompletes",
+#             "--allowed-inframe-stop-codons 0",
+#             "--min-exon-size 20 --min-intron-size 20 --min-CDS-size 150",
+#             #"--rem-genes-without-start-and-stop-codon",
+#             #"--rem-genes-without-start-codon --rem-genes-without-stop-codon",
+#             "-O ./",evm.gff3,
+#             sep=" ")
+#   print(cmd);system(cmd,wait=TRUE)
+#   cmd=paste("awk -F '\t' -v OFS='\t' '{if ($3==\"gene\") print $9}' gFACs_out.gtf | sed 's/ID=//' > geneID.lst",
+#             sep=" ")
+#   print(cmd);system(cmd,wait=TRUE)
+#   cmd=paste("agat_sp_filter_feature_from_keep_list.pl",
+#             "--gff",evm.gff3,
+#             "--keep_list geneID.lst --out gfacs.gff3",
+#             sep=" ")
+#   print(cmd);system(cmd,wait=TRUE)
+#   cmd="agat_convert_sp_gxf2gxf.pl --gff gfacs.gff3 -o sorted.gff3"
+#   print(cmd);system(cmd,wait=TRUE)
+#   
+#   system("rm geneID.lst")
+#   system("rm gfacs.agat.log")
+#   system("rm gFACs_gene_table.txt")
+#   system("rm gfacs.gff3")
+#   system("rm gFACs_out.gtf")
+#   system("rm gfacs_report.txt")
+#   system("rm gFACs_statistics.txt")
+#   system("rm tempy.txt")
+#   system("rm ./genome.fa")
+#   system("rm ./genome.fa.idx")
+#   setwd(wd)
+# }
 
 # # Blast protein against itself and extract proteins IDs hit too many times
 # # Dependencies: blastp

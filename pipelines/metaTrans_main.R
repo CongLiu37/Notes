@@ -326,10 +326,10 @@ cdsInTranscripts=function(transcripts.fna=transcripts.fna,
   system("rm hmmsearch.out")
   system("rm pfam.domtblout")
   system("rm pipeliner.*.cmds")
-  #system("rm transcripts.fna")
   system("rm -r transcripts.fna.transdecoder_dir")
   system("rm -r transcripts.fna.transdecoder_dir.__checkpoints")
-  
+  system("rm transcripts.fna.transdecoder.cds")
+  system("rm transcripts.fna.transdecoder.pep")
   setwd(wd)
   return("TransDecoder.gff3")
 }
@@ -419,4 +419,122 @@ coverage=function(bam=bam,
             bam,
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
+}
+
+# Interproscan
+# Dependencies: Interproscan, seqkit, parallel (R)
+# AT LEAST 16 THREADS
+interpro=function(proteins.faa=proteins.faa,
+                  out_dir=out_dir,
+                  out_basename=out_basename,
+                  threads=threads){
+  threads=as.character(threads)
+  out_dir=sub("/$","",out_dir)
+  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
+  wd=getwd();setwd(out_dir)
+  
+  cmd=paste("cp",proteins.faa,out_dir,sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  proteins.faa=unlist(strsplit(proteins.faa,"/"));proteins.faa=proteins.faa[length(proteins.faa)]
+  cmd=paste("sed -i 's/*/X/g'",proteins.faa,sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  cmd=paste("seqkit split2",proteins.faa,"-s 80000",sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  prot.lst=system(paste("ls ",proteins.faa,".split/*",sep=""),intern=TRUE)
+  chunks=floor( (as.numeric(threads)-1)/15 )
+  
+  for (prot in prot.lst){
+    cmd=paste("interproscan.sh",
+              "-dp",
+              "-b",basename(prot),
+              "-cpu",15,
+              "-f TSV",
+              "-goterms",
+              "-i",prot,
+              "--pathways",
+              sep=" ")
+    system(paste("echo '",cmd,"' >> jobs",sep=""))
+  }
+  cmd=paste("split",
+            "-d",
+            "-n",paste("l/",chunks,sep=""),
+            "jobs",
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  library(parallel)
+  clus=makeCluster(as.numeric(threads)-1)
+  parSapply(clus,
+            1:chunks,
+            function(i){
+              scr=system("ls x*",wait=TRUE,intern=TRUE)[i]
+              
+              system(paste("sed -i '1i module load Other\\/interproscan\\/5.60-92.0'",scr,sep=" "))
+              system(paste("sed -i '1i module load bioinfo-ugrp-modules'",scr,sep=" "))
+              
+              cmd=paste("bash"," ",scr,sep="")
+              print(cmd);system(cmd,wait=TRUE)})
+  stopCluster(clus)
+  
+  for (prot in prot.lst){
+    system(paste("cat ",basename(prot),".tsv >> Interprotscan.tsv",sep=""))
+    system(paste("rm ",basename(prot),".tsv",sep=""))
+  }
+  system(paste("rm",proteins.faa,sep=" "),wait=TRUE)
+  system(paste("rm -r ",proteins.faa,".split/",sep=""))
+  setwd(wd)
+}
+
+# eggNOG-mapper
+# Dependencies: eggNOG-mapper, seqkit, parallel (R)
+# AT LEAST 16 THREADS
+eggNOGmapper=function(proteins.faa=proteins.faa,
+                      out_dir=out_dir,
+                      out_basename=out_basename,
+                      threads=threads){
+  threads=as.character(threads)
+  out_dir=sub("/$","",out_dir)
+  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
+  wd=getwd();setwd(out_dir)
+  
+  cmd=paste("cp",proteins.faa,out_dir,sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  proteins.faa=basename(proteins.faa)
+  
+  cmd=paste("seqkit split2",proteins.faa,"-s 80000",sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  prot.lst=system(paste("ls ",proteins.faa,".split/*",sep=""),intern=TRUE)
+  chunks=floor( (as.numeric(threads)-1)/15 )
+  
+  for (prot in prot.lst){
+    cmd=paste("emapper.py",
+              "-i",prot,
+              "-o",basename(prot),
+              "--cpu",15,
+              sep=" ")
+    system(paste("echo",cmd,">> jobs",sep=" "))
+  }
+  cmd=paste("split",
+            "-d",
+            "-n",paste("l/",chunks,sep=""),
+            "jobs",
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  library(parallel)
+  clus=makeCluster(as.numeric(threads)-1)
+  parSapply(clus,
+            1:chunks,
+            function(i){
+              scr=system("ls x*",wait=TRUE,intern=TRUE)[i]
+              cmd=paste("bash"," ",scr,sep="")
+              print(cmd);system(cmd,wait=TRUE)})
+  stopCluster(clus)
+  
+  system(paste("rm",proteins.faa,sep=" "),wait=TRUE)
+  system(paste("rm -r ",proteins.faa,".split/",sep=""))
+  setwd(wd)
 }

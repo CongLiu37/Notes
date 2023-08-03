@@ -1,5 +1,5 @@
 # Genomic analysis of protein-coding genes: 
-# genome collinearity, HGT, phylogeny, condon/AA usage, exon-intron, protein domain, gene family, selection, etc.
+# genome collinearity, HGT, phylogeny, gene content, selective pressure
 
 # For peptide sets from NCBI
 # Retain the longest protein isoform of each gene by header lines of faa.
@@ -501,62 +501,45 @@ wgdi_kspeak=function(wgdi_BlockInfo=wgdi_BlockInfo,
 #####
 # HGT
 #####
-# Incomplete
-# AvP
-# Detect horizontal gene transfer (HGT)
-# Dependencies: AvP
-Avp=function(query.faa=query.faa,
-             blast_filename=blast_filename,
-             dmbd=dmbd, # not used if blast_filename exists
-             group.yaml=group.yaml,
-             config.yaml=config.yaml,
-             out_dir=out_dir,
-             threads=threads
-){
-  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "),wait=TRUE)}
+# HGT inference by DIAMOND-nr-MEGAN
+hgt=function(proteins.faa=proteins.faa,
+             ref_diamond=ref_diamond,
+             ref_megan=ref_megan,
+             taxonExclude=taxonExclude, # exclude list of taxon ids (comma-separated)
+             out_prefix=out_prefix,
+             threads=threads){
   threads=as.character(threads)
-  wd=getwd()
-  setwd(out_dir)
   
-  if (!file.exists(blast_filename)){
-    cmd=paste("diamond blastp",
-              "--threads",threads,
-              "-d",dmbd,
-              "--max-target-seqs 500",
-              "-q",query.faa,
-              "--evalue 1e-5",
-              "--outfmt 6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore staxids",
-              ">",
-              blast_filename)
-    print(cmd);system(cmd,wait=TRUE)
-  }
-  
-  cmd=paste("calculate_ai.py",
-            "-i",blast_filename,
-            "-x",group.yaml,
+  cmd=paste("diamond blastp",
+            "--outfmt 100",
+            "-p",threads,
+            "-d",ref_diamond,
+            "-q",proteins.faa,
+            "--taxon-exclude",taxonExclude,
+            "--out",paste(out_prefix,".daa",sep=""),
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   
-  cmd=paste("avp prepare",
-            "-a",paste(blast_filename,"_ai.out",sep=""),
-            "-o",".",
-            "-f",query.faa,
-            "-b",blast_filename,
-            "-x",group.yaml,
-            "-c",config.yaml,
+  cmd=paste("daa-meganizer",
+            "-i",paste(out_prefix,".daa",sep=""),
+            "-mdb",ref_megan,
+            "-t",threads,
+            "-ram readCount",
+            "-supp 0",
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   
-  cmd=paste("avp detect",
-            "-i","./mafftgroups/",
-            "-o",".",
-            "-g","./groups.tsv",
-            "-t","./tmp/taxonomy_nexus.txt",
-            "-c",config.yaml,
+  cmd=paste("daa2info",
+            "-i",paste(out_prefix,".daa",sep=""),
+            "-o",paste(out_prefix,"_taxon.tsv",sep=""),
+            "-r2c Taxonomy",
+            "-n true",
+            "-p true",
+            "-r true",
+            "-mro true",
+            "-u false",
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
-  
-  setwd(wd)
 }
 
 #####
@@ -583,6 +566,43 @@ getBuscoSeq=function(tab=tab, # tsv.
     }
   }
   system("mv seqs/* ./")
+}
+
+# Wrangle orthofinder results to be ready for building gene trees
+# Dependencies: seqkit, parallel (R)
+getOrthofinderSeq=function(N0.tsv=N0.tsv,
+                           allPep.faa=allPep.faa,
+                           threads=threads,
+                           out_dir=out_dir){
+  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
+  wd=getwd();setwd(out_dir)
+  
+  d=read.table(N0.tsv,sep="\t",header=TRUE,quote="")
+  HOG=sub("^N0.","",d[,"HOG"])
+  d=d[,4:ncol(d)]
+  rownames(d)=HOG
+  
+  library(parallel)
+  clus=makeCluster(as.numeric(threads)-1)
+  clusterExport(clus,list("d"),envir=environment())
+  parSapply(clus,
+            rownames(d),
+            function(hog){
+              IDs=paste(d[hog,],collapse=",")
+              IDs=unlist(strsplit(IDs,","))
+              IDs=IDs[which(IDs!="")]
+              IDs=sub(" ","",IDs)
+              writeLines(IDs,paste(hog,".lst",sep=""))
+              cmd=paste("seqkit grep",
+                        "-f",paste(hog,".lst",sep=""),
+                        allPep.faa,
+                        ">",paste(hog,".faa",sep=""),
+                        sep=" ")
+              system(cmd,wait=TRUE)
+              system(paste("rm ",hog,".lst",sep=""))
+            })
+  stopCluster(clus)
+  setwd(wd)
 }
 
 # MAFFT: multiple sequence alignment
@@ -661,7 +681,7 @@ iqtree=function(msa.fa=msa.fa,
             "-T",threads,
             # "-m TEST", # Standard model selection followed by tree inference
             # "-m MFP", # Extended model selection followed by tree inference
-            # "-mset GTR", # test GTR+... models only
+            # "-mset GTR", # test GTR+... models (DNA) only
             # "--msub nuclear", # Amino-acid model source (nuclear, mitochondrial, chloroplast or viral)
             "-B 1000",
             sep=" ")
@@ -700,5 +720,155 @@ stag=function(gene2species.txt=gene2species.txt,# space-separated
   setwd(wd)
 }
 
+#####
+# Gene content
+#####
+# Notung: root gene trees
+# Dependencies: Notung, parallel (R), phytools (R)
+rootNotung=function(Notung.jar="/home/c/c-liu/Softwares/Notung/Notung-2.9.1.5.jar",
+                    speciesTree.nwk=speciesTree.nwk, # rooted, absolute path
+                    geneTrees.nwk=geneTrees.nwk, # unrooted, comma-list, absolute path
+                    # Link species with genes:
+                    # musgene1, bov.gene1, dros-gene1, etc.
+                    inferTransfers="false", # true/false. Consider gene transfers or not
+                    out_dir=out_dir,
+                    threads=threads){
+  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
+  out_dir=sub("/$","",out_dir)
+  wd=getwd();setwd(out_dir)
+  
+  system("unset DISPLAY")
+  geneTrees.nwk=unlist(strsplit(geneTrees.nwk,","))
+  
+  library(parallel)
+  clus=makeCluster(as.numeric(threads)-1)
+  clusterExport(clus,list("speciesTree.nwk"),envir=environment())
+  parSapply(clus,
+            geneTrees.nwk,
+            function(geneTree){
+              cmd=paste("java -jar",
+                        Notung.jar,
+                        "-g",geneTree,
+                        "-s",speciesTree.nwk,
+                        "--root",
+                        "--outputdir",out_dir,
+                        "--infertransfers",inferTransfers,
+                        "--absfilenames",
+                        "--nolosses",
+                        "--speciestag prefix",
+                        "--treeoutput newick",
+                        sep=" ")
+              system(cmd,wait=TRUE)
+            })
+  stopCluster(clus)
+  
+  setwd(wd)
+}
 
+# Notung: gene content evolution
+phyloNotung=function(Notung.jar="/home/c/c-liu/Softwares/Notung/Notung-2.9.1.5.jar",
+                     speciesTree.nwk=speciesTree.nwk, # rooted, absolute path
+                     geneTrees.nwk=geneTrees.nwk, # rooted, comma-list, absolute path
+                     # Link species with genes:
+                     # musgene1, bov.gene1, dros-gene1, etc.
+                     inferTransfers="false", # true/false. Consider gene transfers or not
+                     out_dir=out_dir){
+  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
+  wd=getwd();setwd(out_dir)
+  system("unset DISPLAY")
+  
+  trees=paste(speciesTree.nwk,geneTrees.nwk,sep=",")
+  trees=unlist(strsplit(trees,","))
+  writeLines(trees,"inputTrees.lst")
+  
+  cmd=paste("java -jar",
+            Notung.jar,
+            "-b inputTrees.lst",
+            "--reconcile",
+            "--outputdir",out_dir,
+            "--infertransfers",inferTransfers,
+            "--absfilenames",
+            "--speciestag prefix",
+            "--treeoutput newick",
+            "--phylogenomics",
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  setwd(wd)
+}
 
+#####
+# Selective pressure
+#####
+# absrel of hyphy
+# Dependencies: hyphy
+absrel=function(codon.align=codon.align,
+                geneTree=geneTree,
+                out_prefix=out_prefix){
+  
+  cmd=paste("hyphy absrel",
+            "--alignment",codon.align,
+            "--tree",geneTree,
+            "--output",paste(out_prefix,".json",sep=""))
+  print(cmd);system(cmd,wait=TRUE)
+}
+# hyphy absrel --alignment hiv1_transmission.fna --tree tree.nwk
+# hyphy relax --alignment pb2.fna --tree tree.nwk --test test
+
+# # Incomplete
+# # AvP
+# # Detect horizontal gene transfer (HGT)
+# # Dependencies: AvP
+# Avp=function(query.faa=query.faa,
+#              blast_filename=blast_filename,
+#              dmbd=dmbd, # not used if blast_filename exists
+#              group.yaml=group.yaml,
+#              config.yaml=config.yaml,
+#              out_dir=out_dir,
+#              threads=threads
+# ){
+#   if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "),wait=TRUE)}
+#   threads=as.character(threads)
+#   wd=getwd()
+#   setwd(out_dir)
+#   
+#   if (!file.exists(blast_filename)){
+#     cmd=paste("diamond blastp",
+#               "--threads",threads,
+#               "-d",dmbd,
+#               "--max-target-seqs 500",
+#               "-q",query.faa,
+#               "--evalue 1e-5",
+#               "--outfmt 6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore staxids",
+#               ">",
+#               blast_filename)
+#     print(cmd);system(cmd,wait=TRUE)
+#   }
+#   
+#   cmd=paste("calculate_ai.py",
+#             "-i",blast_filename,
+#             "-x",group.yaml,
+#             sep=" ")
+#   print(cmd);system(cmd,wait=TRUE)
+#   
+#   cmd=paste("avp prepare",
+#             "-a",paste(blast_filename,"_ai.out",sep=""),
+#             "-o",".",
+#             "-f",query.faa,
+#             "-b",blast_filename,
+#             "-x",group.yaml,
+#             "-c",config.yaml,
+#             sep=" ")
+#   print(cmd);system(cmd,wait=TRUE)
+#   
+#   cmd=paste("avp detect",
+#             "-i","./mafftgroups/",
+#             "-o",".",
+#             "-g","./groups.tsv",
+#             "-t","./tmp/taxonomy_nexus.txt",
+#             "-c",config.yaml,
+#             sep=" ")
+#   print(cmd);system(cmd,wait=TRUE)
+#   
+#   setwd(wd)
+# }

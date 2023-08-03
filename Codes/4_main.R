@@ -1263,6 +1263,8 @@ pasa=function(genome=genome,
   setwd(wd)
 }
 
+# Remove partial genes (CDS length can not be divided by 3)
+# Remove complete genes containing inframe stop codon
 filterPasa=function(genome.fna=genome.fna,
                     pasa.gff3=pasa.gff3,
                     out_dir=out_dir){
@@ -1272,16 +1274,27 @@ filterPasa=function(genome.fna=genome.fna,
   
   system(paste("cp",genome.fna,"./genome.fna",sep=" "))
   cmd=paste("gffread","-O",pasa.gff3,
-            "-g ./genome.fna -y ./pep.faa",
+            "-g ./genome.fna -y ./pep.faa -x ./cds.fna",
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
-  cmd="seqkit grep -s -r -p \"[\\*\\.][A-Z]\" pep.faa | grep '>' | sed 's/>//' > ./inFrameStop.lst"
-  print(cmd);system(cmd,wait=TRUE)
-  system("rm ./genome.fna ./genome.fna.fai")
+  cmd="seqkit grep -s -r -p \"[\\*\\.][A-Z]\" pep.faa | grep '>' | sed 's/>//'"
+  inFrameStop.lst=system(cmd,wait=TRUE,intern=TRUE)
+  cmd="seqkit fx2tab -l -n -i -H ./cds.fna"
+  partialCDS=system(cmd,wait=TRUE,intern=TRUE)
+  partialCDS=sapply(partialCDS[2:length(partialCDS)],
+                    function(i){
+                      ID=unlist(strsplit(i,"\t"))[1]
+                      i=as.numeric(unlist(strsplit(i,"\t"))[2])/3
+                      if (i==floor(i)){return(NA)}else{return(ID)}
+                    })
+  partialCDS=unname(partialCDS[!is.na(partialCDS)])
+  writeLines(union(inFrameStop.lst,partialCDS),"./removd.lst")
+  
+  system("rm ./genome.fna ./genome.fna.fai ./pep.faa ./cds.fna")
   
   cmd=paste("agat_sp_filter_feature_from_kill_list.pl",
             "--gff",pasa.gff3,
-            "--kill_list ./inFrameStop.lst",
+            "--kill_list ./removd.lst",
             "--out ./filtered.gff3",
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
@@ -1325,13 +1338,13 @@ pasa_more=function(species=species,
     if (is.na(c[i,"evidence"]) & is.na(c[i,"software"])){
       c[i,"evidence"]="Transcript"
       c[i,"software"]="PASA"
-      print(c[i,])
     }
   }
   write.table(c,paste("./",species,"_gene_evidence.tsv",sep=""),sep="\t",row.names=FALSE,quote=FALSE)
   
   # Extract transcripts, cds, proteins
-  system(paste("cp",genome,paste(species,"_maskedGenome.fna",sep=""),sep=" "))
+  system(paste("cp",genome,"./",sep=" "))
+  system(paste("mv",basename(genome),paste("./",species,"_maskedGenome.fna",sep=""),sep=" "))
   genome=paste(species,"_maskedGenome.fna",sep="")
   cmd=paste("gffread","-O",
             gff3,"-S",
@@ -1343,10 +1356,10 @@ pasa_more=function(species=species,
   print(cmd);system(cmd,wait=TRUE)
   
   # Pick longest transcript as representative
-  cmd=paste("seqkit fx2tab -l -n -i -H ",paste(species,"_transcripts.fna",sep="")," > ","length.tsv",sep="\t")
+  cmd=paste("seqkit fx2tab -l -n -i -H ",paste(species,"_transcripts.fna",sep="")," > ","length.tsv",sep="")
   print(cmd);system(cmd,wait=TRUE)
   d=read.table("length.tsv",header=FALSE,sep="\t",quote="")
-  colnames(d)=c("transcript","length") #Cmer00015458      Cmer000154580
+  colnames(d)=c("transcript","length")
   d[,"gene"]=sub("-R[0-9]*","",d[,"transcript"])
   longest=sapply(names(table(d[,"gene"])),
                  function(gene){
@@ -1362,22 +1375,23 @@ pasa_more=function(species=species,
   #           "--keep_list ./longest.lst",
   #           "--out",paste(species,"_genesNoIso.gff3",sep=""),
   #           sep=" ");system(cmd,wait=TRUE)
-  cmd=paste("seqkit grep -f longest.lst -n",
-            paste(species,"_transcripts.fna",sep=""),">",paste(species,"_transcripts_rep.fna",sep=""),
-            sep=" ");system(cmd,wait=TRUE)
-  cmd=paste("seqkit grep -f isoform.lst -n",
-            paste(species,"_transcripts.fna",sep=""),">",paste(species,"_transcripts_iso.fna",sep=""),
-            sep=" ");system(cmd,wait=TRUE)
-  cmd=paste("seqkit grep -f longest.lst -n",
+  
+  cmd=paste("seqkit grep -f longest.lst",
+           paste(species,"_transcripts.fna",sep=""),">",paste(species,"_transcripts_rep.fna",sep=""),
+           sep=" ");system(cmd,wait=TRUE)
+  cmd=paste("seqkit grep -f isoform.lst",
+           paste(species,"_transcripts.fna",sep=""),">",paste(species,"_transcripts_iso.fna",sep=""),
+           sep=" ");system(cmd,wait=TRUE)
+  cmd=paste("seqkit grep -f longest.lst",
             paste(species,"_cds.fna",sep=""),">",paste(species,"_cds_rep.fna",sep=""),
             sep=" ");system(cmd,wait=TRUE)
-  cmd=paste("seqkit grep -f isoform.lst -n",
+  cmd=paste("seqkit grep -f isoform.lst",
             paste(species,"_cds.fna",sep=""),">",paste(species,"_cds_iso.fna",sep=""),
             sep=" ");system(cmd,wait=TRUE)
-  cmd=paste("seqkit grep -f longest.lst -n",
+  cmd=paste("seqkit grep -f longest.lst",
             paste(species,"_proteins.faa",sep=""),">",paste(species,"_proteins_rep.faa",sep=""),
             sep=" ");system(cmd,wait=TRUE)
-  cmd=paste("seqkit grep -f isoform.lst -n",
+  cmd=paste("seqkit grep -f isoform.lst",
             paste(species,"_proteins.faa",sep=""),">",paste(species,"_proteins_iso.faa",sep=""),
             sep=" ");system(cmd,wait=TRUE)
   
@@ -1470,9 +1484,9 @@ PseudoPipe=function(genome=genome, # soft masked
   # system("rm -r blast/")
   # system("rm -r dna/")
   # system("rm -r pep/")
+  # system("rm -r pgenes/")
   system("mv ./pgenes/*.gz ./")
   system("mv ./pgenes/*.txt ./")
-  # system("rm -r pgenes/")
   setwd(wd)
 }
 

@@ -5,9 +5,9 @@
 3：地衣（Lichens）
 4：苔藓（Bryophyta）
 5：蕨类（Pteridophyta）
-6：裸子植物（）
-7：被子植物（）
-10：双子叶植物-原始花被亚纲（）
+6：裸子植物（Gymnospermae）
+7：被子植物（Angiospermae）
+10：双子叶植物-原始花被亚纲（Archichlamydeae）
 11：双子叶植物-合瓣花亚纲（）
 12：单子叶植物（）
 

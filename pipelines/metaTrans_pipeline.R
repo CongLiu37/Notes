@@ -265,9 +265,122 @@ if (7 %in% Step){
 #####
 # Tables
 #####
-# paste(save_dir,"/diamond_p_megan/mixAssembly_taxon.tsv",sep="")
-# paste(save_dir,"/minimap2/",sp,".tsv",sep="")
-# paste(save_dir,"/cdsInTranscripts/TransDecoder.gff3",sep="")
-# paste(save_dir,"/minimap2/",sp,".depth.tsv",sep="")
+if (8 %in% Step){
+  print("Step 8: Tables")
+  if (!file.exists(paste(out_dir,"/Tables",sep=""))){system(paste("mkdir ",out_dir,"/Tables",sep=""))}
+  Stamp1=paste(out_dir,"/Tables/","Tables.finished",sep="")
+  Stamp2=paste(save_dir,"/Tables/","Tables.finished",sep="")
+  if (file.exists(Stamp1) | file.exists(Stamp2)){
+    print("Step 8: Tables FINISHED")
+  }else{
+    print("Step 8: Tables START")
+    library(stringr)
+    contig2Taxon=read.table(paste(save_dir,"/diamond_p_megan/mixAssembly_taxon.tsv",sep=""),
+                            sep="\t",header=FALSE,quote="")
+    colnames(contig2Taxon)=c("protein","rank","taxon")
+    contig2Taxon=contig2Taxon[contig2Taxon[,"taxon"]!="",]
+    contig2Taxon=contig2Taxon[order(contig2Taxon[,"protein"]),c("protein","taxon")]
+    
+    cmd=paste("awk -F '\t' -v OFS='\t'",
+              "'{if ($3==\"mRNA\") print $1,$9}' >",
+              paste(out_dir,"/Tables/contig2pep.tsv",sep=""),
+              paste(save_dir,"/cdsInTranscripts/TransDecoder.gff3",sep=""),
+              sep=" ");system(cmd,wait=TRUE)
+    contig2pep=read.table(paste(out_dir,"/Tables/contig2pep.tsv",sep=""),
+                          sep="\t",header=FALSE,quote="")
+    colnames(contig2pep)=c("contig","protein")
+    contig2pep[,"protein"]=str_extract(contig2pep[,"protein"],"Parent=pep[0-9]*;")
+    contig2pep[,"protein"]=sub("Parent=","",contig2pep[,"protein"])
+    contig2pep[,"protein"]=sub(";","-R0",contig2pep[,"protein"])
+    contig2pep=contig2pep[order(contig2pep[,"protein"]),]
+    
+    contig.lst=sort(system(paste("grep '>' ",save_dir,"/cdsInTranscripts/transcripts.fna | sed 's/>//'",sep=""),intern=TRUE))
+    contig.lst=data.frame(contig=contig.lst)
+    
+    contigInfo=merge(contig2pep,contig2Taxon,by="protein",all=TRUE)
+    contigInfo=merge(contig.lst,contigInfo,by="contig",all=TRUE)
+    write.table(contigInfo,paste(out_dir,"/Tables/taxonTable.tsv",sep=""),
+                sep="\t",row.names=FALSE,quote=FALSE)
+    contigInfo=contigInfo[order(contigInfo[,"contig"]),c("contig","protein")]
+    
+    sp.lst=tab[,1]
+    coverageMat=as.data.frame(matrix(rep(NA,nrow(contigInfo)*length(sp.lst)),
+                                     nrow=nrow(contigInfo),ncol=length(sp.lst)))
+    colnames(coverageMat)=sp.lst;coverageMat=cbind(contigInfo,coverageMat)
+    depthMat=as.data.frame(matrix(rep(NA,nrow(contigInfo)*length(sp.lst)),
+                                  nrow=nrow(contigInfo),ncol=length(sp.lst)))
+    colnames(depthMat)=sp.lst;depthMat=cbind(contigInfo,depthMat)
+    readsMat=as.data.frame(matrix(rep(NA,nrow(contigInfo)*length(sp.lst)),
+                                  nrow=nrow(contigInfo),ncol=length(sp.lst)))
+    colnames(readsMat)=sp.lst;readsMat=cbind(contigInfo,readsMat)
+    rpkmMat=as.data.frame(matrix(rep(NA,nrow(contigInfo)*length(sp.lst)),
+                                 nrow=nrow(contigInfo),ncol=length(sp.lst)))
+    colnames(rpkmMat)=sp.lst;rpkmMat=cbind(contigInfo,rpkmMat)
+    tpmMat=as.data.frame(matrix(rep(NA,nrow(contigInfo)*length(sp.lst)),
+                                nrow=nrow(contigInfo),ncol=length(sp.lst)))
+    colnames(tpmMat)=sp.lst;tpmMat=cbind(contigInfo,tpmMat)
+    for (sp in sp.lst){
+      d=read.table(paste(save_dir,"/minimap2/",sp,".tsv",sep=""),
+                   header=FALSE,sep="\t",quote="")
+      d=d[order(d[,1]),]
+      coverageMat[,sp]=d[,6]
+      depthMat[,sp]=d[,7]
+      readsMat[,sp]=d[,4]
+      rpkmMat[,sp]=1e+9*(d[,4]/d[,3])/sum(d[,4])
+      tpmMat[,sp]=1e+6*(d[,4]/d[,3])/sum(d[,4]/d[,3])
+    }
+    write.table(coverageMat,paste(out_dir,"/Tables/coverageTable.tsv",sep=""),
+                sep="\t",row.names=FALSE,quote=FALSE)
+    write.table(depthMat,paste(out_dir,"/Tables/depthTable.tsv",sep=""),
+                sep="\t",row.names=FALSE,quote=FALSE)
+    write.table(readsMat,paste(out_dir,"/Tables/readsTable.tsv",sep=""),
+                sep="\t",row.names=FALSE,quote=FALSE)
+    write.table(rpkmMat,paste(out_dir,"/Tables/rpkmTable.tsv",sep=""),
+                sep="\t",row.names=FALSE,quote=FALSE)
+    write.table(tpmMat,paste(out_dir,"/Tables/tpmTable.tsv",sep=""),
+                sep="\t",row.names=FALSE,quote=FALSE)
+    system(paste("touch",Stamp1,sep=" "))
+  }
+}
+
+#####
+# Interprotscan
+#####
+if (9 %in% Step){
+  print("Step 9: Interprotscan")
+  if (!file.exists(paste(out_dir,"/Interprotscan",sep=""))){system(paste("mkdir ",out_dir,"/Interprotscan",sep=""))}
+  Stamp1=paste(out_dir,"/Interprotscan/","Interprotscan.finished",sep="")
+  Stamp2=paste(save_dir,"/Interprotscan/","Interprotscan.finished",sep="")
+  if (file.exists(Stamp1) | file.exists(Stamp2)){
+    print("Step 9: Interprotscan FINISHED")
+  }else{
+    print("Step 9: Interprotscan START")
+    interpro(proteins.faa=paste(save_dir,"/cdsInTranscripts/pep.faa",sep=""),
+             out_dir=paste(out_dir,"/Interprotscan",sep=""),
+             out_basename="InterproScan",
+             threads=threads)
+    system(paste("touch",Stamp1,sep=" "))
+  }
+}
+
+#####
+# eggNOG
+#####
+if (10 %in% Step){
+  print("Step 10: eggNOG")
+  if (!file.exists(paste(out_dir,"/eggNOG",sep=""))){system(paste("mkdir ",out_dir,"/eggNOG",sep=""))}
+  Stamp1=paste(out_dir,"/eggNOG/","eggNOG.finished",sep="")
+  Stamp2=paste(save_dir,"/eggNOG/","eggNOG.finished",sep="")
+  if (file.exists(Stamp1) | file.exists(Stamp2)){
+    print("Step 10: eggNOG FINISHED")
+  }else{
+    print("Step 10: eggNOG START")
+    eggNOGmapper(proteins.faa=paste(save_dir,"/cdsInTranscripts/pep.faa",sep=""),
+                 out_dir=paste(out_dir,"/eggNOG",sep=""),
+                 out_basename="eggNOGmapper",
+                 threads=threads)
+    system(paste("touch",Stamp1,sep=" "))
+  }
+}
 
 

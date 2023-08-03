@@ -6,12 +6,13 @@ Content:
 4. Genome annotation (protein-coding genes and pseudogenes)
 5. Curation and evaluation of genome and genome annotation (kmer-based genome survey, decontamination, quality of genome/genome annotation)
 6. Genomic analysis of protein-coding genes:
-  genome collinearity, HGT, phylogeny, condon/AA usage, exon-intron, protein domain, gene family, selection, etc.
+  genome collinearity, HGT, phylogeny
 7. Machine learning in scikit-learn (python)
 8. More genome annotation (repeat elements and non-coding RNA)
 9. Metagenome/metatranscriptome profiling
-10. Gene functions & metabolic network
-
+10. Ortholog groups, gene functions & metabolic network
+11. Genomic analysis of protein-coding genes:
+  condon/AA usage, exon-intron, protein domain, gene family, selection, etc.
 Mode of README for projects:
 ###############################################################################################
 ###############################################################################################

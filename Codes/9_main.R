@@ -513,7 +513,7 @@ diamond_p_megan=function(query.faa=query.faa,
             "-p",threads,
             "-d",diamond.db,
             "-q",query.faa,
-            "-f 100",
+            "--outfmt 100",
             "--out",paste(out_prefix,".blast.daa",sep=""),
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)

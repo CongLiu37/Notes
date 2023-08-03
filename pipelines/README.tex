@@ -99,9 +99,9 @@ Sixth, AUGUSTUS \parencite{stanke2003gene} is trained with gene structures from 
 Seventh, BRAKER \parencite{hoff2019whole} is trained with RNA-seq mapping to call genes. 
 Eighth, GALBA \parencite{hoff2019whole} is trained with proteins of closely related species. 
 Ninth, protein-genome alignments from miniprot, transcript-genome alignments from Hisat2-StringTie, and \textit{ab initio} gene predictions from TransDecoder, AUGUSTUS, BRAKER and GALBA are integrated into consensus gene structures by EvidenceModeler \parencite{haas2008automated}. 
-Tenth, genes from EvidenceModeler are removed if they (1) contain in-frame stop codons or (2) supported by only one \textit{ab initio} predictor and lack protein/RNA-seq evidence. 
+Tenth, genes from EvidenceModeler are removed if they are supported by only one \textit{ab initio} predictor and lack protein/RNA-seq evidence. 
 Eleventh, two iterations of PASA \parencite{haas2008automated} is used to update filtered gene structures from EvidenceModeler. 
-Twelfth, genes with in-frame stop codons are removed and the predicted peptide set is evaluated by BUSCO \parencite{simao2015busco}.
+Twelfth, genes with in-frame stop codons or incomplete coding regions (coding regions with length cannot be divided by 3) are removed and the predicted peptide set is evaluated by BUSCO \parencite{simao2015busco}.
 \subsection{Dependencies}
 \textbf{Softwares} \newline
 R \newline
@@ -236,15 +236,43 @@ First, metatranscriptomic reads are mapped to corresponding host genome by Hisat
 Second, ribosomal RNA reads are removed by SortMeRNA \parencite{kopylova2012sortmerna}. 
 Third, all reads are pooled together and assembled by rnaSPAdes \parencite{bushmanova2019rnaspades}. 
 Forth, MMseqs2 \parencite{steinegger2017mmseqs2} (--cov-mode 1 -c 0.75 --min-seq-id 0.75) is used to remove redundancy in assembly from rnaSPAdes. 
-Fifth, coding regions of assembled transcripts are identified by TransDecoder \parencite{haas2016transdecoder}, combining searching against UniRef \parencite{suzek2007uniref} by \parencite{buchfink2015fast} and PfamA \parencite{mistry2021pfam} by HMMER \parencite{eddy1992hmmer}. 
-Sixth, protein sequences transcribed by assembled transcripts are searched against nr database by DIAMOND \parencite{buchfink2015fast} and assigned to taxa by MEGAN \parencite{huson2007megan}. 
-Seventh, reads are mapped to assembled transcripts by minimap2 \parencite{li2018minimap2}. 
-SAMtools is used to compute coverage and depth of transcripts. 
-Eighth, coverage, depth, coordinates of coding regions and taxonomy assignments of transcripts are taken together as comprehensive tables (\textbf{To be continued...}).
+Fifth, coding regions of assembled transcripts are identified by TransDecoder \parencite{haas2016transdecoder}, combining searching against UniRef \parencite{suzek2007uniref} by DIAMOND \parencite{buchfink2015fast} and PfamA \parencite{mistry2021pfam} by HMMER \parencite{eddy1992hmmer}. 
+Sixth, protein sequences transcribed by assembled transcripts are searched against non-redundant database by DIAMOND \parencite{buchfink2015fast} and assigned to taxa by MEGAN \parencite{huson2007megan}. 
+Seventh, reads are mapped to assembled transcripts by minimap2 \parencite{li2018minimap2} and SAMtools is used to compute coverage and depth of transcripts. 
+Eighth, coverage, depth, coordinates of coding regions and taxonomy assignments of transcripts are taken together as comprehensive tables. 
+Ninth, protein functions are inferred by InterproScan \parencite{jones2014interproscan}. 
+Tenth, protein functions are inferred by eggNOG-mapper \parencite{cantalapiedra2021eggnog}. 
 \subsection{Dependencies}
+\textbf{Softwares} \newline
+R \newline
+Hisat2 \newline
+SAMtools \newline
+SortMeRNA \newline
+SPAdes \newline
+MMseqs2 \newline
+TransDecoder \newline
+DIAMOND \newline
+HMMER \newline
+MEGAN tools (daa-meganizer & daa2info) \newline
+minimap2 \newline
+gffread \newline
+seqkit \newline
+MAKER \newline
+InterproScan \newline
+eggNOG-mapper \newline
+\par
+\textbf{External scripts}
+simplifyFastaHeaders.pl from AUGUSTUS \newline
+\par
+\textbf{Databases} \newline
+DIAMOND database (UniRef) \newline
+Pfam-A \newline
+\par
+\textbf{R packages} \newline
+stringr \newline
 \subsection{Usage}
-Modify configuration file (templated as ncRNAcall\_conf.R), and run \newline
-Rscript \textif{path}/ncRNAcall\_pipeline.R \textif{path}/ncRNAcall\_main.R \textif{path}/ncRNAcall\_conf.R
+Modify configuration file (templated as metaTrans\_conf.R), and run \newline
+Rscript \textif{path}/metaTrans\_pipeline.R \textif{path}/metaTrans\_main.R \textif{path}/metaTrans\_conf.R
 
 \section{PseudoCall}
 \subsection{Introduction}
