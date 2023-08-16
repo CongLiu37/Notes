@@ -31,24 +31,25 @@ if [ ! -d pep ]; then mkdir pep; fi
 if [ ! -d blast ]
 then 
 	mkdir blast
-	cd blast
-	mkdir stamps
-	mkdir output
-	mkdir status
-	mkdir processed
-	cd ..
 fi
+cd blast
+mkdir stamps
+mkdir output
+mkdir status
+mkdir processed
+cd ..
+
 if [ ! -d pgenes ]
 then
         mkdir pgenes
-        cd pgenes
-        mkdir minus plus
-	cd minus
-	mkdir log stamp
-	cd ../plus
-	mkdir log stamp
-        cd ../../
 fi
+cd pgenes
+mkdir minus plus
+cd minus
+mkdir log stamp
+cd ../plus
+mkdir log stamp
+cd ../../
 
 echo Copying sequences
 if [ ! -f $inputDNA ]
@@ -57,7 +58,8 @@ then
 	then 
 		inputDNA=$rmkDir
 	else
-		cat $rmkDir/*.fa > $inputDNA
+		#cat $rmkDir/*.fa > $inputDNA
+		find $rmkDir -mindepth 1 -maxdepth 1 -type f -name '*.fa' | xargs cat > $inputDNA
 	fi
 fi
 if [ ! -f $inputPEP ]
@@ -67,6 +69,7 @@ then
 		inputPEP=$pepDir
         else
 		cat $pepDir/*.fa > $inputPEP
+		find $pepDir -mindepth 1 -maxdepth 1 -type f -name '*.fa' | xargs cat > $inputPEP
 	fi
 fi
 
@@ -106,7 +109,7 @@ for f in `ls split*`
 do
 	if [ ! -f stamps/${f}.Stamp ]
 	then
-		echo "\"( cd $(pwd); touch stamps/${f}.Start ; ( $blastExec -p tblastn -m 8 -z 3.1e9 -e 1e-10 -d $inputDNA -i $f -o output/${f}.Out ; touch stamps/${f}.Stamp ) >status/${f}.Status 2>&1)\""
+		echo "\"( cd $(pwd); touch stamps/${f}.Start ; ( $blastExec -p tblastn -m 8 -z 3.1e9 -e 1e-3 -d $inputDNA -i $f -o output/${f}.Out ; touch stamps/${f}.Stamp ) >status/${f}.Status 2>&1)\""
 	fi
 done > jobs
 
@@ -140,7 +143,8 @@ cd processed
 if [ ! -f ./processed.stamp ]
 then
 	seqkit fx2tab -j $7 --length --name $inputPEP > inputPEP.length.tsv
-	for blast in $(ls ../output/*.Out | sed 's/..\/output\///')
+	#find PseudoPipe -mindepth 2 -maxdepth 2 -type f -name '*.txt'
+	for blast in $(find ../output -mindepth 1 -maxdepth 1 -type f -name '*.Out' | sed 's/..\/output\///')
 	do
 		#echo "\"(cd $(pwd); i$pythonExec $blastHandler $inputPEP $blast ../output)\"" > jobs
 		#$pythonExec $jobsExec jobs
@@ -193,7 +197,14 @@ do
 
 	echo "export BlastoutSortedTemplate=${outDir}/blast/processed/%s_${t}_blastHits.sorted;export ChromosomeFastaTemplate=${dnaTmp};export ExonMaskTemplate=${emkTmp};export ExonMaskFields='2 3';export FastaProgram=${fastaExec};export ProteinQueryFile=${inputPEP}" > setenvPipelineVars
 
-	ms=$(cd ../../blast/processed ; for f in $(ls *_${t}_*sorted); do echo ${f/_${t}_blastHits.sorted/}; done)
+	if [ $t = 'M' ]
+	then
+		ms=$(cd ../../blast/processed ; for f in `find . -type f -name '*_M_*sorted'`; do echo ${f/_M_blastHits.sorted/}; done)
+	else
+		ms=$(cd ../../blast/processed ; for f in `find . -type f -name '*_P_*sorted'`; do echo ${f/_P_blastHits.sorted/}; done)
+	fi
+
+	ms=$(for i in ${ms}; do echo ${i/.\//}; done)
 
 	for c in $ms
 	do

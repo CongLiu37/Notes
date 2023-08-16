@@ -16,8 +16,11 @@ blast=merge(blast,queries2Length,by="#query")
 blast=blast[,c('#query','chr','ident','overlap','del','insert',
                'strand','query_start','query_end','query_len','chr_start','chr_end',
                'eval','score')]
-blast=blast[blast[,"ident"]>50,] # remove hits with identity <= 50%
-blast=blast[blast[,"query_end"]-blast[,"query_start"]>0.5*blast[,"query_len"],] # alignment covers at least 50% of query
+blast=blast[blast[,"score"]>50,] # remove hits with score <= 50
+blast=blast[blast[,"eval"]<1e-10,] # remove hits with eval >= 1e-10
+# blast=blast[blast[,"ident"]>50,] # remove hits with identity <= 50%
+blast=blast[blast[,"query_end"]-blast[,"query_start"]>0.75*blast[,"query_len"],] # alignment covers at least 75% of query
+
 Chrs=blast[,"chr"][!duplicated(blast[,"chr"])]
 sapply(Chrs,
        function(chr){

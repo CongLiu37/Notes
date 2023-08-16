@@ -1,6 +1,6 @@
 # Fdb version 4
-["pdflatex"] 1687139567 "/Users/congliu/Desktop/Notes/papers/Other_lineages.tex" "Other_lineages.pdf" "Other_lineages" 1687139568 2
-  "/Users/congliu/Desktop/Notes/papers/Other_lineages.tex" 1687139565 8242 4b02702681adb330630a2862c96094a7 ""
+["pdflatex"] 1691653699 "/Users/congliu/Desktop/Notes/papers/Blattodea.tex" "Blattodea.pdf" "Blattodea" 1691653699 2
+  "/Users/congliu/Desktop/Notes/papers/Blattodea.tex" 1691653674 53812 267f5ef329c792f6a0134204b06a34b0 ""
   "/opt/homebrew/Cellar/texlive/20230313/share/texmf-dist/fonts/map/fontname/texfonts.map" 1678549815 3524 cb3e574dea2d1052e39280babc910dc8 ""
   "/opt/homebrew/Cellar/texlive/20230313/share/texmf-dist/fonts/tfm/public/cm/cmr10.tfm" 1678549815 1296 45809c5a464d5f32c8f98ba97c1bb47f ""
   "/opt/homebrew/Cellar/texlive/20230313/share/texmf-dist/tex/generic/atbegshi/atbegshi.sty" 1678549815 24708 5584a51a7101caf7e6bbf1fc27d8f7b1 ""
@@ -58,11 +58,11 @@
   "/opt/homebrew/Cellar/texlive/20230313/share/texmf-dist/tex/latex/url/url.sty" 1678549815 12796 8edb7d69a20b857904dd0ea757c14ec9 ""
   "/opt/homebrew/Cellar/texlive/20230313/share/texmf-dist/web2c/texmf.cnf" 1678549815 40748 4081c8bc921e56c865f975bd762e388c ""
   "/opt/homebrew/Cellar/texlive/20230313/share/texmf-var/web2c/pdftex/pdflatex.fmt" 1678549815 7884046 7da7ec43723541b1080dc65bd2841593 ""
-  "Other_lineages.aux" 1687139567 32 3985256e7290058c681f74d7a3565a19 "pdflatex"
-  "Other_lineages.tex" 1687139565 8242 4b02702681adb330630a2862c96094a7 ""
+  "Blattodea.aux" 1691653699 32 3985256e7290058c681f74d7a3565a19 "pdflatex"
+  "Blattodea.tex" 1691653674 53812 267f5ef329c792f6a0134204b06a34b0 ""
   "natbibspacing.sty" 0 -1 0 ""
   (generated)
-  "Other_lineages.aux"
-  "Other_lineages.log"
-  "Other_lineages.pdf"
+  "Blattodea.aux"
+  "Blattodea.log"
+  "Blattodea.pdf"
   (rewritten before read)

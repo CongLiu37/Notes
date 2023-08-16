@@ -215,5 +215,82 @@ eggNOGmapper=function(proteins.faa=proteins.faa,
   setwd(wd)
 }
   
+# Gene function by best blast hits
+# Dependencies: DIAMOND+nr, parallel (R)
+geneFun_bbh=function(pep.faa=pep.faa,
+                     nr.dmdb="/apps/unit/BioinfoUgrp/DB/diamondDB/ncbi/2022-07/nr.dmnd",
+                     out_prefix=out_prefix,
+                     threads=threads){
+  threads=as.character(threads)
+  
+  # blast search
+  blast=paste(out_prefix,".blast",sep="")
+  if (!file.exists(blast)){
+    cmd=paste("diamond blastp",
+              "--threads",threads,
+              "--db",nr.dmdb,
+              "--query",pep.faa,
+              "--out",blast,
+              "--min-score 50",
+              "--query-cover 75",
+              "--outfmt 6 qseqid sseqid length evalue bitscore stitle",
+              sep=" ")
+    print(cmd);system(cmd,wait=TRUE)
+  }
+  
+  blast=read.table(blast,sep="\t",header=FALSE,quote="")
+  colnames(blast)=c("qseqid","sseqid","length","evalue","bitscore","stitle")
+  library(parallel)
+  clus=makeCluster(as.numeric(threads))
+  clusterExport(clus,list("blast"),envir=environment())
+  blast[,"retainHit"]=parSapply(clus,
+                                1:nrow(blast),
+                                function(i){
+                                  query=blast[i,"qseqid"]
+                                  evalue=blast[i,"evalue"]
+                                  
+                                  d=blast[blast[,"qseqid"]==query,]
+                                  bestEval=min(d[,"evalue"])
+                                  if (evalue!=bestEval){return(FALSE)}else{return(TRUE)}
+                                })
+  blast=blast[blast[,"retainHit"],]
+  clusterExport(clus,list("blast"),envir=environment())
+  blast[,"retainHit"]=parSapply(clus,
+                                1:nrow(blast),
+                                function(i){
+                                  query=blast[i,"qseqid"]
+                                  length=blast[i,"length"]
+                                  
+                                  d=blast[blast[,"qseqid"]==query,]
+                                  longest=max(d[,"length"])
+                                  if (length!=longest){return(FALSE)}else{return(TRUE)}
+                                })
+  stopCluster(clus)
+  
+  blast=blast[blast[,"retainHit"],]
+  blast=blast[blast[,"evalue"]<1e-5,]
+  write.table(blast,paste(out_prefix,"_bbh.tsv",sep=""),
+              sep="\t",row.names=FALSE,quote=FALSE)
+}
+
+# KOfamScan
+KOfamScan=function(pep.faa=pep.faa,
+                   KOfamScan.ko_list="/bucket/BourguignonU/Cong/public_db/kofamscan/ko_list",
+                   KOfamScan.profiles="/bucket/BourguignonU/Cong/public_db/kofamscan/profiles",
+                   out_prefix=out_prefix,
+                   threads=threads){
+  threads=as.character(threads)
+  
+  cmd=paste("exec_annotation",
+            "-o",paste(out_prefix,".tsv",sep=""),
+            pep.faa,
+            "-p",KOfamScan.profiles,
+            "-k",KOfamScan.ko_list,
+            paste("--cpu=",threads,sep=""),
+            "-f mapper")
+  print(cmd);system(cmd,wait=TRUE)
+}
+  
+  
   
   

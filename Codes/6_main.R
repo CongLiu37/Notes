@@ -542,6 +542,144 @@ hgt=function(proteins.faa=proteins.faa,
   print(cmd);system(cmd,wait=TRUE)
 }
 
+# Alien index
+# Dependencies: DIAMOND, parallel (R)
+AI=function(pep.faa=pep.faa,
+            pep.kingdom="Metazoa",
+            pep.phylum="Arthropoda",
+            nr.dmdb="/apps/unit/BioinfoUgrp/DB/diamondDB/ncbi/2022-07/nr.dmnd",
+            ai=45, # threshold for alien index
+            out_pct=0.9, # threshold for out_pct
+            out_dir=out_dir,out_basename=out_basename,
+            threads=threads){
+  threads=as.character(threads)
+  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
+  out_dir=sub("/$","",out_dir)
+  wd=getwd();setwd(out_dir)
+  
+  # blast search
+  if (!file.exists("blast.tsv")){
+    cmd=paste("diamond blastp",
+              "--threads",threads,
+              "--db",nr.dmdb,
+              "--query",pep.faa,
+              "--out blast.tsv",
+              "--max-target-seqs 500",
+              "--min-score 50",
+              "--query-cover 75",
+              "--outfmt 6 qseqid sseqid evalue bitscore length pident skingdoms sphylums",
+              sep=" ")
+    print(cmd);system(cmd,wait=TRUE)
+  }
+  
+  pepID.lst=system("awk -F '\t' -v OFS='\t' '{print $1}' blast.tsv",intern=TRUE)
+  pepID.lst=pepID.lst[!duplicated(pepID.lst)]
+  res=data.frame(ID=pepID.lst,
+                 AI=rep(NA,length(pepID.lst)),
+                 out_pct=rep(NA,length(pepID.lst)),
+                 kingdom=rep(NA,length(pepID.lst)),
+                 phylum=rep(NA,length(pepID.lst)))
+  rownames(res)=res$ID
+  blast=read.table("blast.tsv",sep="\t",header=FALSE,quote="")
+  colnames(blast)=c("qseqid","sseqid","evalue","bitscore","length","pident","skingdoms","sphylums")
+  
+  library(parallel)
+  clus=makeCluster(as.numeric(threads))
+  clusterExport(clus,list("pep.kingdom","pep.phylum","res","blast"),envir=environment())
+  res[,c("AI","out_pct","kingdom","phylum")]=
+    t(parSapply(clus,
+              pepID.lst,
+              function(ID){
+               d=blast[blast[,"qseqid"]==ID,]
+               ingroup.eval=d[grepl(pep.kingdom,d[,"skingdoms"]) & !grepl(pep.phylum,d[,"sphylums"]),
+                              "evalue"]
+               ingroup.eval=as.numeric(ingroup.eval)
+               if (length(ingroup.eval)==0){ingroup.eval=Inf}
+    
+               outgroup.eval=d[!grepl(pep.kingdom,d[,"skingdoms"]) & !grepl(pep.phylum,d[,"sphylums"]),
+                               "evalue"]
+               outgroup.eval=as.numeric(outgroup.eval)
+               if (length(outgroup.eval)==0){outgroup.eval=Inf}
+               
+               ai=log(min(ingroup.eval)+1e-1000)-log(min(outgroup.eval)+1e-1000)
+               if (is.na(ai)){ai=-Inf}
+                
+               out_pct=length(outgroup.eval)/nrow(d)
+               if (is.na(out_pct)){out_pct=0}
+                             
+               kingdom=system(paste("awk -F '\t' -v OFS='\t'",
+                                    paste("'{if ($1==\"",ID,"\") print $7}'",sep=""),
+                                    "blast.tsv",sep=" "),
+                              intern=TRUE) 
+               kingdom=paste(kingdom,collapse=";")
+               kingdom=unlist(strsplit(kingdom,";"))
+               kingdom=kingdom[!duplicated(kingdom)]
+                            
+               phyla=system(paste("awk -F '\t' -v OFS='\t'",
+                            paste("'{if ($1==\"",ID,"\") print $8}'",sep=""),
+                            "blast.tsv",sep=" "),
+                            intern=TRUE) 
+               phyla=paste(phyla,collapse=";")
+               phyla=unlist(strsplit(phyla,";"))
+               phyla=phyla[!duplicated(phyla)]
+               return(c(ai,out_pct,paste(kingdom,collapse = ";"),paste(phyla,collapse = ";")))
+  }))
+  stopCluster(clus)
+  write.table(res,paste(out_basename,"_AI.tsv",sep=""),
+              sep="\t",row.names=FALSE,quote=FALSE)
+  
+  HGT=res[res[,"AI"]>ai & res[,"out_pct"]>out_pct,] # Might be too strict
+  write.table(HGT,paste(out_basename,"_HGT.tsv",sep=""),
+              sep="\t",row.names=FALSE,quote=FALSE)
+  
+  setwd(wd)
+}
+
+# Find homology sequences from nr by DIAMOND
+# for HGT
+# Dependencies: DIAMOND+nr, seqkit
+findHomo=function(pep.faa=pep.faa,
+                  nr.dmdb="/apps/unit/BioinfoUgrp/DB/diamondDB/ncbi/2022-07/nr.dmnd",
+                  pep.kingdom="Metazoa",
+                  pep.phylum="Arthropoda",
+                  threads=threads,
+                  out_prefix=out_prefix){
+  threads=as.character(threads)
+  
+  blast=paste(out_prefix,".blast",sep="")
+  if (!file.exists(blast)){
+    cmd=paste("diamond blastp",
+              "--threads",threads,
+              "--db",nr.dmdb,
+              "--query",pep.faa,
+              "--out",blast,
+              "--max-target-seqs 30",
+              "--min-score 50",
+              "--query-cover 75",
+              "--outfmt 6 qseqid sseqid evalue bitscore length pident skingdoms sphylums full_sseq",
+              sep=" ")
+    print(cmd);system(cmd,wait=TRUE)
+  }
+  blast=read.table(blast,sep="\t",header=FALSE,quote="")
+  colnames(blast)=c("qseqid","sseqid","evalue","bitscore","length","pident","skingdoms","sphylums","full_sseq")
+  blast=blast[blast[,"evalue"]<1e-5,]
+  blast=blast[!grepl(pep.kingdom,blast[,"skingdoms"]) & !grepl(pep.phylum,blast[,"sphylums"]),]
+  blast=blast[!duplicated(blast[,"sseqid"]),]
+  for (i in 1:nrow(blast)){
+    header=paste(unlist(strsplit(blast[i,"stitle"]," ")),collapse="_")
+    write(paste(">",header,sep=""),
+          paste(out_prefix,".faa",sep=""),
+          append=TRUE)
+    write(blast[i,"full_sseq"],
+          paste(out_prefix,".faa",sep=""),
+          append=TRUE)
+  }
+  cmd=paste("seqkit seq -w0",
+            pep.faa,">>",paste(out_prefix,".faa",sep=""),
+            sep=" ")
+  system(cmd)
+}
+
 #####
 # Phylogeny
 #####
@@ -805,7 +943,6 @@ phyloNotung=function(Notung.jar="/home/c/c-liu/Softwares/Notung/Notung-2.9.1.5.j
 absrel=function(codon.align=codon.align,
                 geneTree=geneTree,
                 out_prefix=out_prefix){
-  
   cmd=paste("hyphy absrel",
             "--alignment",codon.align,
             "--tree",geneTree,
@@ -813,8 +950,156 @@ absrel=function(codon.align=codon.align,
   print(cmd);system(cmd,wait=TRUE)
 }
 # hyphy absrel --alignment hiv1_transmission.fna --tree tree.nwk
+
+# relax of hyphy
 # hyphy relax --alignment pb2.fna --tree tree.nwk --test test
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# # HGTphyloDetect: detect HGTs
+# # Super slow
+# # Dependencies: HGTphyloDetect (modified), DIAMOND, parallel (R), seqkit
+# HGTphyloDetect=function(pep.faa=pep.faa,
+#                         pep.kingdom="33208",# txid. 33208: Metazoa
+#                         pep.subphylum="6960", # txid. 6960: Hexapoda
+#                         nr.dmdb="/apps/unit/BioinfoUgrp/DB/diamondDB/ncbi/2022-07/nr.dmnd",
+#                         HGT_workflow_distant.py="/home/c/c-liu/Softwares/HGTphyloDetect/main/HGT_workflow_distant.py",
+#                         #HGT_workflow_close.py="/home/c/c-liu/Softwares/HGTphyloDetect/main/HGT_workflow_close.py",
+#                         out_dir=out_dir,
+#                         out_basename=out_basename,
+#                         threads=threads){
+#   threads=as.character(threads)
+#   if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
+#   out_dir=sub("/$","",out_dir)
+#   wd=getwd();setwd(out_dir)
+#   
+#   # blast search
+#   if (!file.exists("blast.tsv")){
+#     cmd=paste("diamond blastp",
+#               "--threads",threads,
+#               "--db",nr.dmdb,
+#               "--query",pep.faa,
+#               "--out blast.tsv",
+#               "--max-target-seqs 400",
+#               "--outfmt 6 qseqid sseqid evalue bitscore length pident",
+#               sep=" ")
+#     print(cmd);system(cmd,wait=TRUE)
+#   }
+#   
+#   system("mkdir parallel/")
+#   pepID.lst=system(paste("grep '>' ",pep.faa," | sed 's/>//'",sep=""),intern=TRUE)
+#   library(parallel)
+#   clus=makeCluster(as.numeric(threads))
+#   parSapply(clus,pepID.lst,
+#             function(ID){ # split blast results & run HGTphyloDetect
+#               cmd0=paste("mkdir",
+#                          paste("parallel/",ID,sep=""),
+#                          sep=" ")
+#               system(cmd0)
+#               cmd1=paste("mkdir",
+#                          paste("parallel/",ID,"/blastp_files",sep=""),
+#                          sep=" ")
+#               system(cmd1)
+#               cmd2=paste("seqkit grep",
+#                          "-n","-p",ID,
+#                          pep.faa,
+#                          ">",paste("parallel/",ID,"/",ID,".faa",sep=""),
+#                          sep=" ")
+#               system(cmd2)
+#               cmd3=paste("echo '# Fields: qseqid sseqid evalue bitscore length pident' > ",
+#                          "parallel/",ID,"/blastp_files/",ID,".txt",
+#                          sep="")
+#               system(cmd3)
+#               cmd4=paste("awk -F '\t' -v OFS='\t' '{if ($1==\"",ID,"\") print $0}' ",
+#                          "blast.tsv >> ",
+#                          "parallel/",ID,"/blastp_files/",ID,".txt",
+#                          sep="")
+#               system(cmd4)
+#               # cmd5=paste("cd",
+#               #            paste("parallel/",ID,"/",sep=""),
+#               #            sep=" ")
+#               # system(cmd5)
+#               setwd(paste("parallel/",ID,"/",sep=""))
+#               cmd6=paste("python",
+#                          HGT_workflow_distant.py,
+#                          paste(ID,".faa",sep=""),
+#                          "AI=45 out_pct=0.9",
+#                          paste("gene_kingdom=",as.character(pep.kingdom),sep=""),
+#                          paste("gene_subphylum=",as.character(pep.subphylum),sep=""),
+#                          sep=" ")
+#               system(cmd6)
+#               # cmd7=paste("python",
+#               #            HGT_workflow_close.py,
+#               #            paste(ID,".faa",sep=""),
+#               #            "bitscore_parameter=100 HGTIndex=0.5 out_pct=0.8",
+#               #            paste("gene_kingdom=",as.character(pep.kingdom),sep=""),
+#               #            paste("gene_subphylum=",as.character(pep.subphylum),sep=""),
+#               #            sep=" ")
+#               # cmd8="cd ../../"
+#               # system(cmd8)
+#               setwd("../../")
+#               #cmd=paste(cmd0,cmd1,cmd2,cmd3,cmd4,cmd5,cmd6,cmd7,cmd8,sep="; ")
+#               #return(cmd)
+#             })
+#   #jobs=unname(jobs)
+#   #writeLines(jobs,"jobs")
+#   
+#   # cmd=paste("split",
+#   #           "-d",
+#   #           "-n",paste("l/",as.character(as.numeric(threads)-1),sep=""),
+#   #           "jobs",
+#   #           sep=" ")
+#   # print(cmd);system(cmd,wait=TRUE)
+#   # library(parallel)
+#   # clus=makeCluster(as.numeric(threads))
+#   # parSapply(clus,
+#   #           1:(as.numeric(threads)-1),
+#   #           function(i){
+#   #             scr=system("ls x*",wait=TRUE,intern=TRUE)[i]
+#   #             cmd=paste("bash"," ",scr,sep="")
+#   #             print(cmd);system(cmd,wait=TRUE)})
+#   # stopCluster(clus)
+#   
+#   # output_close=paste("parallel/",pepID.lst,"/output_close_HGT.tsv",sep="")
+#   # system(paste("head -n1 ",output_close[1]," > ",out_basename,"_closeHGT.tsv",sep=""))
+#   # for (i in output_close){
+#   #   wcl=as.numeric(unlist(strsplit(system(paste("wc -l ",i,sep=""),intern=TRUE)," "))[1])
+#   #   if (wcl>1){
+#   #     system(paste("tail -n1 ",i," >> ",out_basename,"_closeHGT.tsv",sep=""))
+#   #   }
+#   # }
+#   
+#   output_distant=paste("parallel/",pepID.lst,"/output_distant_HGT.tsv",sep="")
+#   system(paste("head -n1 ",output_distant[1]," > ",out_basename,"_distantHGT.tsv",sep=""))
+#   for (i in output_distant){
+#     wcl=as.numeric(unlist(strsplit(system(paste("wc -l ",i,sep=""),intern=TRUE)," "))[1])
+#     if (wcl>1){
+#       system(paste("tail -n1 ",i," >> ",out_basename,"_distantHGT.tsv",sep=""))
+#     }
+#   }
+#   
+#   setwd(wd)
+# }
 # # Incomplete
 # # AvP
 # # Detect horizontal gene transfer (HGT)
