@@ -225,7 +225,7 @@ geneFun_bbh=function(pep.faa=pep.faa,
   
   # blast search
   blast=paste(out_prefix,".blast",sep="")
-  if (!file.exists(blast)){
+  if (!file.exists(blast)){ # the task here is to find one best hits
     cmd=paste("diamond blastp",
               "--threads",threads,
               "--db",nr.dmdb,
@@ -238,7 +238,7 @@ geneFun_bbh=function(pep.faa=pep.faa,
     print(cmd);system(cmd,wait=TRUE)
   }
   
-  blast=read.table(blast,sep="\t",header=FALSE,quote="")
+  blast=read.table(blast,sep="\t",header=FALSE,quote="",comment.char="")
   colnames(blast)=c("qseqid","sseqid","length","evalue","bitscore","stitle")
   library(parallel)
   clus=makeCluster(as.numeric(threads))
@@ -268,7 +268,6 @@ geneFun_bbh=function(pep.faa=pep.faa,
   stopCluster(clus)
   
   blast=blast[blast[,"retainHit"],]
-  blast=blast[blast[,"evalue"]<1e-5,]
   write.table(blast,paste(out_prefix,"_bbh.tsv",sep=""),
               sep="\t",row.names=FALSE,quote=FALSE)
 }
@@ -291,6 +290,114 @@ KOfamScan=function(pep.faa=pep.faa,
   print(cmd);system(cmd,wait=TRUE)
 }
   
+#####
+# Metabolic network based on KEGG
+#####
+# Assemble KOs into draft metabolic network
+# Dependencies: KEGGREST (R), stringr(r)
+KO2Network=function(gene2ko=gene2ko, # KOfamScan output, mapper format
+                    kegg.compound="/bucket/BourguignonU/Cong/public_db/kofamscan/compound", # https://rest.kegg.jp/list/compound
+                    kegg.reaction="/bucket/BourguignonU/Cong/public_db/kofamscan/reaction", # https://rest.kegg.jp/list/reaction
+                    out_prefix=out_prefix){
+  gene2ko=readLines(gene2ko)
+  d=data.frame(geneID=rep(NA,length(gene2ko)),KO=rep(NA,length(gene2ko)))
+  d[,c(1,2)]=t(sapply(gene2ko,
+                      function(i){
+                        i=unlist(strsplit(i,"\t"))
+                        return(c(i[1],i[2]))
+                      }))
+  d=d[!is.na(d[,"KO"]),] 
+  gene2ko=d # geneID,KO
+
+  library(KEGGREST)
+  ko.lst=gene2ko[,"KO"][!duplicated(gene2ko[,"KO"])]
+  reactions=c()
+  for (i in seq(0,length(ko.lst),100)){
+    KOs=ko.lst[(i+1):(i+100)]
+    reactions=c(reactions,keggLink("reaction",KOs[!is.na(KOs)]))
+  }
+  ko2reaction=data.frame(KO=names(reactions),reactionID=unname(reactions))
+  ko2reaction[,"KO"]=sub("^ko:","",ko2reaction[,"KO"])
+  ko2reaction[,"reactionID"]=sub("^rn:","",ko2reaction[,"reactionID"])
   
+  gene.lst=gene2ko[,"geneID"][!duplicated(gene2ko[,"geneID"])]
+  ko.lst=unname(sapply(gene.lst,
+                       function(gene){return(paste(gene2ko[gene2ko[,"geneID"]==gene,"KO"],collapse=","))}))
+  reaction.lst=unname(sapply(ko.lst,
+                             function(ko){
+                              ko=unlist(strsplit(ko,","))
+                              return(paste(ko2reaction[ko2reaction[,"KO"] %in% ko,"reactionID"],collapse=","))
+                      }))
+  gene2reaction=data.frame(geneID=gene.lst,KO=ko.lst,reactionID=reaction.lst)
+  gene2reaction=gene2reaction[gene2reaction[,"reactionID"]!="",]
+  write.table(gene2reaction,
+              paste(out_prefix,"_gene2reaction.tsv",sep=""),sep="\t",row.names=FALSE,quote=FALSE)
   
-  
+  reaction.lst=ko2reaction[,"reactionID"][!duplicated(ko2reaction[,"reactionID"])]
+  equations=rep(NA,length(reaction.lst))
+  for (i in seq(0,length(reaction.lst),10)){
+    reac=reaction.lst[(i+1):(i+10)]
+    reac=reac[!is.na(reac)]
+    eq=keggGet(reac)
+    for (j in 1:length(eq)){
+      equations[j+i]=eq[[j]]$EQUATION
+    }
+  }
+  reactants=unname(sapply(equations,function(equ){return( unlist(strsplit(equ,"<=>"))[1] )}))
+  products=unname(sapply(equations,function(equ){return( unlist(strsplit(equ,"<=>"))[2] )}))
+  network=data.frame(reactantID=c(),reactantName=c(),
+                     productID=c(),productName=c(),
+                     reactionID=c(),reactionName=c(),
+                     equation=c())
+  for (i in 1:length(reaction.lst)){
+    r=reaction.lst[i] # R13178
+    rname=system(paste("awk -F '\t' -v OFS='\t' '{if ($1==\"",r,"\") print $2}' ",kegg.reaction,sep=""),intern=TRUE)
+    if (length(rname)!=0){
+      rname=unlist(strsplit(rname,";"))[1]
+      e=equations[i]
+      print(c(r,rname,e))
+      library(stringr)
+      from=unlist(strsplit(reactants[i]," "));from=str_extract(from,"[CG][0-9]{5}");from=from[!is.na(from)]
+      to=unlist(strsplit(products[i]," "));to=str_extract(to,"[CG][0-9]{5}");to=to[!is.na(to)]
+      f=function(ids){
+        id_c=ids[grepl("C[0-9]{5}",ids)]
+        id_g=ids[!grepl("C[0-9]{5}",ids)]
+        id_g2c=c()
+        if (length(id_g)!=0){
+          id_g2c=keggLink("compound",id_g);id_g2c=unname(sub("^cpd:","",id_g2c))
+        }
+        return(c(id_c,id_g2c))
+      }
+      from=f(from);to=f(to)
+      d=merge(from,to);colnames(d)=c("reactantID","productID")
+      d[,"reactantName"]=sapply(d[,"reactantID"],
+                                function(id){
+                                  return( unlist(strsplit(system(paste("awk -F '\t' -v OFS='\t' '{if ($1==\"",id,"\") print $2}' ",kegg.compound,sep=""),
+                                                 intern=TRUE),";"))[1] )
+                                })
+      d[,"productName"]=sapply(d[,"productID"],
+                               function(id){
+                                 return( unlist(strsplit(system(paste("awk -F '\t' -v OFS='\t' '{if ($1==\"",id,"\") print $2}' ",kegg.compound,sep=""),
+                                                                intern=TRUE),";"))[1] )
+                               })
+      d[,"reactionID"]=rep(r,nrow(d))
+      d[,"reactionName"]=rep(rname,nrow(d))
+      d[,"equation"]=rep(e,nrow(d))
+      network=rbind(network,d)
+    }
+  }
+  network[,"KO"]=sapply(network[,"reactionID"],
+                        function(r){
+                          return(paste(ko2reaction[ko2reaction[,"reactionID"]==r,"KO"],collapse=","))
+                        })
+  network[,"geneID"]=sapply(network[,"KO"],
+                            function(ko){
+                              ko=unlist(strsplit(ko,","))
+                              return(paste(gene2ko[gene2ko[,"KO"] %in% ko,"geneID"],collapse = ","))
+                            })
+  write.table(network,paste(out_prefix,"_network.tsv",sep=""),sep="\t",row.names=FALSE,quote=FALSE)
+}
+
+currencyMetabolites=data.frame(ID=c(),
+                               Name=c())
+

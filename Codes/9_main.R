@@ -397,7 +397,7 @@ trinity=function(fq1=fq1,fq2=fq2, # comma-list/R vector
   setwd(wd)
 }
 
-# MMseq2: redundancy filter sequences with identical length and 100% length overlap
+# MMseq2: remove redundancy
 # Dependencies: mmseq2
 seqNR=function(in.fasta=in.fasta,
                out_dir=out_dir,
@@ -406,6 +406,7 @@ seqNR=function(in.fasta=in.fasta,
                                   # 1: alignment covers ${coverage} of target
                                   # 2: alignment covers ${coverage} of query
                                   # 3: target is of ${coverage} query length
+                                  # quert as representative
                coverage=coverage, # [0.0,1.0]
                threads=threads){
   threads=as.character(threads)

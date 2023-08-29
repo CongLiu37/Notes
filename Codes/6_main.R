@@ -566,69 +566,76 @@ AI=function(pep.faa=pep.faa,
               "--out blast.tsv",
               "--max-target-seqs 500",
               "--min-score 50",
-              "--query-cover 75",
               "--outfmt 6 qseqid sseqid evalue bitscore length pident skingdoms sphylums",
               sep=" ")
     print(cmd);system(cmd,wait=TRUE)
   }
   
-  pepID.lst=system("awk -F '\t' -v OFS='\t' '{print $1}' blast.tsv",intern=TRUE)
-  pepID.lst=pepID.lst[!duplicated(pepID.lst)]
-  res=data.frame(ID=pepID.lst,
-                 AI=rep(NA,length(pepID.lst)),
-                 out_pct=rep(NA,length(pepID.lst)),
-                 kingdom=rep(NA,length(pepID.lst)),
-                 phylum=rep(NA,length(pepID.lst)))
-  rownames(res)=res$ID
-  blast=read.table("blast.tsv",sep="\t",header=FALSE,quote="")
-  colnames(blast)=c("qseqid","sseqid","evalue","bitscore","length","pident","skingdoms","sphylums")
-  
-  library(parallel)
-  clus=makeCluster(as.numeric(threads))
-  clusterExport(clus,list("pep.kingdom","pep.phylum","res","blast"),envir=environment())
-  res[,c("AI","out_pct","kingdom","phylum")]=
-    t(parSapply(clus,
-              pepID.lst,
-              function(ID){
-               d=blast[blast[,"qseqid"]==ID,]
-               ingroup.eval=d[grepl(pep.kingdom,d[,"skingdoms"]) & !grepl(pep.phylum,d[,"sphylums"]),
-                              "evalue"]
-               ingroup.eval=as.numeric(ingroup.eval)
-               if (length(ingroup.eval)==0){ingroup.eval=Inf}
+  if (!file.exists(paste(out_basename,"_AI.tsv",sep=""))){
+    pepID.lst=system("awk -F '\t' -v OFS='\t' '{print $1}' blast.tsv",intern=TRUE)
+    pepID.lst=pepID.lst[!duplicated(pepID.lst)]
+    res=data.frame(ID=pepID.lst,
+                   AI=rep(NA,length(pepID.lst)),
+                   out_pct=rep(NA,length(pepID.lst)),
+                   kingdom=rep(NA,length(pepID.lst)),
+                   phylum=rep(NA,length(pepID.lst)))
+    rownames(res)=res$ID
+    blast=read.table("blast.tsv",sep="\t",header=FALSE,quote="",comment.char="")
+    colnames(blast)=c("qseqid","sseqid","evalue","bitscore","length","pident","skingdoms","sphylums")
     
-               outgroup.eval=d[!grepl(pep.kingdom,d[,"skingdoms"]) & !grepl(pep.phylum,d[,"sphylums"]),
-                               "evalue"]
-               outgroup.eval=as.numeric(outgroup.eval)
-               if (length(outgroup.eval)==0){outgroup.eval=Inf}
-               
-               ai=log(min(ingroup.eval)+1e-1000)-log(min(outgroup.eval)+1e-1000)
-               if (is.na(ai)){ai=-Inf}
-                
-               out_pct=length(outgroup.eval)/nrow(d)
-               if (is.na(out_pct)){out_pct=0}
-                             
-               kingdom=system(paste("awk -F '\t' -v OFS='\t'",
-                                    paste("'{if ($1==\"",ID,"\") print $7}'",sep=""),
-                                    "blast.tsv",sep=" "),
-                              intern=TRUE) 
-               kingdom=paste(kingdom,collapse=";")
-               kingdom=unlist(strsplit(kingdom,";"))
-               kingdom=kingdom[!duplicated(kingdom)]
-                            
-               phyla=system(paste("awk -F '\t' -v OFS='\t'",
-                            paste("'{if ($1==\"",ID,"\") print $8}'",sep=""),
-                            "blast.tsv",sep=" "),
-                            intern=TRUE) 
-               phyla=paste(phyla,collapse=";")
-               phyla=unlist(strsplit(phyla,";"))
-               phyla=phyla[!duplicated(phyla)]
-               return(c(ai,out_pct,paste(kingdom,collapse = ";"),paste(phyla,collapse = ";")))
-  }))
-  stopCluster(clus)
-  write.table(res,paste(out_basename,"_AI.tsv",sep=""),
-              sep="\t",row.names=FALSE,quote=FALSE)
+    library(parallel)
+    clus=makeCluster(as.numeric(threads))
+    clusterExport(clus,list("pep.kingdom","pep.phylum","res","blast"),envir=environment())
+    res[,c("AI","out_pct","kingdom","phylum")]=
+      t(parSapply(clus,
+                pepID.lst,
+                function(ID){
+                 d=blast[blast[,"qseqid"]==ID,]
+                 if (nrow(d)<25){
+                   return(c(NA,NA,NA,NA))
+                 }else{
+                   ingroup.eval=d[grepl(pep.kingdom,d[,"skingdoms"]) & !grepl(pep.phylum,d[,"sphylums"]),
+                                  "evalue"]
+                   ingroup.eval=as.numeric(ingroup.eval)
+                   if (length(ingroup.eval)==0){ingroup.eval=Inf}
+        
+                   outgroup.eval=d[!grepl(pep.kingdom,d[,"skingdoms"]) & !grepl(pep.phylum,d[,"sphylums"]),
+                                   "evalue"]
+                   outgroup.eval=as.numeric(outgroup.eval)
+                   if (length(outgroup.eval)==0){outgroup.eval=Inf}
+                   
+                   ai=log(min(ingroup.eval)+1e-1000)-log(min(outgroup.eval)+1e-1000)
+                   if (is.na(ai)){ai=-Inf}
+                    
+                   out_pct=length(outgroup.eval)/nrow(d)
+                   if (is.na(out_pct)){out_pct=0}
+                                 
+                   kingdom=system(paste("awk -F '\t' -v OFS='\t'",
+                                        paste("'{if ($1==\"",ID,"\") print $7}'",sep=""),
+                                        "blast.tsv",sep=" "),
+                                  intern=TRUE) 
+                   kingdom=paste(kingdom,collapse=";")
+                   kingdom=unlist(strsplit(kingdom,";"))
+                   kingdom=kingdom[!duplicated(kingdom)]
+                                
+                   phyla=system(paste("awk -F '\t' -v OFS='\t'",
+                                paste("'{if ($1==\"",ID,"\") print $8}'",sep=""),
+                                "blast.tsv",sep=" "),
+                                intern=TRUE) 
+                   phyla=paste(phyla,collapse=";")
+                   phyla=unlist(strsplit(phyla,";"))
+                   phyla=phyla[!duplicated(phyla)]
+                   return(c(ai,out_pct,paste(kingdom,collapse = ";"),paste(phyla,collapse = ";")))
+                 }
+    }))
+    stopCluster(clus)
+    write.table(res,paste(out_basename,"_AI.tsv",sep=""),
+                sep="\t",row.names=FALSE,quote=FALSE)
+  }
   
-  HGT=res[res[,"AI"]>ai & res[,"out_pct"]>out_pct,] # Might be too strict
+  res=read.table(paste(out_basename,"_AI.tsv",sep=""),header=TRUE,sep="\t",quote="")
+  HGT=res[res[,"AI"]>ai,] # Might be too strict
+  HGT=HGT[HGT[,"out_pct"]>out_pct,]
   write.table(HGT,paste(out_basename,"_HGT.tsv",sep=""),
               sep="\t",row.names=FALSE,quote=FALSE)
   
@@ -653,18 +660,18 @@ findHomo=function(pep.faa=pep.faa,
               "--db",nr.dmdb,
               "--query",pep.faa,
               "--out",blast,
-              "--max-target-seqs 30",
+              "--max-target-seqs 500",
               "--min-score 50",
-              "--query-cover 75",
-              "--outfmt 6 qseqid sseqid evalue bitscore length pident skingdoms sphylums full_sseq",
+              "--outfmt 6 qseqid sseqid evalue bitscore length pident skingdoms sphylums stitle full_sseq",
               sep=" ")
     print(cmd);system(cmd,wait=TRUE)
   }
-  blast=read.table(blast,sep="\t",header=FALSE,quote="")
-  colnames(blast)=c("qseqid","sseqid","evalue","bitscore","length","pident","skingdoms","sphylums","full_sseq")
-  blast=blast[blast[,"evalue"]<1e-5,]
-  blast=blast[!grepl(pep.kingdom,blast[,"skingdoms"]) & !grepl(pep.phylum,blast[,"sphylums"]),]
+  blast=read.table(blast,sep="\t",header=FALSE,quote="",comment.char="")
+  colnames(blast)=c("qseqid","sseqid","evalue","bitscore","length","pident","skingdoms","sphylums","stitle","full_sseq")
+  
   blast=blast[!duplicated(blast[,"sseqid"]),]
+  blast=blast[!grepl(pep.kingdom,blast[,"skingdoms"]) & !grepl(pep.phylum,blast[,"sphylums"]),]
+  
   for (i in 1:nrow(blast)){
     header=paste(unlist(strsplit(blast[i,"stitle"]," ")),collapse="_")
     write(paste(">",header,sep=""),
@@ -804,7 +811,6 @@ trimAL=function(inMSA.fa=inMSA.fa,
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
 }
-
 
 # Phylogenetic tree
 # Dependencies: iqtree

@@ -1,5 +1,87 @@
 # More genome annotation (repeat elements and non-coding RNA)
 
+######
+# Repeat elements
+######
+# TRASH: tandem repeats
+trash=function(genome=genome,
+               out_dir=out_dir,
+               threads=threads){
+  threads=as.character(threads)
+  wd=getwd()
+  out_dir=sub("/$","",out_dir)
+  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "),wait=TRUE)}
+  setwd(out_dir)
+  
+  if (!file.exists("all.repeats.from.genome.fa.csv")){
+    cmd=paste("seqkit","seq","-u",
+              "-j",threads,
+              genome,">",
+              paste(out_dir,"/genome.fa",sep=""),
+              sep=" ")
+    print(cmd);system(cmd,wait=TRUE)
+    
+    cmd=paste("TRASH_run.sh",
+              "genome.fa",
+              "--o",out_dir,
+              "--par",threads,
+              sep=" ")
+    print(cmd);system(cmd,wait=TRUE)
+  }
+  
+  system("rm -r genome.fa_out")
+  d=read.csv("all.repeats.from.genome.fa.csv",header=TRUE)
+  library(stringr)
+  d[,"block"]=rep(NA,nrow(d))
+  d[1,"block"]=1
+  for (i in 2:nrow(d)){
+    if (d[i,"seq.name"]==d[i-1,"seq.name"] &
+        d[i,"strand"]==d[i-1,"strand"] &
+        d[i,"start"]==d[i-1,"end"]+1){
+      d[i,"block"]=d[i-1,"block"]
+    }else{
+      d[i,"block"]=d[i-1,"block"]+1
+    }
+  }
+  d[,"block"]=str_pad(d[,"block"],8,side="left",pad="0")
+  d[,"ID"]=rep(NA,nrow(d))
+  d[1,"ID"]=1
+  for (i in 2:nrow(d)){
+    if (d[i,"block"]!=d[i-1,"block"]){
+      d[i,"ID"]=1
+    }else{
+      d[i,"ID"]=1+d[i-1,"ID"]
+    }
+  }
+  type=tapply(d[,"width"],d[,"block"],
+         function(x){
+           m=mean(x);n=length(x)
+           if (m>60){return("Satellite")}
+           if (m>10 & m<=60){return("miniSatellite")}
+           if (m<=10){return("microSatellite")}
+         })
+  d[,"type"]=type[d[,"block"]]
+  d[,"block"]=as.character(d[,"block"])
+  d[,"ID"]=as.character(d[,"ID"])
+  
+  gff=data.frame(d[,"seq.name"],
+                 rep("TRASH",nrow(d)),
+                 rep("Tandem_repeat",nrow(d)),
+                 d[,"start"],
+                 d[,"end"],
+                 rep(".",nrow(d)),
+                 d[,"strand"],
+                 rep(".",nrow(d)),
+                 paste("ID=",d[,"type"],d[,"block"],".",d[,"ID"],";",
+                       "Tandem_block=",d[,"type"],d[,"block"],";",
+                       "Type=",d[,"type"],
+                       sep=""))
+  write.table(gff,"TRASH.gff3",sep="\t",row.names=FALSE,col.names=FALSE,quote=FALSE)
+
+  system("rm genome.fa")
+  setwd(wd)
+}
+
 # MITE-Hunter
 # Dependencies: MITE-hunter, seqkit
 mite_hunter=function(genome=genome,
@@ -39,12 +121,12 @@ mite_hunter=function(genome=genome,
   system(paste("rm"," ",out_basename,"_[0-9]*",sep=""))
   system(paste("rm"," ",out_basename,"_Step*",sep=""))
   system("rm genome.*")
-  system("rm error.log")
   system("rm formatdb.log")
   setwd(wd)
 }
 
-# LTR_finder & LTR_Harvest (gt) & LTR_retriever
+# LTR: long terminal repeats
+# Dependencies: LTR_finder, LTR_Harvest (gt), LTR_retriever, seqkit
 ltr=function(fna=fna,
              out_dir=out_dir,
              out_prefix=out_prefix,
@@ -107,17 +189,125 @@ ltr=function(fna=fna,
   system("mv genome.fa.LTRlib.fa LTR.fa")
   
   system(paste("rm",fna,sep=" "),wait=TRUE)
-  system(paste("rm"," ",label,".*"))
-  system("rm genome.fa.*")
+  system(paste("rm","*.suffixerator.*",sep=" "))
+  system("rm genome.fa")
   system("rm rawLTR.scn")
   setwd(wd)
 }
 
+# RepeatModeler
+# Dependencies: RepeatModeler, Singularity
+repeatmodeler=function(fna=fna,
+                       out_dir=out_dir,
+                       out_prefix=out_prefix,
+                       Threads=Threads){
+  out_dir=sub("/$","",out_dir)
+  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "),wait=TRUE)}
+  pwd_begin=getwd();setwd(out_dir)
+  Threads=as.character(Threads)
+  
+  system(paste("cp",fna,out_dir,sep=" "),wait=TRUE)
+  fna_name=unlist(strsplit(fna,"/"));fna_name=fna_name[length(fna_name)]
+  fna=paste(out_dir,"/",fna_name,sep="")
+  #####################################################################
+  # RepeatModeler & RepeatMasker installed in Singularity container
+  path="singularity run /home/c/c-liu/Softwares/dfam-tetools-latest.sif"
+  #####################################################################
+  
+  # RepeatModeler: de novo repeat library
+  cmd=paste(path,
+            "BuildDatabase",
+            "-name",paste(out_prefix,"_RepeatModeler.db",sep=""),
+            "-engine","ncbi",
+            fna,
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  cmd=paste(path,
+            "RepeatModeler",
+            "-database",paste(out_prefix,"_RepeatModeler.db",sep=""),
+            "-engine","ncbi",
+            "-pa",Threads,
+            "-LTRStruct",
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  system(paste("rm",fna,sep=" "),wait=TRUE)
+  setwd(pwd_begin)
+  return(paste(out_dir,"/",out_prefix,"_RepeatModeler.db-families.fa",sep=""))
+}
+
+# EDTA
+# Dependencies: EDTA, singularity
+edta=function(genome=genome,
+              edta.sif="/home/c/c-liu/Softwares/EDTA.sif",
+              threads=threads,
+              out_dir=out_dir){
+  threads=as.character(threads)
+  out_dir=sub("/$","",out_dir)
+  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "),wait=TRUE)}
+  wd=getwd();setwd(out_dir)
+  
+  cmd=paste("seqkit","seq","-u",
+            "-j",threads,
+            genome,">",
+            paste(out_dir,"/genome.fa",sep=""),
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  cmd=paste("singularity exec",
+            edta.sif,"EDTA.pl",
+            "--genome genome.fa",
+            "--species others",
+            "--step all",
+            "--overwrite 0", # enable restart from previous run
+            "--sensitive 0", # do not invoke repeatmodeler
+            "--anno 0",
+            "--threads",threads,
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  system("rm genome.fa")
+  setwd(wd)
+}
+
+# DeepTE: classify transposons
+DeepTE=function(in.fna=in.fna,
+                out_dir=out_dir,
+                TE.fam=TE.fam, # none
+                               # ClassI: the input sequence is ClassI TEs
+                               # ClassII: the input sequence is ClassII subclass1 TEs
+                               # LTR: the input sequence is LTR TEs
+                               # nLTR: the input sequence is nLTR TEs
+                               # LINE: the input sequence is LINE TEs
+                               # SINE: the input sequence is SINE TEs
+                               # Domain: the input sequence is Class II subclass1 TEs with specified super families
+                sp="M",# M:Metazoans, F:Fungi, and O: Others.
+                DeepTE.model="/bucket/BourguignonU/Cong/public_db/DeepTE/Metazoans_model"){
+  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "),wait=TRUE)}
+  pwd_begin=getwd();setwd(out_dir)
+  
+  cmd=paste("DeepTE.py",
+            "-d",out_dir,
+            "-o",out_dir,
+            "-i",in.fna,
+            "-sp",sp,
+            "-m_dir",DeepTE.model,
+            sep=" ")
+  if (TE.fam!="none"){
+    cmd=paste(cmd,
+              "-fam",TE.fam,
+              sep=" ")
+  }
+  print(cmd);system(cmd,wait=TRUE)
+  
+  setwd(pwd_begin)
+}
+
 # RepeatMasker
 repeatmasker=function(fna=fna,# Fasta file of genome.
-                     out_dir=out_dir,
-                     RepeatLib.fa=RepeatLib.fa, # space-list
-                     Threads=Threads){
+                      out_dir=out_dir,
+                      RepeatLib.fa=RepeatLib.fa, # space-list
+                      Threads=Threads){
   Threads=as.character(Threads)
   wd=getwd()
   out_dir=sub("/$","",out_dir)
@@ -172,56 +362,16 @@ repeatmasker=function(fna=fna,# Fasta file of genome.
   return(paste(out_dir,"/",fna,".masked.masked",sep=""))
 }
 
-# RepeatModeler (no LTR)
-# Dependencies: RepeatModeler, Singularity
-repeatmodeler_noLTR=function(fna=fna,
-                       out_dir=out_dir,
-                       out_prefix=out_prefix,
-                       Threads=Threads){
-  out_dir=sub("/$","",out_dir)
-  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "),wait=TRUE)}
-  pwd_begin=getwd();setwd(out_dir)
-  Threads=as.character(Threads)
-  
-  system(paste("cp",fna,out_dir,sep=" "),wait=TRUE)
-  fna_name=unlist(strsplit(fna,"/"));fna_name=fna_name[length(fna_name)]
-  fna=paste(out_dir,"/",fna_name,sep="")
-  #####################################################################
-  # RepeatModeler & RepeatMasker installed in Singularity container
-  path="singularity run /home/c/c-liu/Softwares/dfam-tetools-latest.sif"
-  #####################################################################
-  
-  # RepeatModeler: de novo repeat library
-  cmd=paste(path,
-            "BuildDatabase",
-            "-name",paste(out_prefix,"_RepeatModeler.db",sep=""),
-            "-engine","ncbi",
-            fna,
-            sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  cmd=paste(path,
-            "RepeatModeler",
-            "-database",paste(out_prefix,"_RepeatModeler.db",sep=""),
-            "-engine","ncbi",
-            "-pa",Threads,
-            # "-LTRStruct",
-            sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  
-  system(paste("rm",fna,sep=" "),wait=TRUE)
-  system("rm -r RM_*")
-  
-  cmd=paste("seqkit grep -vnrp '#LTR' ",label,"_RepeatModeler.db-families.fa",
-            " > noLTR_rep.lib.fa")
-  print(cmd);system(cmd,wait=TRUE)
-  
-  setwd(pwd_begin)
-  return(paste(out_dir,"/noLTR_rep.lib.fa",sep=""))
-}
+
+
+
+
+
 
 # Final repeat annotation: repeatmasker out to gff3
 rep_elements=function(repeatmasker.out=repeatmasker.out,
                       # Clarify source of repeat elements
+                      TRASH.gff3=paste(save_dir,"/trash/",label,"/TRASH.gff3",sep=""),
                       MITE_Hunter.replib=MITE_Hunter.replib, # RepLib from MITE-Hunter
                       LTR_retriever.replib=LTR_retriever.replib, # RepLib from LTR_retriever
                       RepeatModeler.replib=RepeatModeler.replib, # RepLib from RepeatModeler
@@ -275,8 +425,12 @@ rep_elements=function(repeatmasker.out=repeatmasker.out,
   print(cmd);system(cmd,wait=TRUE)
   system(paste("rm",out.gff3,sep=" "))
   system(paste("mv","final.gff3",out.gff3,sep=" "))
+  system(paste("cat",TRASH.gff3,">>",out.gff3,sep=" "))
 }
 
+######
+# non-coding RNA
+######
 # tRNAscan-SE
 # Dependencies: tRNAscan-SE, biocode
 tRNAscan=function(genome=genome,
@@ -541,4 +695,96 @@ ncRNA=function(tRNA.gff3=tRNA.gff3,
 #   print(cmd);system(cmd,wait=TRUE)
 #   
 #   setwd(wd)
+# }
+
+# # RepeatModeler (no LTR)
+# # Dependencies: RepeatModeler, Singularity
+# repeatmodeler_noLTR=function(fna=fna,
+#                              out_dir=out_dir,
+#                              out_prefix=out_prefix,
+#                              Threads=Threads){
+#   out_dir=sub("/$","",out_dir)
+#   if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "),wait=TRUE)}
+#   pwd_begin=getwd();setwd(out_dir)
+#   Threads=as.character(Threads)
+#   
+#   system(paste("cp",fna,out_dir,sep=" "),wait=TRUE)
+#   fna_name=unlist(strsplit(fna,"/"));fna_name=fna_name[length(fna_name)]
+#   fna=paste(out_dir,"/",fna_name,sep="")
+#   #####################################################################
+#   # RepeatModeler & RepeatMasker installed in Singularity container
+#   path="singularity run /home/c/c-liu/Softwares/dfam-tetools-latest.sif"
+#   #####################################################################
+#   
+#   # RepeatModeler: de novo repeat library
+#   cmd=paste(path,
+#             "BuildDatabase",
+#             "-name",paste(out_prefix,"_RepeatModeler.db",sep=""),
+#             "-engine","ncbi",
+#             fna,
+#             sep=" ")
+#   print(cmd);system(cmd,wait=TRUE)
+#   cmd=paste(path,
+#             "RepeatModeler",
+#             "-database",paste(out_prefix,"_RepeatModeler.db",sep=""),
+#             "-engine","ncbi",
+#             "-pa",Threads,
+#             # "-LTRStruct",
+#             sep=" ")
+#   print(cmd);system(cmd,wait=TRUE)
+#   
+#   system(paste("rm",fna,sep=" "),wait=TRUE)
+#   system("rm -r RM_*")
+#   
+#   cmd=paste("seqkit grep -vnrp '#LTR' ",label,"_RepeatModeler.db-families.fa | ",
+#             "seqkit grep -vnrp '#[tr]RNA'",
+#             " > noLTR_rep.lib.fa")
+#   print(cmd);system(cmd,wait=TRUE)
+#   
+#   setwd(pwd_begin)
+#   return(paste(out_dir,"/noLTR_rep.lib.fa",sep=""))
+# }
+
+# # miteFinder
+# # Dependencies: miteFinder, seqkit
+# miteFinder=function(genome=genome,
+#                     pattern_scoring="~/Softwares/miteFinder/profile/pattern_scoring.txt",
+#                     out_dir=out_dir){
+#   threads=as.character(threads)
+#   wd=getwd()
+#   out_dir=sub("/$","",out_dir)
+#   if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "),wait=TRUE)}
+#   setwd(out_dir)
+#   
+#   cmd=paste("seqkit","seq","-u",
+#             "-j",threads,
+#             genome,">",
+#             paste(out_dir,"/genome.fa",sep=""),
+#             sep=" ")
+#   print(cmd);system(cmd,wait=TRUE)
+#   
+#   cmd=paste("miteFinder_linux_x64",
+#             "-input genome.fa",
+#             "-output MITE.fa",
+#             "-pattern_scoring",pattern_scoring,
+#             "-threshold 0.5",
+#             sep=" ")
+#   print(cmd);system(cmd,wait=TRUE)
+#   
+#   cmd="seqkit replace -p .+ -r 'Mite{nr}' MITE.fa > MITE_sorted.fa"
+#   print(cmd);system(cmd,wait=TRUE)
+#   
+#   system("rm genome.fa")
+#   
+#   setwd(wd)
+# }
+
+# # Generic Repeat Finder: TIR, TDRs, interspersed repeats, MITEs, and LTR
+# grf=function(genome.fna=genome.fna,
+#              out_dir=out_dir,
+#              threads=threads){
+#   # grf-main -i tests/Saccharomyces_cerevisiae.R64-1-1.dna.toplevel.fa -o tir -c 0 --min_tr 10 -t 8
+#   # grf-main -i tests/Saccharomyces_cerevisiae.R64-1-1.dna.toplevel.fa -o tdr -c 2 --min_tr 10 -t 8
+#   # grf-main -i tests/Saccharomyces_cerevisiae.R64-1-1.dna.toplevel.fa -o mite -c 1 --min_tr 10 -t 8
+#   # grf-intersperse -i tests/Saccharomyces_cerevisiae.R64-1-1.dna.toplevel.fa -o interspersed -t 8
 # }

@@ -8,7 +8,7 @@
 6：裸子植物（Gymnospermae）
 7：被子植物（Angiospermae）
 10：双子叶植物-原始花被亚纲（Archichlamydeae）
-11：双子叶植物-合瓣花亚纲（）
+11：双子叶植物-合瓣花亚纲（Sympetalae）
 12：单子叶植物（）
 
 参考：
