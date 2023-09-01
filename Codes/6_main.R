@@ -652,7 +652,7 @@ findHomo=function(pep.faa=pep.faa,
                   threads=threads,
                   out_prefix=out_prefix){
   threads=as.character(threads)
-  
+  # /flash/BourguignonU/Cong/termite_pca/AI/hgtTree/allPep.faa
   blast=paste(out_prefix,".blast",sep="")
   if (!file.exists(blast)){
     cmd=paste("diamond blastp",
@@ -660,7 +660,7 @@ findHomo=function(pep.faa=pep.faa,
               "--db",nr.dmdb,
               "--query",pep.faa,
               "--out",blast,
-              "--max-target-seqs 500",
+              "--max-target-seqs 30",
               "--min-score 50",
               "--outfmt 6 qseqid sseqid evalue bitscore length pident skingdoms sphylums stitle full_sseq",
               sep=" ")

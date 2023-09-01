@@ -303,6 +303,7 @@ DeepTE=function(in.fna=in.fna,
   setwd(pwd_begin)
 }
 
+
 # RepeatMasker
 repeatmasker=function(fna=fna,# Fasta file of genome.
                       out_dir=out_dir,

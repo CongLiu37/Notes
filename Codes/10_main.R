@@ -314,7 +314,10 @@ KO2Network=function(gene2ko=gene2ko, # KOfamScan output, mapper format
   reactions=c()
   for (i in seq(0,length(ko.lst),100)){
     KOs=ko.lst[(i+1):(i+100)]
-    reactions=c(reactions,keggLink("reaction",KOs[!is.na(KOs)]))
+    KOs=KOs[!is.na(KOs)]
+    if (length(KOs)!=0){
+      reactions=c(reactions,keggLink("reaction",KOs))
+    }
   }
   ko2reaction=data.frame(KO=names(reactions),reactionID=unname(reactions))
   ko2reaction[,"KO"]=sub("^ko:","",ko2reaction[,"KO"])
@@ -338,9 +341,11 @@ KO2Network=function(gene2ko=gene2ko, # KOfamScan output, mapper format
   for (i in seq(0,length(reaction.lst),10)){
     reac=reaction.lst[(i+1):(i+10)]
     reac=reac[!is.na(reac)]
-    eq=keggGet(reac)
-    for (j in 1:length(eq)){
-      equations[j+i]=eq[[j]]$EQUATION
+    if (length(reac)!=0){
+      eq=keggGet(reac)
+      for (j in 1:length(eq)){
+        equations[j+i]=eq[[j]]$EQUATION
+      }
     }
   }
   reactants=unname(sapply(equations,function(equ){return( unlist(strsplit(equ,"<=>"))[1] )}))
@@ -355,7 +360,7 @@ KO2Network=function(gene2ko=gene2ko, # KOfamScan output, mapper format
     if (length(rname)!=0){
       rname=unlist(strsplit(rname,";"))[1]
       e=equations[i]
-      print(c(r,rname,e))
+      # print(c(r,rname,e))
       library(stringr)
       from=unlist(strsplit(reactants[i]," "));from=str_extract(from,"[CG][0-9]{5}");from=from[!is.na(from)]
       to=unlist(strsplit(products[i]," "));to=str_extract(to,"[CG][0-9]{5}");to=to[!is.na(to)]
@@ -398,6 +403,5 @@ KO2Network=function(gene2ko=gene2ko, # KOfamScan output, mapper format
   write.table(network,paste(out_prefix,"_network.tsv",sep=""),sep="\t",row.names=FALSE,quote=FALSE)
 }
 
-currencyMetabolites=data.frame(ID=c(),
-                               Name=c())
+# DNA, RNA, [Pp]rotein
 

@@ -433,6 +433,7 @@ seqNR=function(in.fasta=in.fasta,
   cmd="mmseqs convert2fasta clusterDB_rep rep.fasta"
   print(cmd);system(cmd,wait=TRUE)
   
+  # cmd="mmseqs createtsv sequenceDB sequenceDB clusterDB_rep clusters.tsv"
   setwd(wd)
 }
 

@@ -259,6 +259,26 @@ seqNR=function(in.fasta=in.fasta,
   setwd(wd)
 }
 
+# TEsorter: classify transposons
+# Dependencies: TEsorter
+TEsorter=function(in.fna=in.fna,
+                  out_dir=out_dir,
+                  db=db, # gydb,rexdb,rexdb-plant,rexdb-metazoa,rexdb-pnas,rexdb-line,sine
+                  threads=threads){
+  threads=as.character(threads)
+  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "),wait=TRUE)}
+  pwd_begin=getwd();setwd(out_dir)
+  
+  cmd=paste("TEsorter",
+            in.fna,
+            "-db",db,
+            "-p",threads,
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  setwd(pwd_begin)
+}
+
 DeepTE=function(in.fna=in.fna,
                 out_dir=out_dir,
                 TE.fam=TE.fam, # none
