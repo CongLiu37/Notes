@@ -501,47 +501,6 @@ wgdi_kspeak=function(wgdi_BlockInfo=wgdi_BlockInfo,
 #####
 # HGT
 #####
-# HGT inference by DIAMOND-nr-MEGAN
-hgt=function(proteins.faa=proteins.faa,
-             ref_diamond=ref_diamond,
-             ref_megan=ref_megan,
-             taxonExclude=taxonExclude, # exclude list of taxon ids (comma-separated)
-             out_prefix=out_prefix,
-             threads=threads){
-  threads=as.character(threads)
-  
-  cmd=paste("diamond blastp",
-            "--outfmt 100",
-            "-p",threads,
-            "-d",ref_diamond,
-            "-q",proteins.faa,
-            "--taxon-exclude",taxonExclude,
-            "--out",paste(out_prefix,".daa",sep=""),
-            sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  
-  cmd=paste("daa-meganizer",
-            "-i",paste(out_prefix,".daa",sep=""),
-            "-mdb",ref_megan,
-            "-t",threads,
-            "-ram readCount",
-            "-supp 0",
-            sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  
-  cmd=paste("daa2info",
-            "-i",paste(out_prefix,".daa",sep=""),
-            "-o",paste(out_prefix,"_taxon.tsv",sep=""),
-            "-r2c Taxonomy",
-            "-n true",
-            "-p true",
-            "-r true",
-            "-mro true",
-            "-u false",
-            sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-}
-
 # Alien index
 # Dependencies: DIAMOND, parallel (R)
 AI=function(pep.faa=pep.faa,
@@ -644,11 +603,9 @@ AI=function(pep.faa=pep.faa,
 
 # Find homology sequences from nr by DIAMOND
 # for HGT
-# Dependencies: DIAMOND+nr, seqkit
+# Dependencies: DIAMOND+nr, seqkit, stringr (R)
 findHomo=function(pep.faa=pep.faa,
                   nr.dmdb="/apps/unit/BioinfoUgrp/DB/diamondDB/ncbi/2022-07/nr.dmnd",
-                  pep.kingdom="Metazoa",
-                  pep.phylum="Arthropoda",
                   threads=threads,
                   out_prefix=out_prefix){
   threads=as.character(threads)
@@ -660,20 +617,27 @@ findHomo=function(pep.faa=pep.faa,
               "--db",nr.dmdb,
               "--query",pep.faa,
               "--out",blast,
-              "--max-target-seqs 30",
+              "--max-target-seqs 100",
               "--min-score 50",
-              "--outfmt 6 qseqid sseqid evalue bitscore length pident skingdoms sphylums stitle full_sseq",
+              "--outfmt 6 qseqid sseqid evalue bitscore length pident qcovhsp scovhsp skingdoms sphylums sscinames staxids stitle full_sseq",
               sep=" ")
     print(cmd);system(cmd,wait=TRUE)
   }
-  blast=read.table(blast,sep="\t",header=FALSE,quote="",comment.char="")
-  colnames(blast)=c("qseqid","sseqid","evalue","bitscore","length","pident","skingdoms","sphylums","stitle","full_sseq")
   
+  blast=read.table(blast,sep="\t",header=FALSE,quote="",comment.char="")
+  colnames(blast)=c("qseqid","sseqid","evalue","bitscore","length","pident","qcovhsp","scovhsp","skingdoms","sphylums","sscinames","staxids","stitle","full_sseq")
   blast=blast[!duplicated(blast[,"sseqid"]),]
-  blast=blast[!grepl(pep.kingdom,blast[,"skingdoms"]) & !grepl(pep.phylum,blast[,"sphylums"]),]
+  blast=blast[!duplicated(blast[,"staxids"]),]
+  blast=blast[!grepl("[BZ]",blast[,"full_sseq"]),]
+  blast=blast[!grepl("partial",blast[,"stitle"]),]
+  library(stringr)
+  blast[,"species"]=str_extract(blast[,"stitle"],"\\[.*\\]$")
+  blast=blast[!duplicated(blast[,"species"]),]
   
   for (i in 1:nrow(blast)){
-    header=paste(unlist(strsplit(blast[i,"stitle"]," ")),collapse="_")
+    sp=sub("\\[","",blast[i,"species"]);sp=sub("\\]","",sp)
+    sp=paste(unlist(strsplit(sp," ")),collapse=".")
+    header=paste(blast[i,"sseqid"],"_",sp,"_",blast[i,"sphylums"],"_",blast[i,"skingdoms"],sep="")
     write(paste(">",header,sep=""),
           paste(out_prefix,".faa",sep=""),
           append=TRUE)
@@ -681,8 +645,33 @@ findHomo=function(pep.faa=pep.faa,
           paste(out_prefix,".faa",sep=""),
           append=TRUE)
   }
+  
+  system(paste("mv",
+               paste(out_prefix,".faa",sep=""),
+               paste(out_prefix,"_nr.faa",sep=""),
+               sep=" "))
+  # system(paste("mkdir ",out_prefix,".tmp",sep=""))
+  # system(paste("cp ",out_prefix,".faa"," ",out_prefix,".tmp/seq.faa",sep=""))
+  # wd=getwd();setwd(paste(out_prefix,".tmp",sep=""))
+  # cmd="mmseqs createdb seq.faa sequenceDB"
+  # print(cmd);system(cmd,wait=TRUE)
+  # cmd=paste("mmseqs cluster sequenceDB clusterDB .",
+  #           "--cov-mode 0",
+  #           "-c 0.9",
+  #           "--min-seq-id 0.9",
+  #           "--threads",threads,
+  #           sep=" ")
+  # print(cmd);system(cmd,wait=TRUE)
+  # cmd="mmseqs createsubdb clusterDB sequenceDB clusterDB_rep"
+  # print(cmd);system(cmd,wait=TRUE)
+  # cmd="mmseqs convert2fasta clusterDB_rep rep.fasta"
+  # print(cmd);system(cmd,wait=TRUE)
+  # system(paste("cp rep.fasta ../",basename(out_prefix),"_nr.faa",sep=""))
+  # setwd(wd)
+  # system(paste("rm -r ",out_prefix,".tmp",sep=""))
+  
   cmd=paste("seqkit seq -w0",
-            pep.faa,">>",paste(out_prefix,".faa",sep=""),
+            pep.faa,">>",paste(out_prefix,"_nr.faa",sep=""),
             sep=" ")
   system(cmd)
 }
@@ -1162,4 +1151,45 @@ absrel=function(codon.align=codon.align,
 #   print(cmd);system(cmd,wait=TRUE)
 #   
 #   setwd(wd)
+# }
+
+# # HGT inference by DIAMOND-nr-MEGAN
+# hgt=function(proteins.faa=proteins.faa,
+#              ref_diamond=ref_diamond,
+#              ref_megan=ref_megan,
+#              taxonExclude=taxonExclude, # exclude list of taxon ids (comma-separated)
+#              out_prefix=out_prefix,
+#              threads=threads){
+#   threads=as.character(threads)
+#   
+#   cmd=paste("diamond blastp",
+#             "--outfmt 100",
+#             "-p",threads,
+#             "-d",ref_diamond,
+#             "-q",proteins.faa,
+#             "--taxon-exclude",taxonExclude,
+#             "--out",paste(out_prefix,".daa",sep=""),
+#             sep=" ")
+#   print(cmd);system(cmd,wait=TRUE)
+#   
+#   cmd=paste("daa-meganizer",
+#             "-i",paste(out_prefix,".daa",sep=""),
+#             "-mdb",ref_megan,
+#             "-t",threads,
+#             "-ram readCount",
+#             "-supp 0",
+#             sep=" ")
+#   print(cmd);system(cmd,wait=TRUE)
+#   
+#   cmd=paste("daa2info",
+#             "-i",paste(out_prefix,".daa",sep=""),
+#             "-o",paste(out_prefix,"_taxon.tsv",sep=""),
+#             "-r2c Taxonomy",
+#             "-n true",
+#             "-p true",
+#             "-r true",
+#             "-mro true",
+#             "-u false",
+#             sep=" ")
+#   print(cmd);system(cmd,wait=TRUE)
 # }

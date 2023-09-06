@@ -311,7 +311,7 @@ if (7 %in% step){
                         }))
     d[,"Class"]=unlist(classOrder[,"Class"])
     d[,"Order"]=unlist(classOrder[,"Order"])
-    write.table(d,paste(out_dir,"/annotation/",label,"/label_classification.tsv",sep=""),sep="\t",row.names=FALSE,quote=FALSE)
+    write.table(d,paste(out_dir,"/annotation/",label,"/",label,"_classification.tsv",sep=""),sep="\t",row.names=FALSE,quote=FALSE)
     repeatmasker(fna=genome,# Fasta file of genome.
                  out_dir=paste(out_dir,"/annotation/",label,sep=""),
                  RepeatLib.fa=paste(save_dir,"/seqNR/",label,"/nrlib.fna",sep=""), # space-list
@@ -319,4 +319,55 @@ if (7 %in% step){
     system(paste("touch",Stamp1,sep=" "))
   }
 }
-
+############################################
+# Final results
+if (8 %in% step){
+  Stamp1=paste(out_dir,"/repeat_element/",label,"/",label,"_repeat_element.finished",sep="")
+  Stamp2=paste(save_dir,"/repeat_element/",label,"/",label,"_repeat_element.finished",sep="")
+  if (file.exists(Stamp1) | file.exists(Stamp2)){
+    print("Step 8: repeat_element FINISHED")
+  }else{
+    print("Step 8: repeat_element START")
+    if (!file.exists(paste(out_dir,"/repeat_element/",sep=""))){
+      system(paste("mkdir"," ",out_dir,"/repeat_element/",sep=""))
+    }
+    if (!file.exists(paste(out_dir,"/repeat_element/",label,sep=""))){
+      system(paste("mkdir"," ",out_dir,"/repeat_element/",label,sep=""))
+    }
+    
+    tandem_repeat=paste(save_dir,"/trash/",label,"/TRASH.gff3",sep="")
+    system("cp",tandem_repeat,
+           paste(out_dir,"/repeat_element/",label,"/",label,"_tandem.gff3",sep=""),
+           sep=" ")
+    replib=paste(save_dir,"/seqNR/",label,"/nrlib.fna",sep="")
+    system("cp",replib,
+           paste(out_dir,"/repeat_element/",label,"/",label,"_interspersedLib.fna",sep=""),
+           sep=" ")
+    
+    classes=read.table(paste(save_dir,"/annotation/",label,"/",label,"_classification.tsv",sep=""),
+                       sep="\t",header=TRUE,quote="",comment.char="")
+    rownames(classes)=sub("#.*$","",classes[,"newID"])
+    interspersed=read.table(paste(save_dir,"/annotation/",label,"/genome.fa.out.gff",sep=""),
+                            sep="\t",header=FALSE,quote="")
+    interspersed[,9]=sapply(1:nrow(interspersed),
+                            function(i){
+                              target=sub("Target \"Motif:","",interspersed[i,9])
+                              target=sub("\".*$","",target)
+                              source=classes[target,"source"]
+                              class=classes[target,"Class"]
+                              order=classes[target,"Order"]
+                              res=NA
+                              if (!is.na(source)){
+                                res=paste("Target=",target,";",
+                                          "Source=",source,";",
+                                          "Class=",class,";",
+                                          "Order=",order,";",
+                                          sep="")
+                              }
+                              return(res)
+                            })
+    write.table(interspersed[!is.na(interspersed[,9]),],
+                paste(out_dir,"/repeat_element/",label,"/",label,"_interspersed.gff3",sep=""),
+                sep="\t",col.names = FALSE,row.names = FALSE,quote=FALSE)
+  }
+}

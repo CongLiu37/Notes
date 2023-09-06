@@ -403,5 +403,47 @@ KO2Network=function(gene2ko=gene2ko, # KOfamScan output, mapper format
   write.table(network,paste(out_prefix,"_network.tsv",sep=""),sep="\t",row.names=FALSE,quote=FALSE)
 }
 
-# DNA, RNA, [Pp]rotein
+# Curate metabolic network
+curateNetwork=function(network.tsv=network.tsv, # from KO2Network
+                       out_prefix=out_prefix){
+  network.tsv="/Users/congliu/Desktop/PhD/Results/termite_pca/KO2Network/Aaca_network.tsv"
+  
+  network=read.table(network.tsv,sep="\t",header=TRUE,quote="")
+  # I. filter reactions to avoid redundant or poorly defined reactions
+  network=network[!grepl("G[0-9]{5}",network[,"equation"]),] # poorly defined compounds
+  network=network[!grepl("C[0-9]{5}\\(n\\)",network[,"equation"]),] # ploymers
+  network=network[!grepl("\\[.*\\]",network[,"reactantName"]) & !grepl("\\[.*\\]",network[,"productName"]),]
+  DRNA=network[grepl("[DR]NA",network[,"reactantName"]) | grepl("[DR]NA",network[,"productName"]),"reactionID"]
+  network=network[!(network[,"reactionID"] %in% DRNA),] # DNA/RNA
+  Protein=network[grepl("[Pp]rotein",network[,"reactantName"]) | grepl("[Pp]rotein",network[,"productName"]),"reactionID",]
+  network=network[!(network[,"reactionID"] %in% Protein),] # Protein/protein
+  # II. filter currency compounds:
+  network=network[network[,"reactantName"]!="H2O" & network[,"productName"]!="H2O",]
+  network=network[network[,"reactantName"]!="Hydrogen peroxide" & network[,"productName"]!="Hydrogen peroxide",]
+  network=network[network[,"reactantName"]!="Oxygen" & network[,"productName"]!="Oxygen",]
+  network=network[network[,"reactantName"]!="H+" & network[,"productName"]!="H+",]
+  network=network[network[,"reactantName"]!="CO2" & network[,"productName"]!="CO2",]
+  network=network[network[,"reactantName"]!="CO" & network[,"productName"]!="CO",]
+  network=network[!(network[,"reactantName"] %in% c("ATP","ADP","AMP","TTP","TDP","TMP","GTP","GDP","GMP","CTP","CDP","CMP","UTP","UDP","UMP")) 
+                  & !(network[,"productName"] %in% c("ATP","ADP","AMP","TTP","TDP","TMP","GTP","GDP","GMP","CTP","CDP","CMP","UTP","UDP","UMP")),]
+  network=network[!(network[,"reactantName"] %in% c("dATP","dADP","dAMP","dTTP","dTDP","dTMP","dGTP","dGDP","dGMP","dCTP","dCDP","dCMP","dUTP","dUDP","dUMP")) 
+                  & !(network[,"productName"] %in% c("dATP","dADP","dAMP","dTTP","dTDP","dTMP","dGTP","dGDP","dGMP","dCTP","dCDP","dCMP","dUTP","dUDP","dUMP")),]
+  network=network[network[,"reactantName"]!="Diphosphate" & network[,"productName"]!="Diphosphate",]
+  network=network[network[,"reactantName"]!="Orthophosphate" & network[,"productName"]!="Orthophosphate",]
+  network=network[network[,"reactantName"]!="NAD+" & network[,"productName"]!="NAD+",]
+  network=network[network[,"reactantName"]!="NADP+" & network[,"productName"]!="NADP+",]
+  network=network[network[,"reactantName"]!="NADH" & network[,"productName"]!="NADH",]
+  network=network[network[,"reactantName"]!="NADPH" & network[,"productName"]!="NADPH",]
+  network=network[network[,"reactantName"]!="CoA" & network[,"productName"]!="CoA",]
+  # III. direction of reactions
+  
+  
+}
+
+# (1) the equation includes "G[0-9]{5}" or "C[0-9]{5}\\(n\\)"
+# (2) the equation includes DNA, RNA, "[Pp]rotein"
+# II. filter compounds: 
+# remove currency compounds:
+# H2O,O2,[ATGC][TD]P
+# III. determine reversibility
 
