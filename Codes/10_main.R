@@ -404,46 +404,203 @@ KO2Network=function(gene2ko=gene2ko, # KOfamScan output, mapper format
 }
 
 # Curate metabolic network
+# Dependencies:
 curateNetwork=function(network.tsv=network.tsv, # from KO2Network
+                       metaboliteConcentrations="/bucket/BourguignonU/Cong/public_db/Park2016/metConcentrationRanges.tsv",
+                       # tsv with header
+                       # Fields: compound (Compound ID of KEGG)
+                       #         low (lower bound of absolute concentration in mol/m^3 or M)
+                       #         high (higher bound of absolute concentration in mol/m^3 or M)
+                       standardGibbs="/bucket/BourguignonU/Cong/public_db/eQuilibrator/standardGibbs.tsv",
+                       # tsv with header
+                       # Fields: reaction (Reaction ID of KEGG)
+                       #         Gibbs (Standard Gibbs free energy of reaction in J/mol, temperature=298.15K, all reactants and products are of 1 mol/m^3)
                        out_prefix=out_prefix){
-  network.tsv="/Users/congliu/Desktop/PhD/Results/termite_pca/KO2Network/Aaca_network.tsv"
+  # network.tsv="/Users/congliu/Desktop/PhD/Results/termite_pca/KO2Network/Aaca_network.tsv"
+  # metaboliteConcentrations="~/Desktop/PhD/Results/public_db/Park2016/metConcentrationRanges.tsv"
+  # standardGibbs="~/Desktop/PhD/Results/public_db/eQuilibrator/standardGibbs.tsv"
+  # out_prefix="/Users/congliu/Desktop/PhD/Results/termite_pca/KO2Network/Aaca"
   
   network=read.table(network.tsv,sep="\t",header=TRUE,quote="")
-  # I. filter reactions to avoid redundant or poorly defined reactions
-  network=network[!grepl("G[0-9]{5}",network[,"equation"]),] # poorly defined compounds
-  network=network[!grepl("C[0-9]{5}\\(n\\)",network[,"equation"]),] # ploymers
-  network=network[!grepl("\\[.*\\]",network[,"reactantName"]) & !grepl("\\[.*\\]",network[,"productName"]),]
-  DRNA=network[grepl("[DR]NA",network[,"reactantName"]) | grepl("[DR]NA",network[,"productName"]),"reactionID"]
-  network=network[!(network[,"reactionID"] %in% DRNA),] # DNA/RNA
-  Protein=network[grepl("[Pp]rotein",network[,"reactantName"]) | grepl("[Pp]rotein",network[,"productName"]),"reactionID",]
-  network=network[!(network[,"reactionID"] %in% Protein),] # Protein/protein
-  # II. filter currency compounds:
+  metaboliteConcentrations=read.table(metaboliteConcentrations,header=TRUE,sep="\t",quote ="")
+  rownames(metaboliteConcentrations)=metaboliteConcentrations[,"compound"]
+  metaboliteConcentrations=metaboliteConcentrations[metaboliteConcentrations$low!=0 & metaboliteConcentrations$high!=0,]
+  standardGibbs=read.table(standardGibbs,header=TRUE,sep="\t",quote="")
+  rownames(standardGibbs)=standardGibbs[,"reaction"]
+  
+  library(KEGGREST)
+  compounds=c(network$reactantID,network$productID);compounds=compounds[!duplicated(compounds)]
+  formula=rep(NA,length(compounds))
+  for (i in seq(0,length(compounds),10)){
+    compound=compounds[(i+1):(i+10)]
+    if (length(compound)!=0){
+      f=keggGet(compound)
+      for (j in 1:length(f)){
+        if (!is.null(f[[j]]$FORMULA)){
+          formula[j+i]=f[[j]]$FORMULA
+        }
+      }
+    }
+  }
+  compound2formula=data.frame(compound=compounds,formula=formula)
+  rownames(compound2formula)=compound2formula$compound
+  network$reactantFormula=sapply(1:nrow(network),function(i){ return(compound2formula[network[i,"reactantID"],"formula"]) })
+  network$productFormula=sapply(1:nrow(network),function(i){ return(compound2formula[network[i,"productID"],"formula"]) })
+  
+  # I. filter DNA/RNA/Protein reactions
+  network=network[!(network[,"reactionID"] %in% 
+                     network[network[,"reactantName"]==network[,"productName"],"reactionID"]),]
+  network=network[!(network[,"reactionID"] %in% 
+                      network[grepl("[DR]NA",network[,"reactantName"]) | 
+                                grepl("[DR]NA",network[,"productName"]),"reactionID"]),]
+  network=network[!(network[,"reactionID"] %in% 
+                     network[grepl("[Pp]rotein",network[,"reactantName"]) | 
+                               grepl("[Pp]rotein",network[,"productName"]),"reactionID"]),]
+  ambigousCompounds=compound2formula[is.na(compound2formula$formula),"compound"]
+  network=network[!(network[,"reactionID"] %in% 
+                      network[network[,"reactantID"] %in% ambigousCompounds | 
+                                network[,"productID"] %in% ambigousCompounds,"reactionID"]),]
+  # II. filter compounds:
+  # ambigously defined compounds
+  RCompounds=compound2formula[grepl("R",compound2formula$formula),"compound"]
+  network=network[!(network[,"reactantID"] %in% RCompounds) &
+                    !(network[,"productID"] %in% RCompounds),]
+  # water, hydrogen peroxide, oxygen, hydrogen
   network=network[network[,"reactantName"]!="H2O" & network[,"productName"]!="H2O",]
   network=network[network[,"reactantName"]!="Hydrogen peroxide" & network[,"productName"]!="Hydrogen peroxide",]
   network=network[network[,"reactantName"]!="Oxygen" & network[,"productName"]!="Oxygen",]
   network=network[network[,"reactantName"]!="H+" & network[,"productName"]!="H+",]
-  network=network[network[,"reactantName"]!="CO2" & network[,"productName"]!="CO2",]
-  network=network[network[,"reactantName"]!="CO" & network[,"productName"]!="CO",]
-  network=network[!(network[,"reactantName"] %in% c("ATP","ADP","AMP","TTP","TDP","TMP","GTP","GDP","GMP","CTP","CDP","CMP","UTP","UDP","UMP")) 
-                  & !(network[,"productName"] %in% c("ATP","ADP","AMP","TTP","TDP","TMP","GTP","GDP","GMP","CTP","CDP","CMP","UTP","UDP","UMP")),]
-  network=network[!(network[,"reactantName"] %in% c("dATP","dADP","dAMP","dTTP","dTDP","dTMP","dGTP","dGDP","dGMP","dCTP","dCDP","dCMP","dUTP","dUDP","dUMP")) 
-                  & !(network[,"productName"] %in% c("dATP","dADP","dAMP","dTTP","dTDP","dTMP","dGTP","dGDP","dGMP","dCTP","dCDP","dCMP","dUTP","dUDP","dUMP")),]
+  # Phosphate
   network=network[network[,"reactantName"]!="Diphosphate" & network[,"productName"]!="Diphosphate",]
   network=network[network[,"reactantName"]!="Orthophosphate" & network[,"productName"]!="Orthophosphate",]
+  network=network[network[,"reactantName"]!="Polyphosphate" & network[,"productName"]!="Polyphosphate",]
+  # NTP, NMP, dNTP, dNMP
+  NTP=c("ATP","TTP","GTP","CTP","UTP","Nucleoside triphosphate");dNTP=paste("d",NTP,sep="")
+  NDP=c("ADP","TDP","GDP","CDP","UDP","NDP");dNDP=paste("d",NDP,sep="")
+  # NMP=c("AMP","TMP","GMP","CMP","UMP");dNMP=paste("d",NMP,sep="")
+  network=network[!(network[,"reactantName"] %in% c(NTP,dNTP,NDP,dNDP)) 
+                  & !(network[,"productName"] %in% c(NTP,dNTP,NDP,dNDP)),]
+  # H+/e- donors
   network=network[network[,"reactantName"]!="NAD+" & network[,"productName"]!="NAD+",]
   network=network[network[,"reactantName"]!="NADP+" & network[,"productName"]!="NADP+",]
   network=network[network[,"reactantName"]!="NADH" & network[,"productName"]!="NADH",]
   network=network[network[,"reactantName"]!="NADPH" & network[,"productName"]!="NADPH",]
+  network=network[network[,"reactantName"]!="FAD" & network[,"productName"]!="FAD",]
+  network=network[network[,"reactantName"]!="FADH2" & network[,"productName"]!="FADH2",]
+  network=network[network[,"reactantName"]!="FMN" & network[,"productName"]!="FMN",]
+  network=network[network[,"reactantName"]!="Reduced FMN" & network[,"productName"]!="Reduced FMN",]
+  # CoA
   network=network[network[,"reactantName"]!="CoA" & network[,"productName"]!="CoA",]
   # III. direction of reactions
+  reaction2equation=network[,c("reactionID","equation")]
+  reaction2equation=reaction2equation[!duplicated(reaction2equation[,"reactionID"]),]
+  R=8.3144598 # universal gas constatnt
+  Temperature=298.15 # temperature
+  reaction2equation[,"direction"]=
+    sapply(1:nrow(reaction2equation),
+           function(i){
+             direction=0
+             
+             reac=reaction2equation[i,"reactionID"]
+             stan.Gibbs=standardGibbs[reac,"Gibbs"]
+             
+             equa=reaction2equation[i,"equation"]
+             equa=unlist(strsplit(equa,"<=>"))
+             reactant=equa[1];product=equa[2]
+             reactant=unlist(strsplit(reactant,"\\+"));product=unlist(strsplit(product,"\\+"))
+             reactant=sub(" $","",sub("^ ","",reactant));product=sub(" $","",sub("^ ","",product))
+             d.reactant=data.frame(reactant=rep(NA,length(reactant)),sto=rep(NA,length(reactant)),
+                                   low=rep(NA,length(reactant)),high=rep(NA,length(reactant)))
+             for (i in 1:nrow(d.reactant)){
+               a=unlist(strsplit(reactant[i]," "))
+               if (a[length(a)]!="C00001"){ # water
+                 d.reactant[i,"reactant"]=a[length(a)]
+                 if (a[1]!=a[length(a)]){d.reactant[i,"sto"]=as.numeric(a[1])}else{d.reactant[i,"sto"]=1}
+                 l=metaboliteConcentrations[a[length(a)],"low"];h=metaboliteConcentrations[a[length(a)],"high"]
+                 if (a[length(a)]=="C00080"){l=1e-7;h=1e-7} # H+
+                 if (is.na(l)){l=1e-7;h=1e+3}else{l=l/10;h=h*10}
+                 d.reactant[i,c("low","high")]=c(l,h)
+               }
+             }
+             d.reactant=d.reactant[!is.na(d.reactant[,"reactant"]),]
+             d.product=data.frame(product=rep(NA,length(product)),sto=rep(NA,length(product)),
+                                  low=rep(NA,length(product)),high=rep(NA,length(product)))
+             for (i in 1:nrow(d.product)){
+               a=unlist(strsplit(product[i]," "))
+               if (a[length(a)]!="C00001"){ # water
+                 d.product[i,"product"]=a[length(a)]
+                 if (a[1]!=a[length(a)]){d.product[i,"sto"]=as.numeric(a[1])}else{d.product[i,"sto"]=1}
+                 l=metaboliteConcentrations[a[length(a)],"low"];h=metaboliteConcentrations[a[length(a)],"high"]
+                 if (a[length(a)]=="C00080"){l=1e-7;h=1e-7} # H+
+                 if (is.na(l)){l=1e-7;h=1e+3}else{l=l/10;h=h*10}
+                 d.product[i,c("low","high")]=c(l,h)
+               }
+             }
+             d.product=d.product[!is.na(d.product[,"product"]),]
+             
+             if (!is.na(stan.Gibbs)){
+               Q.min=prod(d.product[,"low"]^d.product[,"sto"])/prod(d.reactant[,"high"]^d.reactant[,"sto"])
+               Q.max=prod(d.product[,"high"]^d.product[,"sto"])/prod(d.reactant[,"low"]^d.reactant[,"sto"])
+               deltaG.min=stan.Gibbs+R*Temperature*log(Q.min)
+               deltaG.max=stan.Gibbs+R*Temperature*log(Q.max)
+               if (deltaG.min>0){direction=-1}
+               if (deltaG.max<0){direction=1}
+               if (deltaG.min<0 & deltaG.max>0){direction=0}
+             }
+             # CO2 can only be synthesized
+             if ("C00011" %in% d.product[,"product"]){direction=1}
+             if ("C00011" %in% d.reactant[,"reactant"]){direction=-1}
+             # O2 can only be consumed
+             if ("C00007" %in% d.product[,"product"]){direction=-1}
+             if ("C00007" %in% d.reactant[,"reactant"]){direction=1}
+             # ATP can only be consumed
+             # C00002, C00131, C00459, C00044, C00286, C00063, C00458, C00201
+             if ("C00002" %in% d.product[,"product"]){direction=-1}
+             if ("C00002" %in% d.reactant[,"reactant"]){direction=1}
+             return(direction)
+           })
+  # direction:
+  #   0: reversible
+  #   1: left to right
+  #   -1: right to left
   
-  
+  # Correct directions
+  wrongDir=reaction2equation[reaction2equation[,"direction"]==-1,"reactionID"]
+  wrongNetwork=network[network$reactionID %in% wrongDir,]
+  wrongNetwork=wrongNetwork[,c("productID","reactantID","productName","reactantName",
+                               "reactionID","reactionName","equation","KO","geneID",
+                               "productFormula","reactantFormula")]
+  colnames(wrongNetwork)=colnames(network)
+  correctNetwork=network[!(network$reactionID %in% wrongDir),]
+  network=rbind(wrongNetwork,correctNetwork)
+  network[,"reversible"]=sapply(network[,"reactionID"],
+                                function(ID){
+                                  direction=reaction2equation[reaction2equation$reactionID==ID,"direction"]
+                                  if (direction==0){return(TRUE)}else{return(FALSE)}
+                                })
+  write.table(network,paste(out_prefix,"_curateNetwork.tsv",sep=""),
+              sep="\t",row.names=FALSE,quote=FALSE)
 }
 
-# (1) the equation includes "G[0-9]{5}" or "C[0-9]{5}\\(n\\)"
-# (2) the equation includes DNA, RNA, "[Pp]rotein"
-# II. filter compounds: 
-# remove currency compounds:
-# H2O,O2,[ATGC][TD]P
-# III. determine reversibility
 
+#network=network[!grepl("G[0-9]{5}",network[,"equation"]),]
+#network=network[!grepl("C[0-9]{5}\\(n\\)",network[,"equation"]),]
+#Alkyl=network[grepl("[Aa]lkyl",network[,"reactantName"]) | grepl("[Aa]lkyl",network[,"productName"]),"reactionID"]
+# # 金属
+# network=network[network[,"reactantName"]!="Fe2+" & network[,"productName"]!="Fe2+",] # Fe2+
+# network=network[network[,"reactantName"]!="Fe3+" & network[,"productName"]!="Fe3+",] # Fe3+
+# network=network[network[,"reactantName"]!="Zinc cation" & network[,"productName"]!="Zinc cation",] # Zn2+
+# network=network[network[,"reactantName"]!="Calcium cation" & network[,"productName"]!="Calcium cation",] # Ca2+
+# network=network[network[,"reactantName"]!="Cobalt ion" & network[,"productName"]!="Cobalt ion",] # Co2+
+# network=network[network[,"reactantName"]!="Potassium cation" & network[,"productName"]!="Potassium cation",] # K+
+# network=network[network[,"reactantName"]!="Magnesium cation" & network[,"productName"]!="Magnesium cation",] # Mg2+
+# network=network[network[,"reactantName"]!="Mercury(2+)" & network[,"productName"]!="Mercury(2+)",] # Hg+
+# network=network[network[,"reactantName"]!="Sodium cation" & network[,"productName"]!="Sodium cation",] # Na+
+# network=network[network[,"reactantName"]!="Barium cation" & network[,"productName"]!="Barium cation",] # Ba2+
+# network=network[network[,"reactantName"]!="Cu2+" & network[,"productName"]!="Cu2+",] # Cu2+
+# network=network[network[,"reactantName"]!="Cu+" & network[,"productName"]!="Cu+",] # Cu+
+# network=network[network[,"reactantName"]!="Manganese(3+)" & network[,"productName"]!="Manganese(3+)",] # Mn3+
+# network=network[network[,"reactantName"]!="Manganese(2+)" & network[,"productName"]!="Manganese(2+)",] # Mn2+
+# network=network[network[,"reactantName"]!="Nickel(2+)" & network[,"productName"]!="Nickel(2+)",] # Ni2+
+# network=network[network[,"reactantName"]!="Rubidium cation" & network[,"productName"]!="Rubidium cation",] # Rb+
+# network=network[network[,"reactantName"]!="Strontium cation" & network[,"productName"]!="Strontium cation",] # Sr2+
