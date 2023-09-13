@@ -404,7 +404,7 @@ KO2Network=function(gene2ko=gene2ko, # KOfamScan output, mapper format
 }
 
 # Curate metabolic network
-# Dependencies:
+# Dependencies: KEGGREST (R)
 curateNetwork=function(network.tsv=network.tsv, # from KO2Network
                        metaboliteConcentrations="/bucket/BourguignonU/Cong/public_db/Park2016/metConcentrationRanges.tsv",
                        # tsv with header
@@ -416,11 +416,11 @@ curateNetwork=function(network.tsv=network.tsv, # from KO2Network
                        # Fields: reaction (Reaction ID of KEGG)
                        #         Gibbs (Standard Gibbs free energy of reaction in J/mol, temperature=298.15K, all reactants and products are of 1 mol/m^3)
                        out_prefix=out_prefix){
-  # network.tsv="/Users/congliu/Desktop/PhD/Results/termite_pca/KO2Network/Aaca_network.tsv"
+  # network.tsv="/Users/congliu/Desktop/PhD/Results/termite_pca/KO2Network/Nluj_network.tsv"
   # metaboliteConcentrations="~/Desktop/PhD/Results/public_db/Park2016/metConcentrationRanges.tsv"
   # standardGibbs="~/Desktop/PhD/Results/public_db/eQuilibrator/standardGibbs.tsv"
-  # out_prefix="/Users/congliu/Desktop/PhD/Results/termite_pca/KO2Network/Aaca"
-  
+  # out_prefix="/Users/congliu/Desktop/PhD/Results/termite_pca/KO2Network/Nluj"
+  # 
   network=read.table(network.tsv,sep="\t",header=TRUE,quote="")
   metaboliteConcentrations=read.table(metaboliteConcentrations,header=TRUE,sep="\t",quote ="")
   rownames(metaboliteConcentrations)=metaboliteConcentrations[,"compound"]
@@ -433,6 +433,7 @@ curateNetwork=function(network.tsv=network.tsv, # from KO2Network
   formula=rep(NA,length(compounds))
   for (i in seq(0,length(compounds),10)){
     compound=compounds[(i+1):(i+10)]
+    compound=compound[!is.na(compound)]
     if (length(compound)!=0){
       f=keggGet(compound)
       for (j in 1:length(f)){
@@ -517,8 +518,8 @@ curateNetwork=function(network.tsv=network.tsv, # from KO2Network
                  d.reactant[i,"reactant"]=a[length(a)]
                  if (a[1]!=a[length(a)]){d.reactant[i,"sto"]=as.numeric(a[1])}else{d.reactant[i,"sto"]=1}
                  l=metaboliteConcentrations[a[length(a)],"low"];h=metaboliteConcentrations[a[length(a)],"high"]
-                 if (a[length(a)]=="C00080"){l=1e-7;h=1e-7} # H+
-                 if (is.na(l)){l=1e-7;h=1e+3}else{l=l/10;h=h*10}
+                 if (a[length(a)]=="C00080"){l=1e-7;h=1e-7} # H+: 1e-7 mol/L, pH=7
+                 if (is.na(l)){l=1e-5;h=1e+5}else{l=l*1e-3/100;h=h*1e-3*100}
                  d.reactant[i,c("low","high")]=c(l,h)
                }
              }
@@ -532,7 +533,7 @@ curateNetwork=function(network.tsv=network.tsv, # from KO2Network
                  if (a[1]!=a[length(a)]){d.product[i,"sto"]=as.numeric(a[1])}else{d.product[i,"sto"]=1}
                  l=metaboliteConcentrations[a[length(a)],"low"];h=metaboliteConcentrations[a[length(a)],"high"]
                  if (a[length(a)]=="C00080"){l=1e-7;h=1e-7} # H+
-                 if (is.na(l)){l=1e-7;h=1e+3}else{l=l/10;h=h*10}
+                 if (is.na(l)){l=1e-5;h=1e+5}else{l=l*1e-3/100;h=h*1e-3*100}
                  d.product[i,c("low","high")]=c(l,h)
                }
              }

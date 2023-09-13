@@ -353,7 +353,7 @@ GC_length=function(fna=fna,out=out,threads=threads){
 }
 
 # DepthSizer estimating genome size by BUSCO single copy genes
-# Dependencies: python2,DepthSizer, SAMtools
+# Dependencies: python2, DepthSizer, SAMtools
 depthsizer=function(genome=genome,
                     bam=bam,
                     BUSCO.tsv=BUSCO.tsv,
