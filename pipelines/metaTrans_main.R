@@ -282,16 +282,29 @@ SimplifyID=function(fna=fna,
 # Dependencies: TransDecoder, diamond, hmmer, AGAT
 cdsInTranscripts=function(transcripts.fna=transcripts.fna,
                           out_dir=out_dir,
-                          dmdb=dmdb, # DIAMOND protein db, uniprot
-                          pfam=pfam, # Pfam-A.hmm
+                          dmdb=dmdb,
+                          pfam=pfam,
+                          geneticCode=1, # https://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi#SG4
+                          # 1: Universal
+                          # 2: The Vertebrate Mitochondrial Code
+                          # 3: The Yeast Mitochondrial Code
+                          # 5: The Invertebrate Mitochondrial Code
+                          # 4: The Mold, Protozoan, and Coelenterate Mitochondrial Code and the Mycoplasma/Spiroplasma Code 
+                          # Other genetic code supported by TransDecoder
                           threads=threads){
   threads=as.character(threads)
   if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "),wait=TRUE)}
   wd=getwd();setwd(out_dir)
   
-  system(paste("cp",transcripts.fna,"transcripts.fna",sep=" "))
+  if (geneticCode==1){geneticCode="Universal"}
+  if (geneticCode==2){geneticCode="Mitochondrial-Vertebrates"}
+  if (geneticCode==3){geneticCode="Mitochondrial-Yeast"}
+  if (geneticCode==5){geneticCode="Mitochondrial-Invertebrates"}
+  if (geneticCode==4){geneticCode="Mitochondrial-Protozoan"}
   
+  system(paste("cp",transcripts.fna,"transcripts.fna",sep=" "))
   cmd="TransDecoder.LongOrfs -t transcripts.fna"
+  cmd=paste(cmd,"-G",geneticCode,sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   
   cmd=paste("diamond blastp",
@@ -318,6 +331,7 @@ cdsInTranscripts=function(transcripts.fna=transcripts.fna,
             "-t transcripts.fna",
             "--retain_pfam_hits pfam.domtblout",
             "--retain_blastp_hits blastp.outfmt6",
+            "-G",geneticCode,
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   system("mv transcripts.fna.transdecoder.gff3 TransDecoder.gff3")
@@ -326,10 +340,10 @@ cdsInTranscripts=function(transcripts.fna=transcripts.fna,
   system("rm hmmsearch.out")
   system("rm pfam.domtblout")
   system("rm pipeliner.*.cmds")
+  #system("rm transcripts.fna")
   system("rm -r transcripts.fna.transdecoder_dir")
   system("rm -r transcripts.fna.transdecoder_dir.__checkpoints")
-  system("rm transcripts.fna.transdecoder.cds")
-  system("rm transcripts.fna.transdecoder.pep")
+  
   setwd(wd)
   return("TransDecoder.gff3")
 }
@@ -423,7 +437,6 @@ coverage=function(bam=bam,
 
 # Interproscan
 # Dependencies: Interproscan, seqkit, parallel (R)
-# AT LEAST 16 THREADS
 interpro=function(proteins.faa=proteins.faa,
                   out_dir=out_dir,
                   out_basename=out_basename,
@@ -439,17 +452,17 @@ interpro=function(proteins.faa=proteins.faa,
   cmd=paste("sed -i 's/*/X/g'",proteins.faa,sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   
-  cmd=paste("seqkit split2",proteins.faa,"-s 80000",sep=" ")
+  cmd=paste("seqkit split2",proteins.faa,"-s 1000",sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   
   prot.lst=system(paste("ls ",proteins.faa,".split/*",sep=""),intern=TRUE)
-  chunks=floor( (as.numeric(threads)-1)/15 )
+  chunks=as.numeric(threads)-1
   
   for (prot in prot.lst){
     cmd=paste("interproscan.sh",
               "-dp",
               "-b",basename(prot),
-              "-cpu",15,
+              "-cpu",1,
               "-f TSV",
               "-goterms",
               "-i",prot,
@@ -478,18 +491,21 @@ interpro=function(proteins.faa=proteins.faa,
               print(cmd);system(cmd,wait=TRUE)})
   stopCluster(clus)
   
+  
   for (prot in prot.lst){
-    system(paste("cat ",basename(prot),".tsv >> Interprotscan.tsv",sep=""))
+    system(paste("cat ",basename(prot),".tsv >> ",out_basename,".interpro.tsv",sep=""))
     system(paste("rm ",basename(prot),".tsv",sep=""))
   }
+  
+  system("rm x*")
   system(paste("rm",proteins.faa,sep=" "),wait=TRUE)
   system(paste("rm -r ",proteins.faa,".split/",sep=""))
+  system("rm -r temp")
   setwd(wd)
 }
 
 # eggNOG-mapper
 # Dependencies: eggNOG-mapper, seqkit, parallel (R)
-# AT LEAST 16 THREADS
 eggNOGmapper=function(proteins.faa=proteins.faa,
                       out_dir=out_dir,
                       out_basename=out_basename,
@@ -503,17 +519,17 @@ eggNOGmapper=function(proteins.faa=proteins.faa,
   print(cmd);system(cmd,wait=TRUE)
   proteins.faa=basename(proteins.faa)
   
-  cmd=paste("seqkit split2",proteins.faa,"-s 80000",sep=" ")
+  cmd=paste("seqkit split2",proteins.faa,"-s 1000",sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   
   prot.lst=system(paste("ls ",proteins.faa,".split/*",sep=""),intern=TRUE)
-  chunks=floor( (as.numeric(threads)-1)/15 )
+  chunks=floor( as.numeric(threads)-1 )
   
   for (prot in prot.lst){
     cmd=paste("emapper.py",
               "-i",prot,
               "-o",basename(prot),
-              "--cpu",15,
+              "--cpu",1,
               sep=" ")
     system(paste("echo",cmd,">> jobs",sep=" "))
   }
@@ -534,7 +550,17 @@ eggNOGmapper=function(proteins.faa=proteins.faa,
               print(cmd);system(cmd,wait=TRUE)})
   stopCluster(clus)
   
+  system("rm x*")
   system(paste("rm",proteins.faa,sep=" "),wait=TRUE)
   system(paste("rm -r ",proteins.faa,".split/",sep=""))
+  
+  for (prot in prot.lst){
+    system(paste("cat ",basename(prot),".emapper.annotations >> ",out_basename,".emapper.annotations.tsv",sep=""))
+    system(paste("rm ",basename(prot),".emapper.annotations",sep=""))
+    system(paste("cat ",basename(prot),".emapper.hits >> ",out_basename,".emapper.hits.tsv",sep=""))
+    system(paste("rm ",basename(prot),".emapper.hits",sep=""))
+    system(paste("cat ",basename(prot),".emapper.seed_orthologs >> ",out_basename,".emapper.seed_orthologs.tsv",sep=""))
+    system(paste("rm ",basename(prot),".emapper.seed_orthologs",sep=""))
+  }
   setwd(wd)
 }

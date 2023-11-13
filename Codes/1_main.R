@@ -162,7 +162,7 @@ Hisat = function(fq1=fq1,fq2=fq2, # Input fq files. Make fq2="none" if single-en
 # Assemble transcripts.
 # Dependencies: StringTie
 StringTie = function(input_bam=input_bam, # Input sorted BAM.
-                     gtf=gtf, # GTF of reference genome.
+                     gtf=gtf, # GTF/Gff3 of reference genome.
                      output_prefix=output_prefix,
                      threads=threads){
   threads = as.character(threads)

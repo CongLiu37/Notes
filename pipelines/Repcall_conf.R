@@ -5,7 +5,6 @@ genome="/bucket/BourguignonU/Cong/termite_genome_annotation/protein_3/Aaca/Aaca_
 edta.sif="/home/c/c-liu/Softwares/EDTA.sif"
 DeepTE.model="/bucket/BourguignonU/Cong/public_db/DeepTE/Metazoans_model"
 DeepTE.sp="M"
-TEsorted.db="rexdb-metazoa"
 
 # Output:
 out_dir="/flash/BourguignonU/Cong/termite_genome_annotation/RepCall"
@@ -56,4 +55,23 @@ step=1
 #   write(paste("Rscript ~/pipelines/RepCall_pipeline.R ~/pipelines/RepCall_main.R ",conf,sep=""),shell,append=TRUE)
 # }
 
-
+# d=read.table("~/quality_genomePeptide.tsv",sep="\t",header=TRUE,quote="")
+# sp.lst=d[,"Label"]
+# for (sp in sp.lst){
+#   shell=paste("/flash/BourguignonU/Cong/termite_pca/AI/hgtPseudogene/",sp,".sh",sep="")
+#   write("#!/bin/bash",shell,append=FALSE)
+#   write("#SBATCH --partition=compute",shell,append=TRUE)
+#   write(paste("#SBATCH --job-name=",sp,sep=""),shell,append=TRUE)
+#   write(paste("#SBATCH --output=",sp,".o%j",sep=""),shell,append=TRUE)
+#   write(paste("#SBATCH --error=",sp,".e%j",sep=""),shell,append=TRUE)
+#   write("#SBATCH --time=95:00:00",shell,append=TRUE)
+#   write("#SBATCH --mem=256G",shell,append=TRUE)
+#   write("#SBATCH --ntasks=1",shell,append=TRUE)
+#   write("#SBATCH --cpus-per-task=64",shell,append=TRUE)
+#   write("#SBATCH --mail-type=END,FAIL",shell,append=TRUE)
+#   write("#SBATCH --mail-user=c.liu@oist.jp",shell,append=TRUE)
+#   write("module load bioinfo-ugrp-modules",shell,append=TRUE)
+#   write("module load DebianMed/11.2",shell,append=TRUE)
+#   write("module load singularity",shell,append=TRUE)
+#   write(paste("Rscript /flash/BourguignonU/Cong/termite_pca/AI/hgtPseudogene/hgtPseudo.R ",sp,sep=""),shell,append=TRUE)
+# }

@@ -590,7 +590,7 @@ AI=function(pep.faa=pep.faa,
     stopCluster(clus)
     write.table(res,paste(out_basename,"_AI.tsv",sep=""),
                 sep="\t",row.names=FALSE,quote=FALSE)
-  }
+  }l
   
   res=read.table(paste(out_basename,"_AI.tsv",sep=""),header=TRUE,sep="\t",quote="")
   HGT=res[res[,"AI"]>ai,] # Might be too strict
@@ -600,6 +600,14 @@ AI=function(pep.faa=pep.faa,
   
   setwd(wd)
 }
+# for (sp in sp.lst){
+#   out_basename=sp
+#   res=read.table(paste(sp,"/",out_basename,"_AI.tsv",sep=""),header=TRUE,sep="\t",quote="")
+#   HGT=res[res[,"AI"]>ai,] # Might be too strict
+#   HGT=HGT[HGT[,"out_pct"]>out_pct,]
+#   write.table(HGT,paste(sp,"/",out_basename,"_HGT.tsv",sep=""),
+#               sep="\t",row.names=FALSE,quote=FALSE)
+# }
 
 # Find homology sequences from nr by DIAMOND
 # for HGT
@@ -758,6 +766,25 @@ mafft=function(in.fa=in.faa,
 # Dependencies: PAL2NAL, seqkit
 pal2nal=function(protAlign.fa=protAlign.fa,
                  cds.fna=cds.fna, # Including IDs in protAlign.fa
+                 geneticCode=1,
+                 # 1  Universal code (default)
+                 # 2  Vertebrate mitochondrial code
+                 # 3  Yeast mitochondrial code
+                 # 4  Mold, Protozoan, and Coelenterate Mitochondrial code
+                 # and Mycoplasma/Spiroplasma code
+                 # 5  Invertebrate mitochondrial
+                 # 6  Ciliate, Dasycladacean and Hexamita nuclear code
+                 # 9  Echinoderm and Flatworm mitochondrial code
+                 # 10  Euplotid nuclear code
+                 # 11  Bacterial, archaeal and plant plastid code
+                 # 12  Alternative yeast nuclear code
+                 # 13  Ascidian mitochondrial code
+                 # 14  Alternative flatworm mitochondrial code
+                 # 15  Blepharisma nuclear code
+                 # 16  Chlorophycean mitochondrial code
+                 # 21  Trematode mitochondrial code
+                 # 22  Scenedesmus obliquus mitochondrial code
+                 # 23  Thraustochytrium mitochondrial code
                  outAlign.fa=outAlign.fa){
   cmd=paste("grep '>' ",protAlign.fa," | sed 's/>//' > ",outAlign.fa,".lst",sep="")
   print(cmd);system(cmd,wait=TRUE)
@@ -768,7 +795,9 @@ pal2nal=function(protAlign.fa=protAlign.fa,
   cmd=paste("pal2nal.pl",
             protAlign.fa,
             paste(outAlign.fa,"_CDS.fa",sep=""),
-            "-output fasta",">",
+            "-output fasta",
+            "-codontable",as.character(geneticCode),
+            ">",
             outAlign.fa,
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
@@ -794,7 +823,7 @@ trimAL=function(inMSA.fa=inMSA.fa,
   cmd=paste("trimal",
             "-in",inMSA.fa,
             "-automated1",
-            "-keepheader",
+            #"-keepheader",
             "| seqkit seq -u",
             ">",outMSA.fa,
             sep=" ")

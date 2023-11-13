@@ -2,9 +2,9 @@
 #  condon/AA usage, exon-intron, protein domain, gene family, etc.
 
 #####
-# condon/AA usage
+# condon/AA usage (standard genetic code)
 #####
-# Amino acid 2 nitrogen
+# Amino acid 2 nitrogen (20 amino acids)
 AA2N=data.frame(AA=c("R","H","K","D","E",
                      "S","T","N","Q",
                      "C","G","P",
@@ -14,7 +14,7 @@ AA2N=data.frame(AA=c("R","H","K","D","E",
                     1,1,1,
                     1,1,1,1,1,1,1,2))
 
-# codon, nitrogen and amino acid
+# codon, nitrogen and amino acid (standard genetic code)
 codonDNA=c("TTT","TTC","TTA","TTG","TCT","TCC","TCA","TCG","TAT","TAC","TAA","TAG","TGT","TGC","TGA","TGG","CTT","CTC","CTA",
            "CTG","CCT","CCC","CCA","CCG","CAT","CAC","CAA","CAG","CGT","CGC","CGA","CGG","ATT","ATC","ATA","ATG","ACT","ACC",
            "ACA","ACG","AAT","AAC","AAA","AAG","AGT","AGC","AGA","AGG","GTT","GTC","GTA","GTG","GCT","GCC","GCA","GCG","GAT",

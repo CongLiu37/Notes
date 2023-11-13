@@ -1,8 +1,8 @@
-PWD /Users/congliu/Desktop/Notes/bontany
+PWD /Users/congliu/Desktop/Notes/chinese_philosophy
 INPUT /opt/homebrew/Cellar/texlive/20230313/share/texmf-dist/web2c/texmf.cnf
 INPUT /opt/homebrew/Cellar/texlive/20230313/share/texmf-var/web2c/pdftex/pdflatex.fmt
-INPUT /Users/congliu/Desktop/Notes/bontany/10_DanZiYe.tex
-OUTPUT 10_DanZiYe.log
+INPUT /Users/congliu/Desktop/Notes/chinese_philosophy/30_ChengHao.tex
+OUTPUT 30_ChengHao.log
 INPUT /opt/homebrew/Cellar/texlive/20230313/share/texmf-dist/tex/latex/base/article.cls
 INPUT /opt/homebrew/Cellar/texlive/20230313/share/texmf-dist/tex/latex/base/article.cls
 INPUT /opt/homebrew/Cellar/texlive/20230313/share/texmf-dist/tex/latex/base/article.cls

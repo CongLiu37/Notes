@@ -1490,31 +1490,76 @@ PseudoPipe=function(genome=genome, # soft masked
   setwd(wd)
 }
 
-# PseudoPipe output to gff3
+# PseudoPipe output to tsv (some re-format)
 PseudoPipe2gff3=function(Pseudo.out.txt=Pseudo.out.txt,
+                         Pseudo.align.gz=Pseudo.align.gz,
                          species=species,
-                         out.gff3=out.gff3){
-  origin=readLines(Pseudo.out.txt)
-  origin=origin[2:length(origin)]
+                         tmp_dir=tmp_dir,
+                         out.tsv=out.tsv){
+  # Pseudo.out.txt="~/Desktop/PhD/Results/termite_pca/AI/tmp/Aaca_pgenes.txt"
+  # Pseudo.align.gz="~/Desktop/PhD/Results/termite_pca/AI/tmp/Aaca_pgenes.align.gz"
+  # species="Aaca"
+  # tmp_dir="~/Desktop/PhD/Results/termite_pca/AI/tmp/"
+  # out.gff3="~/Desktop/PhD/Results/termite_pca/AI/tmp/Aaca_pseudogene.gff3"
   
-  in.type=c("DUP","PSSD","FRAG")
-  out.type=c("duplicated","processed","fragment")
-  names(out.type)=in.type
+  system(paste("mkdir ",tmp_dir,"/tmp",sep=""))
+  tmp_dir=paste(tmp_dir,"/tmp/",sep="")
+  pseudo.txt=read.table(Pseudo.out.txt,sep="\t",header=TRUE,quote="",comment.char = "")
+  system(paste("gzip -d -c -k ",Pseudo.align.gz," > ",tmp_dir,"/",sub(".gz$","",basename(Pseudo.align.gz)),sep=""))
+  system(paste("grep '>' ",tmp_dir,"/",sub(".gz$","",basename(Pseudo.align.gz)),
+               "| sed 's/  /\t/g'",
+               " > ",tmp_dir,"/",sub(".gz$","",basename(Pseudo.align.gz)),".tsv",sep=""))
+  pseudo.align=read.table(paste(tmp_dir,"/",sub(".gz$","",basename(Pseudo.align.gz)),".tsv",sep=""),
+                          sep="\t",header=FALSE,quote="")
+  colnames(pseudo.align)=c("pgene.rawID","unknown1","pgene.start","pgene.end","pgene.strand",
+                           "parent","parent.start","parent.end","parent.length",
+                           "frac","ins","del","shift","stop","expect","ident","polya",
+                           "unknow2","unknow3","exon.coordinates","exon.lengths",
+                           "intron.coordinates","intron.lengths",
+                           "unknown4","unknown5","unknown6","unknown7","unknown8",
+                           "parentAligh.coordinates","parentAlign.length")
+  pseudo.align[,"chr"]=sub("=.*","",pseudo.align[,"pgene.rawID"])
+  pseudo.align[,"chr"]=sub(">","",pseudo.align[,"chr"])
+  pseudo.align=pseudo.align[,c("pgene.rawID","chr","pgene.start","pgene.end","pgene.strand",
+                               "parent","parent.start","parent.end","parent.length",
+                               "exon.coordinates","exon.lengths","intron.coordinates","intron.lengths",
+                               "parentAligh.coordinates","parentAlign.length")]
+  colnames(pseudo.align)=c("alignID","X.chr","start","end","strand",
+                           "query","query.start","query.end","query.length",
+                           "exon.coordinates","exon.lengths","intron.coordinates","intron.lengths",
+                           "queryAligh.coordinates","queryAlign.length")
+  pgenes=merge(pseudo.txt,pseudo.align,by=c("X.chr","start","end","strand","query"),all.x=TRUE)
+  pgenes$exon.coordinates=sub("com","",pgenes$exon.coordinates)
+  pgenes$queryAligh.coordinates=sub("com","",pgenes$queryAligh.coordinates)
+  colnames(pgenes)[1]="chr"
+  write.table(pgenes,out.tsv,sep="\t",row.names = FALSE,quote=FALSE)
+  system(paste("rm -r",tmp_dir,sep=" "))
+  #View(pseudo.align[!(paste(pseudo.align$X.chr,pseudo.align$start,pseudo.align$end)%in%
+  #                    paste(pgenes$X.chr,pgenes$start,pgenes$end)),])
   
-  gff3=sapply(1:length(origin),
-              function(i){
-                txt=unlist(strsplit(origin[i],"\t"))
-                g=paste(txt[1],"\t","PseudoPipe","\t","pseudogene","\t",
-                        txt[2],"\t",txt[3],"\t",".","\t",txt[4],"\t",
-                        ".","\t",
-                        paste("ID=pgene_",species,as.character(i),";",
-                              "Parent=",txt[5],";",
-                              "Type=",unname(out.type[txt[14]]),
-                              sep=""),
-                        sep="")
-                return(g)
-              })
-  writeLines(gff3,out.gff3)
+  
+  
+  # origin=readLines(Pseudo.out.txt)
+  # origin=origin[2:length(origin)]
+  # 
+  # in.type=c("DUP","PSSD","FRAG")
+  # out.type=c("duplicated","processed","fragment")
+  # names(out.type)=in.type
+  # 
+  # gff3=sapply(1:length(origin),
+  #             function(i){
+  #               txt=unlist(strsplit(origin[i],"\t"))
+  #               g=paste(txt[1],"\t","PseudoPipe","\t","pseudogene","\t",
+  #                       txt[2],"\t",txt[3],"\t",".","\t",txt[4],"\t",
+  #                       ".","\t",
+  #                       paste("ID=pgene_",species,as.character(i),";",
+  #                             "Parent=",txt[5],";",
+  #                             "Type=",unname(out.type[txt[14]]),
+  #                             sep=""),
+  #                       sep="")
+  #               return(g)
+  #             })
+  # writeLines(gff3,out.gff3)
 }
 
 # Trinity: de novo assembly of transcriptome

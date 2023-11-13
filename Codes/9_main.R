@@ -1,5 +1,24 @@
 # Metagenome/metatranscriptome profiling
 
+# Simplify sequence ID in genome
+# Make sure fasta header is simple and remove all space
+# Dependencies: simplifyFastaHeaders.pl from AUGUSTUS
+SimplifyID=function(fna=fna,
+                    common_pattern=common_pattern, # common pattern in simplified sequence IDs
+                    out_dir=out_dir){
+  out_dir=sub("/$","",out_dir)
+  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "),wait=TRUE)}
+  fna_name=unlist(strsplit(fna,"/"));fna_name=fna_name[length(fna_name)]
+  
+  cmd=paste("simplifyFastaHeaders.pl", # AUGUSTUS
+            fna,
+            common_pattern,
+            paste(out_dir,"/",fna_name,"_SimpleIDs",sep=""), # FASTA with simplified IDs
+            paste(out_dir,"/",fna_name,"_IDconvert.tsv",sep="")) # old ID to new ID (tabular)
+  print(cmd);system(cmd,wait=TRUE)
+  return(paste(out_dir,"/",fna_name,"_SimpleIDs",sep=""))
+}
+
 # Map DNA reads to reference
 # Dependencies: Minimap2, SAMtools
 minimap2=function(long_reads=long_reads, # space-separated list for PE
@@ -195,47 +214,15 @@ sortmerna=function(fq1=fq1,fq2="none",
   setwd(wd)
 }
 
-# Meta-genome/transcriptome assembly by IDBA-UD
-# Dependencies: IDBA-UD
-idba_ud=function(fq1=fq1,fq2=fq2, # comma-list, paired
-                 out_dir=out_dir,
-                 threads=threads){
-  threads=as.character(threads)
-  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
-  wd=getwd();setwd(out_dir)
-  system("mkdir tmp")
-  system("mkdir idba_ud")
-  
-  fq1=unlist(strsplit(fq1,","))
-  fq2=unlist(strsplit(fq2,","))
-  for (i in 1:length(fq1)){
-    cmd=paste("gzip -c -d",fq1[i],">","tmp/read1.fq",sep=" ")
-    print(cmd);system(cmd,wait=TRUE)
-    cmd=paste("gzip -c -d",fq2[i],">","tmp/read2.fq",sep=" ")
-    print(cmd);system(cmd,wait=TRUE)
-    cmd=paste("fq2fa --merge --filter tmp/read1.fq tmp/read2.fq tmp/tmp.fa",sep=" ")
-    print(cmd);system(cmd,wait=TRUE)
-    system("cat tmp/tmp.fa >> tmp/read.fa")
-    system("rm tmp/read1.fq tmp/read2.fq tmp/tmp.fa")
-  }
-  
-  cmd=paste("idba_ud",
-            "-r tmp/read.fa",
-            "-o",paste(getwd(),"/idba_ud",sep=""),
-            "--num_threads",threads,
-            "--min_count 1",
-            "--mink 20",
-            "--maxk 120",
-            sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  
-  system("rm -r tmp/")
-  setwd(wd)
-}
-
 # Assemble meta-genome/transcriptome into proteins by Plass
 # Dependencies: plass
 plass=function(fq1=fq1,fq2=fq2, # comma-list
+               genetic_code=1,
+# 1) CANONICAL, 2) VERT_MITOCHONDRIAL, 3) YEAST_MITOCHONDRIAL, 4) MOLD_MITOCHONDRIAL, 5) INVERT_MITOCHONDRIAL, 6) CILIATE
+# 9) FLATWORM_MITOCHONDRIAL, 10) EUPLOTID, 11) PROKARYOTE, 12) ALT_YEAST, 13) ASCIDIAN_MITOCHONDRIAL, 14) ALT_FLATWORM_MITOCHONDRIAL
+# 15) BLEPHARISMA, 16) CHLOROPHYCEAN_MITOCHONDRIAL, 21) TREMATODE_MITOCHONDRIAL, 22) SCENEDESMUS_MITOCHONDRIAL
+# 23) THRAUSTOCHYTRIUM_MITOCHONDRIAL, 24) PTEROBRANCHIA_MITOCHONDRIAL, 25) GRACILIBACTERIA, 26) PACHYSOLEN, 27) KARYORELICT, 28) CONDYLOSTOMA
+# 29) MESODINIUM, 30) PERTRICH, 31) BLASTOCRITHIDIA
                threads=threads,
                out_dir=out_dir){
   threads=as.character(threads)
@@ -252,6 +239,7 @@ plass=function(fq1=fq1,fq2=fq2, # comma-list
   
   cmd=paste("plass assemble",fq,"plass.fa tmp",
             "--threads",threads,
+            "--translation-table",as.character(genetic_code),
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   
@@ -436,31 +424,34 @@ seqNR=function(in.fasta=in.fasta,
   # cmd="mmseqs createtsv sequenceDB sequenceDB clusterDB_rep clusters.tsv"
   setwd(wd)
 }
-
-# seqNR(in.fasta="/flash/BourguignonU/Cong/termite_genome_annotation/proteins.faa",
-#       out_dir="/flash/BourguignonU/Cong/termite_genome_annotation/proteins.seqNR",
-#       Identity=0.95, # [0.0,1.0]
-#       cov_mode=0, # 0: alignment covers ${coverage} of target and of query
-#                # 1: alignment covers ${coverage} of target
-#                # 2: alignment covers ${coverage} of query
-#                # 3: target is of ${coverage} query length
-#       coverage=0.95, # [0.0,1.0]
-#       threads=64)
   
 # Find Coding Regions within Transcripts
 # Dependencies: TransDecoder, diamond, hmmer, AGAT
 cdsInTranscripts=function(transcripts.fna=transcripts.fna,
                           out_dir=out_dir,
-                          dmdb=dmdb, # DIAMOND protein db, uniprot
-                          pfam=pfam, # Pfam-A.hmm
+                          dmdb="/apps/unit/BioinfoUgrp/DB/diamondDB/ncbi/2022-07/nr.dmnd", # DIAMOND protein db, uniprot
+                          pfam="/bucket/BourguignonU/Cong/public_db/pfam/Pfam-A.hmm", # Pfam-A.hmm
+                          geneticCode=1, # https://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi#SG4
+                          # 1: Universal
+                          # 2: The Vertebrate Mitochondrial Code
+                          # 3: The Yeast Mitochondrial Code
+                          # 5: The Invertebrate Mitochondrial Code
+                          # 4: The Mold, Protozoan, and Coelenterate Mitochondrial Code and the Mycoplasma/Spiroplasma Code 
+                          # Other genetic code supported by TransDecoder
                           threads=threads){
   threads=as.character(threads)
   if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "),wait=TRUE)}
   wd=getwd();setwd(out_dir)
   
-  system(paste("cp",transcripts.fna,"transcripts.fna",sep=" "))
+  if (geneticCode==1){geneticCode="Universal"}
+  if (geneticCode==2){geneticCode="Mitochondrial-Vertebrates"}
+  if (geneticCode==3){geneticCode="Mitochondrial-Yeast"}
+  if (geneticCode==5){geneticCode="Mitochondrial-Invertebrates"}
+  if (geneticCode==4){geneticCode="Mitochondrial-Protozoan"}
   
+  system(paste("cp",transcripts.fna,"transcripts.fna",sep=" "))
   cmd="TransDecoder.LongOrfs -t transcripts.fna"
+  cmd=paste(cmd,"-G",geneticCode,sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   
   cmd=paste("diamond blastp",
@@ -487,6 +478,7 @@ cdsInTranscripts=function(transcripts.fna=transcripts.fna,
             "-t transcripts.fna",
             "--retain_pfam_hits pfam.domtblout",
             "--retain_blastp_hits blastp.outfmt6",
+            "-G",geneticCode,
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   system("mv transcripts.fna.transdecoder.gff3 TransDecoder.gff3")
@@ -502,6 +494,32 @@ cdsInTranscripts=function(transcripts.fna=transcripts.fna,
   setwd(wd)
   return("TransDecoder.gff3")
 }
+
+gffread=function(gff=gff,
+                 fna=fna, # genome
+                 exons="none",
+                 cds="none",
+                 pep="none",
+                 tmp_dir=tmp_dir){
+  tmp_dir=sub("/$","",tmp_dir)
+  if (!file.exists(tmp_dir)){system(paste("mkdir",tmp_dir,sep=" "))}
+  system(paste("cp",fna,paste(tmp_dir,"/genome.fna",sep=""),sep=" "))
+  cmd=paste("gffread","-O",
+            gff,
+            "-g",paste(tmp_dir,"/genome.fna",sep=""),
+            sep=" ")
+  if (exons!="none"){cmd=paste(cmd,"-w",exons,sep=" ")}
+  if (cds!="none"){cmd=paste(cmd,"-x",cds,sep=" ")}
+  if (pep!="none"){cmd=paste(cmd,"-y",pep,sep=" ")}
+  print(cmd);system(cmd,wait=TRUE)
+  system(paste("rm -r",tmp_dir,sep=" "))
+}
+
+# cds to pep
+# Biostring
+# translate(x, genetic.code=GENETIC_CODE, if.fuzzy.codon="solve")
+# 
+
 
 # Protein-protein search by DIAMOND and assign to taxa by MEGAN
 # Dependencies: DIAMOND
@@ -540,7 +558,44 @@ diamond_p_megan=function(query.faa=query.faa,
   print(cmd);system(cmd,wait=TRUE)
 }
 
-
+# DNA-protein search by DIAMOND and assign to taxa by MEGAN
+# Dependencies: DIAMOND
+diamond_d_megan=function(query.fna=query.fna,
+                         diamond.db=diamond.db, # nr
+                         megan.db=megan.db,
+                         geneticCode=1, # https://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi
+                         out_prefix=out_prefix,
+                         threads=threads){
+  threads=as.character(threads)
+  cmd=paste("diamond blastx",
+            "-p",threads,
+            "-d",diamond.db,
+            "-q",query.fna,
+            "--outfmt 100",
+            "--query-gencode",as.character(geneticCode),
+            "--out",paste(out_prefix,".blast.daa",sep=""),
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  cmd=paste("daa-meganizer",
+            "-i",paste(out_prefix,".blast.daa",sep=""),
+            "-mdb",megan.db,
+            "-t",threads,
+            "-ram readCount",
+            "-supp 0",
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  cmd=paste("daa2info",
+            "-i",paste(out_prefix,".blast.daa",sep=""),
+            "-o",paste(out_prefix,"_taxon.tsv",sep=""),
+            "-r2c Taxonomy",
+            "-n true",
+            "-p true",
+            "-r true",
+            "-mro","true",
+            "-u false",
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+}
 
 
 # # IDBA-MT for metatranscriptome
@@ -647,5 +702,43 @@ diamond_p_megan=function(query.faa=query.faa,
 #   print(cmd);system(cmd,wait=TRUE)
 #   
 #   system("rm -r tmp")
+#   setwd(wd)
+# }
+
+# # Meta-genome/transcriptome assembly by IDBA-UD
+# # Dependencies: IDBA-UD
+# idba_ud=function(fq1=fq1,fq2=fq2, # comma-list, paired
+#                  out_dir=out_dir,
+#                  threads=threads){
+#   threads=as.character(threads)
+#   if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
+#   wd=getwd();setwd(out_dir)
+#   system("mkdir tmp")
+#   system("mkdir idba_ud")
+#   
+#   fq1=unlist(strsplit(fq1,","))
+#   fq2=unlist(strsplit(fq2,","))
+#   for (i in 1:length(fq1)){
+#     cmd=paste("gzip -c -d",fq1[i],">","tmp/read1.fq",sep=" ")
+#     print(cmd);system(cmd,wait=TRUE)
+#     cmd=paste("gzip -c -d",fq2[i],">","tmp/read2.fq",sep=" ")
+#     print(cmd);system(cmd,wait=TRUE)
+#     cmd=paste("fq2fa --merge --filter tmp/read1.fq tmp/read2.fq tmp/tmp.fa",sep=" ")
+#     print(cmd);system(cmd,wait=TRUE)
+#     system("cat tmp/tmp.fa >> tmp/read.fa")
+#     system("rm tmp/read1.fq tmp/read2.fq tmp/tmp.fa")
+#   }
+#   
+#   cmd=paste("idba_ud",
+#             "-r tmp/read.fa",
+#             "-o",paste(getwd(),"/idba_ud",sep=""),
+#             "--num_threads",threads,
+#             "--min_count 1",
+#             "--mink 20",
+#             "--maxk 120",
+#             sep=" ")
+#   print(cmd);system(cmd,wait=TRUE)
+#   
+#   system("rm -r tmp/")
 #   setwd(wd)
 # }

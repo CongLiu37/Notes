@@ -35,6 +35,47 @@ Re_orthofinder=function(previous_orthofinder_result_dir=previous_orthofinder_res
   print(cmd);system(cmd,wait=TRUE)
 }
 
+# Orthofinder N0.tsv statistics
+N0_Stat=function(N0.tsv=N0.tsv,
+                 orthofinder.in_dir=orthofinder.in_dir, # all .faa for orthofinder
+                 out_prefix=out_prefix){
+  d=read.table(N0.tsv,sep="\t",header=TRUE,quote="")
+  row.names(d)=d[,"HOG"]
+  d=d[,4:ncol(d)]
+  mat=as.matrix(d)
+  mat=apply(mat,c(1,2),
+            function(i){ return(length(unlist(strsplit(i,", ")))) })
+  copyNumber=as.data.frame(mat)
+  copyNumber=cbind(data.frame(HOG=rownames(copyNumber)),copyNumber)
+  write.table(copyNumber,paste(out_prefix,"_copyNumber.tsv",sep=""),
+              sep="\t",row.names=FALSE,quote=FALSE)
+  
+  species=colnames(d)
+  res=data.frame(species=species,
+                 gene=rep(NA,length(species)), # #genes
+                 geneInHog=rep(NA,length(species)), # #genes assigned to HOG
+                 pctGeneInHog=rep(NA,length(species)), # %genes assigned to HOG
+                 hogSpeciesContained=rep(NA,length(species)), # #HOG containing species 
+                 pctHogSpecies=rep(NA,length(species)) # %HOG containing species
+                 )
+  res[,2:6]=
+    t(sapply(species,
+           function(sp){
+             gene=system(paste("grep '>' ",orthofinder.in_dir,"/",sp,".faa | wc -l",sep=""),
+                         intern=TRUE)
+             gene=as.numeric(gene)
+             geneInHog=sum(copyNumber[,sp])
+             pctGeneInHog=geneInHog/gene
+             hogSpeciesContained=length(copyNumber[,sp][copyNumber[,sp]!=0])
+             pctHogSpecies=hogSpeciesContained/nrow(d)
+             return(c(gene,geneInHog,pctGeneInHog,hogSpeciesContained,pctHogSpecies))
+           }))
+  write.table(res,paste(out_prefix,"_spStat.tsv",sep=""),
+              sep="\t",row.names=FALSE,quote=FALSE)
+}
+N0.tsv="/bucket/BourguignonU/Cong/termite_pca/orthofinder/OrthoFinder/Results_Jul24_1/Phylogenetic_Hierarchical_Orthogroups/N0.tsv"
+orthofinder.in_dir="/bucket/BourguignonU/Cong/termite_pca/orthofinder"
+out_prefix="/bucket/BourguignonU/Cong/termite_pca/orthofinder/OrthoFinder/Results_Jul24_1/Phylogenetic_Hierarchical_Orthogroups/N0"
 # OMA
 # 不好用。。。
 
@@ -86,7 +127,6 @@ best_blastp=function(query.faa=query.faa,
 #####
 # Interproscan
 # Dependencies: Interproscan, seqkit, parallel (R)
-# AT LEAST 16 THREADS
 interpro=function(proteins.faa=proteins.faa,
                   out_dir=out_dir,
                   out_basename=out_basename,
@@ -409,8 +449,8 @@ curateNetwork=function(network.tsv=network.tsv, # from KO2Network
                        metaboliteConcentrations="/bucket/BourguignonU/Cong/public_db/Park2016/metConcentrationRanges.tsv",
                        # tsv with header
                        # Fields: compound (Compound ID of KEGG)
-                       #         low (lower bound of absolute concentration in mol/m^3 or M)
-                       #         high (higher bound of absolute concentration in mol/m^3 or M)
+                       #         low (lower bound of absolute concentration in mol/L)
+                       #         high (higher bound of absolute concentration in mol/L)
                        standardGibbs="/bucket/BourguignonU/Cong/public_db/eQuilibrator/standardGibbs.tsv",
                        # tsv with header
                        # Fields: reaction (Reaction ID of KEGG)
@@ -583,6 +623,74 @@ curateNetwork=function(network.tsv=network.tsv, # from KO2Network
               sep="\t",row.names=FALSE,quote=FALSE)
 }
 
+#######
+# Enrichment
+#######
+# Gene function enrichment
+# Dependencies: clusterProfiler (R)
+enrichment=function(genes=genes, # a vector of gene id
+                    gene2term.tsv=gene2term.tsv, 
+                    # with header and fields:
+                    # GeneID: gene id
+                    # Terms: comma-list or ""
+                    out.tsv=out.tsv){
+  hgtGene=read.table("~/Desktop/PhD/Results/termite_pca/AI/hgtGene.tsv",
+                     sep="\t",header=TRUE,quote="")
+  hgtGene=hgtGene[hgtGene$Donor!="0",]
+  genes=hgtGene$HOG
+  genes=genes[!duplicated(genes)]
+  gene2term.tsv="~/Desktop/PhD/Results/termite_pca/hogFunction/hog2go.tsv"
+  
+  gene2term=read.table(gene2term.tsv,sep="\t",header=TRUE,quote="");colnames(gene2term)=c("gene","term")
+  universe=gene2term$gene
+  gene2term=gene2term[gene2term$term!="",]
+  gene2term=do.call(rbind.data.frame,
+                    lapply(1:nrow(gene2term),
+                           function(idx){
+                             data.frame(
+                             gene = gene2term[idx, "gene"],
+                             term = strsplit(gene2term[idx, "term"], ",")[[1]],
+                             stringsAsFactors = FALSE)}))
+  term2gene=gene2term[,c("term","gene")]
+  
+  library(clusterProfiler)
+  a=enricher(gene=genes,
+             universe=universe,
+             TERM2GENE=term2gene)
+  write.table(a@result,out.tsv,sep="\t",row.names=FALSE,quote=FALSE)
+}
+
+# Remove parent GO IDs if its child appears
+# Dependencies: annotate (R)
+goTrim=function(GO.IDs=GO.IDs # vector of GO terms
+                ){
+  #GO.IDs="GO:0000003,GO:0003674,GO:0003824,GO:0004653,GO:0005575,GO:0005622,GO:0005623,GO:0005737,GO:0005794,GO:0005795,GO:0006464,GO:0006486,GO:0006493,GO:0006807,GO:0008150,GO:0008152,GO:0008194,GO:0008376,GO:0009058,GO:0009059,GO:0009100,GO:0009101,GO:0009987,GO:0012505,GO:0016020,GO:0016021,GO:0016740,GO:0016757,GO:0016758,GO:0018193,GO:0018210,GO:0018243,GO:0019538,GO:0031224,GO:0031984,GO:0031985,GO:0032501,GO:0032504,GO:0034645,GO:0036211,GO:0043170,GO:0043226,GO:0043227,GO:0043229,GO:0043231,GO:0043412,GO:0043413,GO:0044237,GO:0044238,GO:0044249,GO:0044260,GO:0044267,GO:0044422,GO:0044424,GO:0044425,GO:0044431,GO:0044444,GO:0044446,GO:0044464,GO:0070085,GO:0071704,GO:0098791,GO:0140096,GO:1901135,GO:1901137,GO:1901564,GO:1901566,GO:1901576"
+  #GO.IDs=unlist(strsplit(GO.IDs,","))
+  library(annotate)
+  parentsGO = sapply(GO.IDs,
+                     function(ID){
+                       parents=try(getGOParents(ID),silent=TRUE)[[1]][2][[1]]
+                       return(unname(parents))
+                     })
+  parentsGO = unlist(parentsGO)
+  parentsGO = parentsGO[!duplicated(parentsGO)]
+  trimmedGO.IDs=setdiff(GO.IDs,parentsGO)
+  return(trimmedGO.IDs)
+}
+
+# Term2Desc=getGOTerm(o$Term)
+# BP=Term2Desc$BP;BP_id=names(BP);BP_desc=unname(BP)
+# category=rep("Biological Processes",length(BP))
+# BP = data.frame(Term=BP_id,Description=BP_desc,Category=category)
+# MF=Term2Desc$MF;MF_id=names(MF);MF_desc=unname(MF)
+# category=rep("Molecular Functions",length(MF))
+# MF = data.frame(Term=MF_id,Description=MF_desc,Category=category)
+# CC=Term2Desc$CC;CC_id=names(CC);CC_desc=unname(CC)
+# category=rep("Cellular Components",length(CC))
+# CC = data.frame(Term=CC_id,Description=CC_desc,Category=category)
+# Term2Desc = rbind(BP,MF,CC)
+# p=merge(o,Term2Desc,by.x="Term",by.y="Term")
+# p=subset(p,!is.na(p$Description))
 
 #network=network[!grepl("G[0-9]{5}",network[,"equation"]),]
 #network=network[!grepl("C[0-9]{5}\\(n\\)",network[,"equation"]),]

@@ -549,7 +549,6 @@ salsa=function(assembly=assembly,
 
 
 
-
 # # Bowtie2: Map reads to genome. 
 # # SAMtools: Compress SAM to BAM, sort BAM, index BAM.
 # # Dependencies: Bowtie2, SAMtools

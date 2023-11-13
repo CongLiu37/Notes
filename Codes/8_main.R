@@ -270,42 +270,173 @@ edta=function(genome=genome,
   setwd(wd)
 }
 
-# DeepTE: classify transposons
-DeepTE=function(in.fna=in.fna,
-                out_dir=out_dir,
-                TE.fam=TE.fam, # none
-                               # ClassI: the input sequence is ClassI TEs
-                               # ClassII: the input sequence is ClassII subclass1 TEs
-                               # LTR: the input sequence is LTR TEs
-                               # nLTR: the input sequence is nLTR TEs
-                               # LINE: the input sequence is LINE TEs
-                               # SINE: the input sequence is SINE TEs
-                               # Domain: the input sequence is Class II subclass1 TEs with specified super families
-                sp="M",# M:Metazoans, F:Fungi, and O: Others.
-                DeepTE.model="/bucket/BourguignonU/Cong/public_db/DeepTE/Metazoans_model"){
+# MMseq2: remove redundancy
+# Dependencies: mmseq2
+seqNR=function(in.fasta=in.fasta,
+               out_dir=out_dir,
+               Identity=Identity, # [0.0,1.0]
+               cov_mode=cov_mode, # 0: alignment covers ${coverage} of target and of query
+               # 1: alignment covers ${coverage} of target
+               # 2: alignment covers ${coverage} of query
+               # 3: target is of ${coverage} query length
+               # quert as representative
+               coverage=coverage, # [0.0,1.0]
+               threads=threads){
+  threads=as.character(threads)
   if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "),wait=TRUE)}
-  pwd_begin=getwd();setwd(out_dir)
+  wd=getwd();setwd(out_dir)
   
-  cmd=paste("DeepTE.py",
-            "-d",out_dir,
-            "-o",out_dir,
-            "-i",in.fna,
-            "-sp",sp,
-            "-m_dir",DeepTE.model,
-            sep=" ")
-  if (TE.fam!="none"){
-    cmd=paste(cmd,
-              "-fam",TE.fam,
-              sep=" ")
-  }
+  cmd=paste("mmseqs createdb",in.fasta,"sequenceDB",sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   
-  setwd(pwd_begin)
+  cov_mode=as.character(cov_mode)
+  coverage=as.character(coverage)
+  Identity=as.character(Identity)
+  cmd=paste("mmseqs cluster sequenceDB clusterDB", out_dir,
+            "--cov-mode",cov_mode,
+            "-c",coverage,
+            "--min-seq-id",Identity,
+            "--threads",threads,
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  cmd="mmseqs createsubdb clusterDB sequenceDB clusterDB_rep"
+  print(cmd);system(cmd,wait=TRUE)
+  
+  cmd="mmseqs convert2fasta clusterDB_rep rep.fasta"
+  print(cmd);system(cmd,wait=TRUE)
+  
+  # cmd="mmseqs createtsv sequenceDB sequenceDB clusterDB_rep clusters.tsv"
+  setwd(wd)
 }
 
+# TE classification by transposon_classifier_RFSB & DeepTE 
+# Dependencies: transposon_classifier_RFSB, DeepTE, seqkit
+rfsb=function(in.fna=in.fna,
+              DeepTE.sp="M", # M:Metazoans, F:Fungi, and O: Others.
+              DeepTE.model="/bucket/BourguignonU/Cong/public_db/DeepTE/Metazoans_model",
+              out_dir=out_dir){
+  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "),wait=TRUE)}
+  wd=getwd();setwd(out_dir)
+  
+  cmd=paste("transposon_classifier_RFSB",
+            "-mode classify",
+            "-fastaFile",in.fna,
+            "-outputPredictionFile classification.txt",
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  res=readLines("classification.txt")
+  res=res[res!="" & !grepl("^#",res)]
+  res=sub("^>","",res)
+  TEs=res[seq(1,length(res),2)]
+  class=res[seq(2,length(res),2)]
+  class=sapply(class,function(i){ return(unlist(strsplit(i," "))[2]) })
+  class=unname(class)
+  
+  res=data.frame(TE=TEs,rfsbClass=class)
+  res[,c("class","order","superfamily")]=
+    t(sapply(res[,"rfsbClass"],
+             function(i){
+               a=c(NA,NA,NA)
+               if (i=="1"){a=c("Retrotransposons",NA,NA)}
+               if (i=="1/1"){a=c("Retrotransposons","LTR",NA)}
+               if (i=="1/1/1"){a=c("Retrotransposons","LTR","Copia")}
+               if (i=="1/1/2"){a=c("Retrotransposons","LTR","Gypsy")}
+               if (i=="1/1/3"){a=c("Retrotransposons","LTR","ERV")}
+               if (i=="1/2"){a=c("Retrotransposons","nLTR",NA)}
+               if (i=="1/2/1"){a=c("Retrotransposons","LINE",NA)}
+               if (i=="1/2/2"){a=c("Retrotransposons","SINE",NA)}
+               if (i=="2"){a=c("DNAtransposons",NA,NA)}
+               if (i=="2/1"){a=c("DNAtransposons","TIR",NA)}
+               if (i=="2/1/1"){a=c("DNAtransposons","TIR","Tc1-Mariner")}
+               if (i=="2/1/2"){a=c("DNAtransposons","TIR","hAT")}
+               if (i=="2/1/3"){a=c("DNAtransposons","TIR","CMC")}
+               if (i=="2/1/4"){a=c("DNAtransposons","TIR","Sola")}
+               if (i=="2/1/5"){a=c("DNAtransposons","TIR","Zator")}
+               if (i=="2/1/6"){a=c("DNAtransposons","TIR","Novosib")}
+               if (i=="2/2"){a=c("DNAtransposons","Helitron","Helitron")}
+               if (i=="2/3"){a=c("DNAtransposons","MITE","MITE")}
+               return(a)
+             }))
+  rownames(res)=res[,"TE"]
+  
+  system("mkdir LINE")
+  system("mkdir SINE")
+  LINE=res[res[,"order"]=="LINE",];SINE=res[res[,"order"]=="SINE",]
+  writeLines(paste(LINE[,"TE"],sep=""),"LINE/lst")
+  writeLines(paste(SINE[,"TE"],sep=""),"SINE/lst")
+  cmd=paste("seqkit grep","-f LINE/lst",in.fna,"> LINE/LINE.fna",sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  cmd=paste("seqkit grep","-f SINE/lst",in.fna,"> SINE/SINE.fna",sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  cmd=paste("DeepTE.py",
+            "-d LINE",
+            "-o LINE",
+            "-i LINE/LINE.fna",
+            "-sp",DeepTE.sp,
+            "-m_dir",DeepTE.model,
+            "-fam LINE",
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  cmd=paste("DeepTE.py",
+            "-d SINE",
+            "-o SINE",
+            "-i SINE/SINE.fna",
+            "-sp",DeepTE.sp,
+            "-m_dir",DeepTE.model,
+            "-fam SINE",
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  LINE=read.table("LINE/opt_DeepTE.txt",sep="\t",header=FALSE,quote="")
+  LINE[,2]=sub("^ClassI_nLTR_LINE_","",LINE[,2])
+  LINE[,2][LINE[,2]=="ClassI_nLTR_LINE"]=NA
+  rownames(LINE)=LINE[,1]
+  SINE=read.table("SINE/opt_DeepTE.txt",sep="\t",header=FALSE,quote="")
+  SINE[,2]=sub("^ClassI_nLTR_SINE_","",SINE[,2])
+  SINE[,2][SINE[,2]=="ClassI_nLTR_SINE"]=NA
+  rownames(SINE)=SINE[,1]
+  
+  tmp1=res[res[,"order"]=="LINE",]
+  tmp1[,"superfamily"]=sapply(tmp1[,"TE"],
+                              function(te){return(LINE[te,2])})
+  tmp2=res[res[,"order"]=="SINE",]
+  tmp2[,"superfamily"]=sapply(tmp2[,"TE"],
+                              function(te){return(SINE[te,2])})
+  tmp3=res[res[,"order"]!="LINE" & res[,"order"]!="SINE",]
+  
+  d=rbind(tmp1,tmp2,tmp3)
+  d=d[order(d[,"rfsbClass"]),]
+  write.table(d,"TEclassification.tsv",sep="\t",row.names=FALSE,quote=FALSE)
+  
+  oldID=d[,"TE"]
+  newID=sapply(1:nrow(d),
+               function(i){
+                 te=d[i,"TE"]
+                 class=d[i,"class"];if (is.na(class)){class="Unknown"}
+                 order=d[i,"order"];if (is.na(order)){order="Unknown"}
+                 superfamily=d[i,"superfamily"];if (is.na(superfamily)){superfamily="Unknown"}
+                 newName=NA
+                 if (class=="Retrotransposons"){
+                   newName=paste(te,"#",order,"/",superfamily,sep="")
+                 }
+                 if (class=="DNAtransposons"){
+                   newName=paste(te,"#","DNA","/",superfamily,sep="")
+                 }
+                 return(newName)
+               })
+  write.table(data.frame(oldID,newID),"alias.tsv",
+              sep="\t",row.names=FALSE,col.names=FALSE,quote=FALSE)
+  cmd=paste("seqkit replace -p '^(\\S+)' -r '{kv}'",
+            "-k alias.tsv",in.fna,"> TEclassification.fna",sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  setwd(wd)
+}
 
-# RepeatMasker
-repeatmasker=function(fna=fna,# Fasta file of genome.
+# RepeatMasker: rush jobs
+repeatmaskerQQ=function(fna=fna,# Fasta file of genome.
                       out_dir=out_dir,
                       RepeatLib.fa=RepeatLib.fa, # space-list
                       Threads=Threads){
@@ -316,7 +447,7 @@ repeatmasker=function(fna=fna,# Fasta file of genome.
   setwd(out_dir)
   
   cmd=paste("seqkit","seq","-u",
-            "-j",threads,
+            "-j",Threads,
             fna,">",
             paste(out_dir,"/genome.fa",sep=""),
             sep=" ")
@@ -339,6 +470,10 @@ repeatmasker=function(fna=fna,# Fasta file of genome.
             "-lib",RepeatLib.fa,
             "-pa",Threads,
             "-gff",
+            "-nolow", # Does not mask low_complexity DNA or simple repeats
+            "-norna", # Does not mask small RNA (pseudo) genes
+            "-no_is", # Skips bacterial insertion element check
+            "-qq", #Rush job; about 10% less sensitive, 4->10 times faster than default (quick searches are fine under most circumstances) repeat options
             fna,
             "-dir",out_dir)
   print(cmd);system(cmd,wait=TRUE)
@@ -363,83 +498,63 @@ repeatmasker=function(fna=fna,# Fasta file of genome.
   return(paste(out_dir,"/",fna,".masked.masked",sep=""))
 }
 
-
-
-
-
-
-
 # Final repeat annotation: repeatmasker out to gff3
-rep_elements=function(repeatmasker.out=repeatmasker.out,
-                      # Clarify source of repeat elements
-                      TRASH.gff3=paste(save_dir,"/trash/",label,"/TRASH.gff3",sep=""),
-                      MITE_Hunter.replib=MITE_Hunter.replib, # RepLib from MITE-Hunter
-                      LTR_retriever.replib=LTR_retriever.replib, # RepLib from LTR_retriever
-                      RepeatModeler.replib=RepeatModeler.replib, # RepLib from RepeatModeler
-                      all.replib=all.replib,
-                      out.gff3=out.gff3){
-  cmd=paste("cat",MITE_Hunter.replib,LTR_retriever.replib,RepeatModeler.replib,">",all.replib,sep=" ")
+# Dependencies: parallel (R)
+rep_elements=function(repeatmasker.gff2=repeatmasker.gff2, # interspersed repeats
+                      trash.gff3=trash.gff3, # tandem repeats
+                      TEclassification.tsv=TEclassification.tsv, # from rfsb
+                      out_prefix=out_prefix,
+                      threads=threads){
+  cmd=paste("cp",trash.gff3,
+            paste(out_prefix,"_tandem.gff3",sep=""),
+            sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   
-  cmd=paste("awk 'NR > 3 {if ($11 != \"rRNA\") print $5\"\tRepeatMasker\trepeat_element\t\"$6\"\t\"$7\"\t\"$1\"\t\"$9\"\t\\.\tSequence=\"$10\";Repeat_class=\"$11}'",
-            repeatmasker.out,">",out.gff3,sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  cmd=paste("sed -i 's/Repeat_class=Unspecified/Repeat_class=Unknown/'",out.gff3,sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
+  TEclassification=read.table(TEclassification.tsv,header=TRUE,sep="\t",quote="")
+  rownames(TEclassification)=TEclassification[,"TE"]
   
-  # MITE
-  cmd=paste("grep '>' ",MITE_Hunter.replib," | sed 's/>//' | sed 's/ Len:.*$//' | sed 's/Unknow.*/Unknown/'",sep="")
-  mite=system(cmd,intern=TRUE)
-  for (i in mite){
-    i=unlist(strsplit(i," "))
-    target=paste("Sequence=",i[1],";Repeat_class=.*$",sep="")
-    res=paste("Sequence=",i[1],";Source=MITE-Hunter;Repeat_class=",i[2],sep="")
-    cmd=paste("sed -i 's/",target,"/",res,"/'"," ",out.gff3,sep="")
-    system(cmd,wait=TRUE)
-  }
-  # LTR
-  cmd=paste("grep '>' ",LTR_retriever.replib," | sed 's/>//'",sep="")
-  ltr=system(cmd,intern=TRUE)
-  for (i in ltr){
-    i=unlist(strsplit(i,"#"))
-    target=paste("Sequence=",i[1],";",sep="")
-    res=paste("Sequence=",i[1],";Source=LTR_retriever;",sep="")
-    cmd=paste("sed -i 's/",target,"/",res,"/'"," ",out.gff3,sep="")
-    system(cmd,wait=TRUE)
-  }
-  # RepeatModeler
-  cmd=paste("grep '>' ",RepeatModeler.replib," | sed 's/>//' | sed 's/ .*//'",sep="")
-  RM=system(cmd,intern=TRUE)
-  for (i in RM){
-    i=unlist(strsplit(i,"#"))
-    if (!grepl("LTR/.*",i[2])){
-      target=paste("Sequence=",i[1],";",sep="")
-      res=paste("Sequence=",i[1],";Source=RepeatModeler;",sep="")
-      cmd=paste("sed -i 's/",target,"/",res,"/'"," ",out.gff3,sep="")
-      system(cmd,wait=TRUE)
-    }
-  }
-  
-  cmd=paste("awk -F '\t' -v OFS='\t' '{if ($7==\"C\") $7=\"-\"; print $0}' ",out.gff3,
-            " > final.gff3",
-            sep="")
-  print(cmd);system(cmd,wait=TRUE)
-  system(paste("rm",out.gff3,sep=" "))
-  system(paste("mv","final.gff3",out.gff3,sep=" "))
-  system(paste("cat",TRASH.gff3,">>",out.gff3,sep=" "))
+  interspersed=read.table(repeatmasker.gff2,sep="\t",header=FALSE,quote="")
+  library(parallel)
+  clus=makeCluster(as.numeric(threads))
+  clusterExport(clus,list("interspersed","TEclassification"),envir=environment())
+  interspersed[,9]=parSapply(clus,
+                             1:nrow(interspersed),
+                              function(i){
+                                target=sub("Target \"Motif:","",interspersed[i,9])
+                                target=sub("\".*$","",target)
+                                class=TEclassification[target,"class"]
+                                order=TEclassification[target,"order"]
+                                superfamily=TEclassification[target,"superfamily"]
+                                res=paste("Target=",target,";",
+                                          "Class=",class,";",
+                                          "Order=",order,";",
+                                          "Superfamily=",superfamily,";",
+                                          sep="")
+                                return(res)
+                              })
+  write.table(interspersed,
+              paste(out_prefix,"_interspersed.gff3",sep=""),
+              sep="\t",col.names = FALSE,row.names = FALSE,quote=FALSE)
 }
 
 ######
 # non-coding RNA
 ######
 # tRNAscan-SE
-# Dependencies: tRNAscan-SE, biocode
+# Dependencies: tRNAscan-SE, biocode, seqkit
 tRNAscan=function(genome=genome,
                   mode="eukaryotic", # eukaryotic/bacterial/archaeal/mitochondrial_mammal/mitochondrial_vert/other_organellar/general
                   out_dir=out_dir){
   out_dir=sub("/$","",out_dir)
   if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "),wait=TRUE)}
   wd=getwd();setwd(out_dir)
+  
+  cmd=paste("seqkit","seq","-u",
+            genome,">",
+            paste(out_dir,"/genome.fa",sep=""),
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  genome=paste(out_dir,"/genome.fa",sep="")
   
   if (mode=="eukaryotic"){mode="-E"}
   if (mode=="bacterial"){mode="-B"}
@@ -458,8 +573,10 @@ tRNAscan=function(genome=genome,
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   
-  cmd="convert_tRNAScanSE_to_gff3.pl -g --input=final_results > tRNA.gff3"
+  cmd="convert_tRNAScanSE_to_gff3.pl -g --input=final_results > tRNA.gff3" # from biocode
   print(cmd);system(cmd,wait=TRUE)
+  
+  system(paste("rm",genome,sep=" "))
   
   setwd(out_dir)
 }
@@ -788,4 +905,89 @@ ncRNA=function(tRNA.gff3=tRNA.gff3,
 #   # grf-main -i tests/Saccharomyces_cerevisiae.R64-1-1.dna.toplevel.fa -o tdr -c 2 --min_tr 10 -t 8
 #   # grf-main -i tests/Saccharomyces_cerevisiae.R64-1-1.dna.toplevel.fa -o mite -c 1 --min_tr 10 -t 8
 #   # grf-intersperse -i tests/Saccharomyces_cerevisiae.R64-1-1.dna.toplevel.fa -o interspersed -t 8
+# }
+
+# # DeepTE: classify transposons
+# DeepTE=function(in.fna=in.fna,
+#                 out_dir=out_dir,
+#                 TE.fam=TE.fam, # none
+#                 # ClassI: the input sequence is ClassI TEs
+#                 # ClassII: the input sequence is ClassII subclass1 TEs
+#                 # LTR: the input sequence is LTR TEs
+#                 # nLTR: the input sequence is nLTR TEs
+#                 # LINE: the input sequence is LINE TEs
+#                 # SINE: the input sequence is SINE TEs
+#                 # Domain: the input sequence is Class II subclass1 TEs with specified super families
+#                 sp="M",# M:Metazoans, F:Fungi, and O: Others.
+#                 DeepTE.model="/bucket/BourguignonU/Cong/public_db/DeepTE/Metazoans_model"){
+#   if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "),wait=TRUE)}
+#   pwd_begin=getwd();setwd(out_dir)
+#   
+#   cmd=paste("DeepTE.py",
+#             "-d",out_dir,
+#             "-o",out_dir,
+#             "-i",in.fna,
+#             "-sp",sp,
+#             "-m_dir",DeepTE.model,
+#             sep=" ")
+#   if (TE.fam!="none"){
+#     cmd=paste(cmd,
+#               "-fam",TE.fam,
+#               sep=" ")
+#   }
+#   print(cmd);system(cmd,wait=TRUE)
+#   
+#   setwd(pwd_begin)
+# }
+
+# # TEsorter: classify transposons
+# # Dependencies: TEsorter
+# TEsorter=function(in.fna=in.fna,
+#                   out_dir=out_dir,
+#                   db=db, # gydb,rexdb,rexdb-plant,rexdb-metazoa,rexdb-pnas,rexdb-line,sine
+#                   threads=threads){
+#   threads=as.character(threads)
+#   if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "),wait=TRUE)}
+#   pwd_begin=getwd();setwd(out_dir)
+#   
+#   cmd=paste("TEsorter",
+#             in.fna,
+#             "-db",db,
+#             "-p",threads,
+#             sep=" ")
+#   print(cmd);system(cmd,wait=TRUE)
+#   
+#   setwd(pwd_begin)
+# }
+# 
+# DeepTE=function(in.fna=in.fna,
+#                 out_dir=out_dir,
+#                 TE.fam=TE.fam, # none
+#                 # ClassI: the input sequence is ClassI TEs
+#                 # ClassII: the input sequence is ClassII subclass1 TEs
+#                 # LTR: the input sequence is LTR TEs
+#                 # nLTR: the input sequence is nLTR TEs
+#                 # LINE: the input sequence is LINE TEs
+#                 # SINE: the input sequence is SINE TEs
+#                 # Domain: the input sequence is Class II subclass1 TEs with specified super families
+#                 sp="M",# M:Metazoans, F:Fungi, and O: Others.
+#                 DeepTE.model="/bucket/BourguignonU/Cong/public_db/DeepTE/Metazoans_model"){
+#   if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "),wait=TRUE)}
+#   pwd_begin=getwd();setwd(out_dir)
+#   
+#   cmd=paste("DeepTE.py",
+#             "-d",out_dir,
+#             "-o",out_dir,
+#             "-i",in.fna,
+#             "-sp",sp,
+#             "-m_dir",DeepTE.model,
+#             sep=" ")
+#   if (TE.fam!="none"){
+#     cmd=paste(cmd,
+#               "-fam",TE.fam,
+#               sep=" ")
+#   }
+#   print(cmd);system(cmd,wait=TRUE)
+#   
+#   setwd(pwd_begin)
 # }

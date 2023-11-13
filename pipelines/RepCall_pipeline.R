@@ -199,43 +199,16 @@ if (5 %in% step){
 ############################################
 # TE classification
 if (6 %in% step){
-  Stamp1=paste(out_dir,"/TEsorter/",label,"/",label,"_TEsorter.finished",sep="")
-  Stamp2=paste(save_dir,"/TEsorter/",label,"/",label,"_TEsorter.finished",sep="")
+  Stamp1=paste(out_dir,"/classify/",label,"/",label,"_classify.finished",sep="")
+  Stamp2=paste(save_dir,"/classify/",label,"/",label,"_classify.finished",sep="")
   if (file.exists(Stamp1) | file.exists(Stamp2)){
-    print("Step 6: TEsorter FINISHED")
+    print("Step 6: classify FINISHED")
   }else{
-    print("Step 6: TEsorter START")
-    if (!file.exists(paste(out_dir,"/TEsorter/",sep=""))){
-      system(paste("mkdir"," ",out_dir,"/TEsorter/",sep=""))
-    }
-    TEsorter(in.fna=paste(save_dir,"/seqNR/",label,"/nrlib.fna",sep=""),
-             out_dir=paste(out_dir,"/TEsorter/",label,"/",sep=""),
-             db=TEsorted.db, # gydb,rexdb,rexdb-plant,rexdb-metazoa,rexdb-pnas,rexdb-line,sine
-             threads=threads)
-    system(paste("touch",Stamp1,sep=" "))
-  }
-  
-  Stamp1=paste(out_dir,"/DeepTE/",label,"/",label,"_DeepTE.finished",sep="")
-  Stamp2=paste(save_dir,"/DeepTE/",label,"/",label,"_DeepTE.finished",sep="")
-  if (file.exists(Stamp1) | file.exists(Stamp2)){
-    print("Step 6: DeepTE FINISHED")
-  }else{
-    print("Step 6: DeepTE START")
-    if (!file.exists(paste(out_dir,"/DeepTE/",sep=""))){
-      system(paste("mkdir"," ",out_dir,"/DeepTE/",sep=""))
-    }
-    DeepTE(in.fna=paste(save_dir,"/seqNR/",label,"/nrlib.fna",sep=""),
-           out_dir=paste(out_dir,"/DeepTE/",label,"/",sep=""),
-           TE.fam="none", # none
-           # ClassI: the input sequence is ClassI TEs
-           # ClassII: the input sequence is ClassII subclass1 TEs
-           # LTR: the input sequence is LTR TEs
-           # nLTR: the input sequence is nLTR TEs
-           # LINE: the input sequence is LINE TEs
-           # SINE: the input sequence is SINE TEs
-           # Domain: the input sequence is Class II subclass1 TEs with specified super families
-           sp=DeepTE.sp,# M:Metazoans, F:Fungi, and O: Others.
-           DeepTE.model=DeepTE.model)
+    print("Step 6: classify START")
+    rfsb=function(in.fna=paste(out_dir,"/seqNR/",label,"/nrlib.fna",sep=""),
+                  DeepTE.sp=DeepTE.sp, # M:Metazoans, F:Fungi, and O: Others.
+                  DeepTE.model=DeepTE.model,
+                  out_dir=paste(out_dir,"/classify/",label,sep=""))
     system(paste("touch",Stamp1,sep=" "))
   }
 }
@@ -256,62 +229,6 @@ if (7 %in% step){
     }
     # source("/flash/BourguignonU/Cong/termite_genome_annotation/shell/conf/Aaca_conf.R")
     nrlib=paste(save_dir,"/seqNR/",label,"/nrlib.fna",sep="")
-    
-    sum.nrlib=read.table(paste(save_dir,"/seqNR/",label,"/nrlib.fna_info.tsv",sep=""),
-                         sep="\t",header=TRUE,quote="",comment.char="")
-    TEsorter.res=read.table(paste(save_dir,"/TEsorter/",label,"/nrlib.fna.",TEsorted.db,".cls.tsv",sep=""),
-                            sep="\t",header=TRUE,quote="",comment.char="")
-    colnames(TEsorter.res)=c("newID","Order","Superfamily","Clade","Complete","Strand","Domains")
-    TEsorter.res=TEsorter.res[,c("newID","Order","Superfamily","Clade")]
-    d=merge(sum.nrlib,TEsorter.res,by="newID",all=TRUE)
-    d[is.na(d)]="unknown"
-    d[,"Class"]=sapply(d[,"Order"],
-                       function(order){
-                         if (order %in% c("LTR","DIRS","Penelope","LINE","SINE")){
-                           return("ClassI")
-                         }else if (order %in% c("Maverick","Helitron")){
-                           return("ClassII_subclass2")
-                         }else if (order %in% c("TIR","Crypton")){
-                           return("ClassII_subclass1")
-                         }else{
-                           return("unknown")
-                         }
-                       })
-    d=d[,c("newID","oldID","oldClass","source","Class","Order","Superfamily","Clade")]
-    DeepTE=read.table(paste(save_dir,"/DeepTE/",label,"/opt_DeepTE.txt",sep=""),
-                      sep="\t",header=FALSE,quote="",comment.char="")
-    colnames(DeepTE)=c("newID","classification")
-    rownames(DeepTE)=DeepTE[,"newID"]
-    classOrder=t(sapply(1:nrow(d),
-                        function(i){
-                          res=d[i,c("Class","Order")]
-                          deepte=unlist(strsplit(DeepTE[d[i,"newID"],"classification"],"_"))
-                          deepte=deepte[!grepl("MITE",deepte)]
-                          if (deepte=="unknown"){
-                            return(res)
-                          }else{
-                            if (res[1]=="unknown" & res[2]=="unknown"){
-                              # Class
-                              res[1]=deepte[1]
-                              if (res[1]=="ClassII"){res[1]="ClassII_sub1"}
-                              if (res[1]=="ClassIII"){res[1]="ClassII_sub2"}
-                              # Order
-                              res[2]=deepte[2]
-                              if (is.na(res[2])){res[2]="unknown"}
-                              if (res[2]=="LTR"){res[2]="LTR"}
-                              if (res[2]=="nLTR"){res[2]=deepte[3]}
-                              if (is.na(res[2])){res[2]="unknown"}
-                              if (res[2]=="PLE"){res[2]="Penelope"}
-                              if (res[2]=="DNA"){res[2]="TIR"}
-                              if (res[2]=="Helitron"){res[2]="Helitron"}
-                              if (is.na(res[2])){res[2]="unknown"}
-                            }
-                            return(res)
-                          }
-                        }))
-    d[,"Class"]=unlist(classOrder[,"Class"])
-    d[,"Order"]=unlist(classOrder[,"Order"])
-    write.table(d,paste(out_dir,"/annotation/",label,"/",label,"_classification.tsv",sep=""),sep="\t",row.names=FALSE,quote=FALSE)
     repeatmasker(fna=genome,# Fasta file of genome.
                  out_dir=paste(out_dir,"/annotation/",label,sep=""),
                  RepeatLib.fa=paste(save_dir,"/seqNR/",label,"/nrlib.fna",sep=""), # space-list
@@ -321,53 +238,53 @@ if (7 %in% step){
 }
 ############################################
 # Final results
-if (8 %in% step){
-  Stamp1=paste(out_dir,"/repeat_element/",label,"/",label,"_repeat_element.finished",sep="")
-  Stamp2=paste(save_dir,"/repeat_element/",label,"/",label,"_repeat_element.finished",sep="")
-  if (file.exists(Stamp1) | file.exists(Stamp2)){
-    print("Step 8: repeat_element FINISHED")
-  }else{
-    print("Step 8: repeat_element START")
-    if (!file.exists(paste(out_dir,"/repeat_element/",sep=""))){
-      system(paste("mkdir"," ",out_dir,"/repeat_element/",sep=""))
-    }
-    if (!file.exists(paste(out_dir,"/repeat_element/",label,sep=""))){
-      system(paste("mkdir"," ",out_dir,"/repeat_element/",label,sep=""))
-    }
-    
-    tandem_repeat=paste(save_dir,"/trash/",label,"/TRASH.gff3",sep="")
-    system("cp",tandem_repeat,
-           paste(out_dir,"/repeat_element/",label,"/",label,"_tandem.gff3",sep=""),
-           sep=" ")
-    replib=paste(save_dir,"/seqNR/",label,"/nrlib.fna",sep="")
-    system("cp",replib,
-           paste(out_dir,"/repeat_element/",label,"/",label,"_interspersedLib.fna",sep=""),
-           sep=" ")
-    
-    classes=read.table(paste(save_dir,"/annotation/",label,"/",label,"_classification.tsv",sep=""),
-                       sep="\t",header=TRUE,quote="",comment.char="")
-    rownames(classes)=sub("#.*$","",classes[,"newID"])
-    interspersed=read.table(paste(save_dir,"/annotation/",label,"/genome.fa.out.gff",sep=""),
-                            sep="\t",header=FALSE,quote="")
-    interspersed[,9]=sapply(1:nrow(interspersed),
-                            function(i){
-                              target=sub("Target \"Motif:","",interspersed[i,9])
-                              target=sub("\".*$","",target)
-                              source=classes[target,"source"]
-                              class=classes[target,"Class"]
-                              order=classes[target,"Order"]
-                              res=NA
-                              if (!is.na(source)){
-                                res=paste("Target=",target,";",
-                                          "Source=",source,";",
-                                          "Class=",class,";",
-                                          "Order=",order,";",
-                                          sep="")
-                              }
-                              return(res)
-                            })
-    write.table(interspersed[!is.na(interspersed[,9]),],
-                paste(out_dir,"/repeat_element/",label,"/",label,"_interspersed.gff3",sep=""),
-                sep="\t",col.names = FALSE,row.names = FALSE,quote=FALSE)
-  }
-}
+# if (8 %in% step){
+#   Stamp1=paste(out_dir,"/repeat_element/",label,"/",label,"_repeat_element.finished",sep="")
+#   Stamp2=paste(save_dir,"/repeat_element/",label,"/",label,"_repeat_element.finished",sep="")
+#   if (file.exists(Stamp1) | file.exists(Stamp2)){
+#     print("Step 8: repeat_element FINISHED")
+#   }else{
+#     print("Step 8: repeat_element START")
+#     if (!file.exists(paste(out_dir,"/repeat_element/",sep=""))){
+#       system(paste("mkdir"," ",out_dir,"/repeat_element/",sep=""))
+#     }
+#     if (!file.exists(paste(out_dir,"/repeat_element/",label,sep=""))){
+#       system(paste("mkdir"," ",out_dir,"/repeat_element/",label,sep=""))
+#     }
+#     
+#     tandem_repeat=paste(save_dir,"/trash/",label,"/TRASH.gff3",sep="")
+#     system("cp",tandem_repeat,
+#            paste(out_dir,"/repeat_element/",label,"/",label,"_tandem.gff3",sep=""),
+#            sep=" ")
+#     replib=paste(save_dir,"/seqNR/",label,"/nrlib.fna",sep="")
+#     system("cp",replib,
+#            paste(out_dir,"/repeat_element/",label,"/",label,"_interspersedLib.fna",sep=""),
+#            sep=" ")
+#     
+#     classes=read.table(paste(save_dir,"/annotation/",label,"/",label,"_classification.tsv",sep=""),
+#                        sep="\t",header=TRUE,quote="",comment.char="")
+#     rownames(classes)=sub("#.*$","",classes[,"newID"])
+#     interspersed=read.table(paste(save_dir,"/annotation/",label,"/genome.fa.out.gff",sep=""),
+#                             sep="\t",header=FALSE,quote="")
+#     interspersed[,9]=sapply(1:nrow(interspersed),
+#                             function(i){
+#                               target=sub("Target \"Motif:","",interspersed[i,9])
+#                               target=sub("\".*$","",target)
+#                               source=classes[target,"source"]
+#                               class=classes[target,"Class"]
+#                               order=classes[target,"Order"]
+#                               res=NA
+#                               if (!is.na(source)){
+#                                 res=paste("Target=",target,";",
+#                                           "Source=",source,";",
+#                                           "Class=",class,";",
+#                                           "Order=",order,";",
+#                                           sep="")
+#                               }
+#                               return(res)
+#                             })
+#     write.table(interspersed[!is.na(interspersed[,9]),],
+#                 paste(out_dir,"/repeat_element/",label,"/",label,"_interspersed.gff3",sep=""),
+#                 sep="\t",col.names = FALSE,row.names = FALSE,quote=FALSE)
+#   }
+# }

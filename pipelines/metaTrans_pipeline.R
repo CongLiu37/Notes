@@ -137,12 +137,12 @@ if (4 %in% Step){
     print("Step 4: seqNR START")
     seqNR(in.fasta=paste(save_dir,"/SPAdes/hard_filtered_transcripts.fasta",sep=""),
           out_dir=paste(out_dir,"/seqNR",sep=""),
-          Identity=0.8, # [0.0,1.0]
+          Identity=0.95, # [0.0,1.0]
           cov_mode=1, # 0: alignment covers ${coverage} of target and of query
           # 1: alignment covers ${coverage} of target
           # 2: alignment covers ${coverage} of query
           # 3: target is of ${coverage} query length
-          coverage=0.8, # [0.0,1.0]
+          coverage=0.95, # [0.0,1.0]
           threads=threads)
     SimplifyID(fna=paste(out_dir,"/seqNR/rep.fasta",sep=""),
                common_pattern="contig", # common pattern in simplified sequence IDs
@@ -167,6 +167,7 @@ if (5 %in% Step){
                      out_dir=paste(out_dir,"/cdsInTranscripts",sep=""),
                      dmdb=uniprot.dmdb, # DIAMOND protein db, uniprot
                      pfam=pfam, # Pfam-A.hmm
+                     geneticCode=geneticCode,
                      threads=threads)
     cmd=paste("maker_map_ids",
               "--iterate 0",
