@@ -212,7 +212,11 @@ First, from BUSCO runs complete single-copy protein sequences are collected and 
 Second, for protein famiies that are identified in above 4 BUSCO runs, protein sequences are aligned by MAFFT \parencite{katoh2002mafft}. 
 Third, multiple sequence alignments from MAFFT are trimmed by trimAl \parencite{capella2009trimal}. 
 Forth, gene trees are inferred from trimmed multiple sequence alignments by IQ-TREE \parencite{minh2020iq} with 1,000 bootstrap replicates. 
-Fifth, species tree is inferred from gene trees by ASTRAL \parencite{zhang2018astral}.
+Fifth, species tree is inferred from gene trees by ASTRAL \parencite{zhang2018astral}. 
+Sixth, a supermatrix method was used to infer species tree from the multiple sequence alignments from MAFFT. 
+Multiple sequence alignments contains 85\%, 87.5\%, 90\% 92.5\%, 95\%, 97.5\% and 100\% of the total species were concatenated into supermatrixes, respectively. 
+Missing species were represented by gaps. 
+From each supermatrix a species tree was inferred by IQ-TREE \parencite{minh2020iq} with 1,000 bootstrap replicates. 
 \subsection{Dependencies}
 \textbf{Softwares} \newline
 R \newline

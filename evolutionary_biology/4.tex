@@ -1,0 +1,174 @@
+\documentclass[11pt]{article}
+
+%\usepackage[UTF8]{ctex} % for Chinese 
+
+\usepackage{setspace}
+\usepackage[colorlinks,linkcolor=blue,anchorcolor=red,citecolor=black]{hyperref}
+\usepackage{lineno}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{floatrow}
+\usepackage{subfigure}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{geometry}
+\usepackage{multirow}
+\usepackage{longtable}
+\usepackage{lscape}
+\usepackage{booktabs}
+\usepackage{natbibspacing}
+\usepackage[toc,page]{appendix}
+\usepackage{makecell}
+\usepackage{amsfonts}
+ \usepackage{amsmath}
+\usepackage[utf8]{inputenc}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{enumerate}
+\usepackage{comment}
+
+\usepackage[backend=bibtex,style=authoryear,sorting=nyt,maxnames=1]{biblatex}
+%\bibliography{} % Reference bib
+
+\title{Mutation and variation}
+\author{}
+\date{}
+
+\linespread{1.5}
+\geometry{left=2cm,right=2cm,top=2cm,bottom=2cm}
+
+\setlength\bibitemsep{0pt}
+
+\begin{document}
+\begin{sloppypar}
+  \maketitle
+
+  \linenumbers
+The variation among individuals of a species are different phenotypes. 
+Natural selection acts on phenotypes, but that process only results in evolution if at least some of the variation in phenotypes is transmitted between generations. 
+Inheritance is the result of genotypes encoded by DNA. 
+The basic unit of genetic inheritance is a locus, a section of chromosome. 
+The DNA sequence at a given locus often varies among different individuals, which is called polymorphism. 
+The different variants at a locus are alleles. 
+
+\section{Segregation and Hardy-Weinberg equilibrium}
+Segregation is the selection of one of the two copies of a locus when a gamete is made during meiosis. 
+Consider a population that is of 
+(1) infinitely large population size; 
+(2) no natural selection; 
+(3) no mutation; 
+(4) no migration; 
+(5) random mating; 
+and consider a locus with two alleles $A$ and $a$ with frequencies $p$ and $1-p$ respectively. 
+It is easy to show that: 
+(1) the frequency of $A$ is always $p$ over generations; and 
+(2) the distribution of genotype frequency reaches Hardy-Weinberg proportions (the frequencies of $AA$, $Aa$ and $aa$ are $p^2$, $2p(1-p)$ and $(1-p)^2$, respectively) after one generation, and no longer changes over following generations. 
+
+\par
+
+If a population is not in Hardy-Weinberg equilibrium, something is happening. 
+For example, the beta-hemoglobin locus of human has two alleles $A$ and $S$, and its genotype frequency distribution observed in Africa populations are significantly different from Hardy-Weinberg equilibrium: the observed heterozygote frequency is higher. 
+This difference results from survival: $AA$ and $SS$ do not survive as well as $AS$. 
+
+\section{Recombination}
+Recombination is the process that combines in a gamete a gene copy at one locus that was inherited from the mother with a gene copy at a second locus that was inherited from the father. 
+It happens between loci on the same chromosome by crossing over, which joins together a piece of a chromosome inherited from the mother with a piece inherited from the father. 
+
+\par
+
+The recombination rate $r$ is the probability that recombination occurs between a given pair of loci. 
+If the two loci are on different chromosome, there is $r=0.5$, which is the maximum possible value for recombination rate. 
+At the other extreme, the recombination rate for loci on the same chromosome is extremely low. 
+When an allele at one locus is found together with an allele at a scond locus in a population more often than expected by chance, the loci are in linkage equilibrium. 
+Consider one locus with alleles $A/a$ and a second locus with alleles $B/b$, and $p_A$, $p_B$ are the frequencies of gametes with $A$ and $B$, respectively. 
+The frequency of gamete $AB$, by chance, is $p_Ap_B$, and let the observed frequency of gamete $AB$ be $p_AB$. 
+Linkage equilibrium can be measured by $D=p_{AB}-p_Ap_B$. 
+Given recombination $r$, generation $t$, and assume both loci are in Hardy-Weinberg equilibrium, $p_{AB}(t+1)=(1-r)p_{AB}(t)+rp_Ap_B$ and $D(t+1)=(1-r)D(t)$, and linkage disequilibrium approaches to linkage equilibrium ($D=0$) over generations.
+Natural selection that prefers some combinations of alleles or mixing of populations with different allele frequencies can maintain linkage disequilibrium. 
+
+\section{Mutation}
+Mutation, the imperfections in DNA replication, is an inevitable consequence of the Second Law of Thermodynamics, and is the ultimate source of variation. 
+Mutations come in a variety of forms. 
+
+\par
+
+Point mutations occur when a single DNA base is changed from one to another. 
+Point mutations at genomic regions that coding proteins are synonymous if ther protein sequence is not changed, or nonsynonymous if the protein sequence is changed. 
+For example, a nonsynonymous point mutation in human beta-hemoglobin results the $S$ allele. 
+Point mutations in non-coding regions might affect organisms by altering gene expression. 
+
+\par
+
+Structural mutations occur on more than one DNA bases and have several classes. 
+Deletions occur when a segment of a chromosome is dropped. 
+For example, cystic fibrosis of human is caused by a deletion of three bases in a sodium channel genes. 
+Insertions occur when a segment is added to a chromosome, either from elsewhere on the genome. 
+For example, Huntington's disease is caused by multiple insertions of three bases (CAG) in \textit{huntingtin} gene. 
+Duplications occur when extra copies of a segment are inserted into the genome. 
+Duplication events of one gene give rise to gene family, whose members might evolve new functions. 
+Invertions occur when a chromosome breaks at two places and the middle segment is reinserted in the reverse orientation. 
+Reciprocal translocations occur when two nonhomologous chromosomes exchange segments with each other. 
+Fusions occur when two nonhomologous chromosomes are joined. 
+Fissions occur when one chromosome breaks into two. 
+Fussiona and fissions are responsible for dynamics of haploid chromosome number, which can be as large as 630 in fern \textit{Ophioglossum reticulatum} and 16,000 in ciliate (\textit{Oxytricha trifallax}). 
+Finally, there are whole genome duplications. 
+
+\section{Mutation rate}
+Mutation rate is the probability that an offspring carries a new mutation. 
+For human, roughly 1 out of 1e+8 DNA bases carries a new mutation, namely mutation rate is approximately 1e-8 per base per generation. 
+RNA viruses have mutation rates as high as 1e-5 to 1e-3 per base per generation.  
+For cellular organisms, mutation rate is related with genome size: organisms with large genome tend to have high mutation rate. 
+
+\par
+
+The concept of mutation rate also applies to gene or genome. 
+A gene/genome carries a mutation if there is one base mutates, so the mutation rate per gene/genome is given by mutation rate per base times gene/genome length. 
+Mutation rates of protein-coding gene in eukaryotes are generally 1e-5 to 1e-7. 
+
+\section{Effects of mutations}
+Mutations virtually affect all aspects of organisms and they show two general features. 
+The first one is pleiotropy: a single mutation affects multiple traits. 
+Virtually all mutations with phenotypic effects show pleiotropy: genetic changes that alter one aspect of an organism invariably have side effects on other aspects. 
+Second, there are much more deleterious mutations (harmful to survival or reproduction) than beneficial mutations. 
+
+\section{Is mutation random?}
+Whether mutations are random depends on the meaning of the world "random". 
+
+\par
+
+Mutations are not random since not all mutationa are equally likely. 
+The mutation rate differs substantially among different regions of the genome. 
+For a single DNA base, transition mutations (between A and G, and between C and T) are twice as many possible transversion mutations (between A and C, between G and T, between A and T, and between G and C). 
+
+\par
+
+On the other senes, beneficial mutations take place randomly, indenpendent from environmental conditions. 
+Environmental conditions do not increase the frequency of mutations that are beneficial under these conditions. 
+
+\section{Nongenetic inheritance}
+The majority of inherited changes involve alternations in DNA/RNA sequences. 
+However, other mechanisms can also contribute to inheritance. 
+
+\par
+
+Epigenetic inheritance is caused by inherited changes to chromosomes that do not alter DNA sequence. 
+Such changes affect phenotype by altering gene expression. 
+Epigenetic changes occur in several mechanisms, including methylation of DNA bases (A and C) and modifications on histones that bind to DNA. 
+Most epgenetic changes are not stable and dissipate after a few generations. 
+Therefore, they can be important in short terms, but do not make major contributions to long-term evolutionary changes. 
+
+\par
+
+Maternal effects occur when the genotype/phenotype of the mother directly influences the phenotype of her offspring. 
+For example, the direction of coiling in the snail \textit{Lymnaea peregra} is determined by the genotype of an individual's mother instead of its own genotype. 
+Materal effects contribute to the resemblance between mothers and their offsprings, but are only transimtted across a few generations and therefore, do not contribute much to long-term evolution. 
+
+\par
+
+Cultural inheritance occur when traits are transmitted by behaviour and learning. 
+It apparently plays a key role in human society: language, religion, and dietary preference, are strongly influenced by cultural inheritance. 
+An important difference between cultural inheritance and other forms of inheritance is that traits can be transmitted between unrelated individuals. 
+
+\end{sloppypar}
+\end{document}

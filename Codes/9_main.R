@@ -515,11 +515,53 @@ gffread=function(gff=gff,
   system(paste("rm -r",tmp_dir,sep=" "))
 }
 
-# cds to pep
-# Biostring
-# translate(x, genetic.code=GENETIC_CODE, if.fuzzy.codon="solve")
-# 
+# prodigal for metagenome
+# Dependencies: seqkit, prodigal, parallel (R)
+prodigal.meta=function(fna=fna,
+                       out_prefix=out_prefix,
+                       threads=threads){
+  threads=as.character(threads)
+  
+  cmd=paste("seqkit split2",
+            "-s 1",
+            "-j",threads,
+            "-O",paste(out_prefix,"_tmp",sep=""),
+            fna,
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  fna.lst=system(paste("ls ",out_prefix,"_tmp/*",sep=""),intern=TRUE)
+  library(parallel)
+  clus=makeCluster(threads)
+  parSapply(clus,
+            fna.lst,
+            function(fna.i){
+              cmd=paste("prodigal",
+                        "-i",fna.i,
+                        "-o",paste(fna.i,".prodigal",sep=""),
+                        "-p meta -f gff",sep=" ")
+              system(cmd,wait=TRUE)
+            })
+  prodigal=system(paste("ls ",out_prefix,"_tmp/*.prodigal",sep=""),intern=TRUE)
+  for (i in prodigal){
+    system(paste("cat ",i," >> ",out_prefix,".prodigal.gff3",sep=""))
+  }
+  system(paste("rm -r ",out_prefix,"_tmp",sep=""))
+}
 
+# cds to pep
+# Dependencies: Biostrings (R)
+cds2pep=function(cds.fna=cds.fna,
+                 geneticCode=1, # View(GENETIC_CODE_TABLE)
+                 pep.faa=pep.faa){
+  library(Biostrings)
+  cds=readDNAStringSet(cds.fna,format = "fasta")
+  geneticCode=getGeneticCode(id_or_name2=as.character(geneticCode),
+                             full.search=FALSE,
+                             as.data.frame=FALSE)
+  pep=translate(cds,genetic.code=geneticCode,if.fuzzy.codon="solve")
+  writeXStringSet(pep,pep.faa)
+}
 
 # Protein-protein search by DIAMOND and assign to taxa by MEGAN
 # Dependencies: DIAMOND

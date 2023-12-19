@@ -58,7 +58,7 @@ step=1
 # d=read.table("~/quality_genomePeptide.tsv",sep="\t",header=TRUE,quote="")
 # sp.lst=d[,"Label"]
 # for (sp in sp.lst){
-#   shell=paste("/flash/BourguignonU/Cong/termite_pca/AI/hgtPseudogene/",sp,".sh",sep="")
+#   shell=paste("/flash/BourguignonU/Cong/termite_genome_annotation/tRNAscan/",sp,".sh",sep="")
 #   write("#!/bin/bash",shell,append=FALSE)
 #   write("#SBATCH --partition=compute",shell,append=TRUE)
 #   write(paste("#SBATCH --job-name=",sp,sep=""),shell,append=TRUE)
@@ -73,5 +73,5 @@ step=1
 #   write("module load bioinfo-ugrp-modules",shell,append=TRUE)
 #   write("module load DebianMed/11.2",shell,append=TRUE)
 #   write("module load singularity",shell,append=TRUE)
-#   write(paste("Rscript /flash/BourguignonU/Cong/termite_pca/AI/hgtPseudogene/hgtPseudo.R ",sp,sep=""),shell,append=TRUE)
+#   write(paste("Rscript /flash/BourguignonU/Cong/termite_genome_annotation/tRNAscan/tRNAscan.R ",sp,sep=""),shell,append=TRUE)
 # }

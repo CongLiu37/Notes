@@ -297,6 +297,7 @@ minimap2=function(long_reads=long_reads, # space-separated list for PE
                   # "map-ont" for ONT reads.
                   # "sr" for NGS
                   # "asm5" for accurate reads diverging <5% to assembly
+                  chunk_mem="5G",
                   assembly=assembly,
                   out_prefix=out_prefix,
                   threads=threads){
@@ -307,6 +308,7 @@ minimap2=function(long_reads=long_reads, # space-separated list for PE
             assembly,long_reads,"|",
             "samtools","view","-@",threads,"-bS","|",
             "samtools","sort",
+            "-m", chunk_mem,
             "-@",threads,
             "-o",paste(out_prefix,".bam",sep=""),
             sep=" ")

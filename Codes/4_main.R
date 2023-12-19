@@ -334,6 +334,7 @@ coverage=function(bam=bam,
 # SAMtools: Merge BAM.
 MergeBAM=function(BAMs=BAMs,# SPACE-separated list of bam files.
                   out_prefix=out_prefix,
+                  chunk_mem="5G",
                   Threads=Threads){
   Threads=as.character(Threads)
   
@@ -342,6 +343,7 @@ MergeBAM=function(BAMs=BAMs,# SPACE-separated list of bam files.
             "-",
             BAMs,"|",
             "samtools","sort",
+            "-m", chunk_mem,
             "-@",Threads,
             "-o",paste(out_prefix,".bam",sep=""),
             sep=" ")

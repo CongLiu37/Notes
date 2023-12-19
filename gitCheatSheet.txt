@@ -1,0 +1,7 @@
+https://education.github.com/git-cheat-sheet-education.pdf
+
+# Reset local repo
+git reset --hard HEAD@{"15 minutes ago"}
+
+# Force update 
+git push -f https://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@github.com/CongLiu37/PhD.git
