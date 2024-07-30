@@ -75,6 +75,29 @@ Isoform_filter=function(faa_in=faa_in,
 #####
 # genome collinearity
 #####
+# self-self blastp
+self2self_blastp=function(protein.faa=protein.faa,
+                          threads=threads,
+                          out_prefix=out_prefix){
+  cmd=paste("makeblastdb",
+            "-dbtype prot",
+            "-in",protein.faa,
+            "-out",paste(out_prefix,".blastp.db",sep=""),
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  cmd=paste("blastp",
+            "-query",protein.faa,
+            "-db",paste(out_prefix,".blastp.db",sep=""),
+            "-out",paste(out_prefix,".self2self.blast",sep=""),
+            "-outfmt 6",
+            "-evalue 1e-5",
+            "-num_alignments 20",
+            "-num_threads",as.character(threads),
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+}
+
 # MCScanX: classify duplicated gene pairs
 # Dependencies: blastp, MCScanX, stringr (R)
 MCScanX_dupliClass=function(gff=gff,
@@ -84,7 +107,10 @@ MCScanX_dupliClass=function(gff=gff,
   out_dir=sub("/$","",out_dir)
   if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
   wd=getwd();setwd(out_dir)
-  system(paste("cp",blast,".",sep=" "))
+  
+  cmd=paste("cp ",blast," ./",out_basename,".blast",sep="")
+  print(cmd);system(cmd,wait=TRUE)
+  
   library(stringr)
   cmd=paste("awk -F '\t' -v OFS='\t' '{if ($3==\"gene\") print $1,$9,$4,$5}' ",gff," > ",out_basename,".gff",sep="")
   print(cmd);system(cmd,wait=TRUE)
@@ -705,15 +731,51 @@ protID2cds=function(protID.lst=protID.lst, # comma list
               "-name protein_nuccore",
               "-id",prot,"|",
               "efetch",
-              "-format fasta_cds_na",">>", 
+              "-format fasta_cds_na","|",
+              "seqkit grep -r",
+              "-p",prot,
+              ">>", 
               paste(out_prefix,"_cds.fna",sep=""),
               sep=" ")
     print(cmd)
     system(cmd,wait=TRUE)
-    Sys.sleep(1)
+    Sys.sleep(5)
+    
+    cmd=paste("elink",
+              "-target nuccore",
+              "-db protein",
+              "-name protein_nuccore",
+              "-id",prot,"|",
+              "efetch",
+              "-format fasta_cds_aa","|",
+              "seqkit grep -r",
+              "-p",prot,
+              ">>", 
+              paste(out_prefix,"_prot.faa",sep=""),
+              sep=" ")
+    print(cmd)
+    system(cmd,wait=TRUE)
+    Sys.sleep(5)
   }
   
   library(Biostrings)
+  proteins.faa=readAAStringSet(paste(out_prefix,"_prot.faa",sep=""))
+  proteins.IDs=names(proteins.faa)
+  proteins.IDs=gsub(pattern=".*\\[protein_id=(.*?)\\].*",replacement = "\\1",proteins.IDs)
+  names(proteins.faa)=proteins.IDs
+  proteins.faa=proteins.faa[names(proteins.faa) %in% protID.lst]
+  proteins.faa=proteins.faa[!duplicated(names(proteins.faa))]
+  proteins.IDs=names(proteins.faa)
+  print("NO protein sequence found for:")
+  print(protID.lst[!(protID.lst %in% proteins.IDs)])
+  #[1] "EDU0222588.1"   "EFG6479230.1"   "EDR4320347.1"   "MBS1204601.1"  
+  #[5] "ONI56852.1"     "KZV81323.1"     "Q81835.2"       "CAQ16927.1"    
+  #[9] "WP_252153986.1" "AFM74331.1"     "GEX71379.1"     "MCH83329.1"    
+  #[13] "WP_252154240.1" "MBV0899642.1"   "MCL2453738.1"   "HJD67128.1"    
+  #[17] "CJV99103.1"     "MBV2146500.1"   "MCM1001045.1"   "MBV0899429.1"  
+  #[21] "MCM1001449.1"   "MCL2287834.1"   "MCM1002635.1"   "MCM1001130.1"   
+  writeXStringSet(proteins.faa,paste(out_prefix,"_prot.faa",sep=""))
+  
   cds.fna=readDNAStringSet(paste(out_prefix,"_cds.fna",sep=""))
   cds.IDs=names(cds.fna)
   protein.IDs=gsub(pattern=".*\\[protein_id=(.*?)\\].*",replacement = "\\1",cds.IDs)
@@ -724,27 +786,36 @@ protID2cds=function(protID.lst=protID.lst, # comma list
   df=df[!duplicated(df$protein.ID),]
   print("No CDS for these proteins:")
   print(protID.lst[!(protID.lst %in% df$protein.ID)])
+  #[1] "EDU0222588.1"   "EFG6479230.1"   "EDR4320347.1"   "MBS1204601.1"  
+  #[5] "ONI56852.1"     "WP_169807269.1"        "WP_025263969.1"
+  #[9] "AFM74331.1"     "GEX71379.1"     "MCH83329.1"     "WP_063630740.1"
+  #[13] "MBV0899642.1"   "MCL2453738.1"   "HJD67128.1"     "MBV2146500.1"  
+  #[17] "MCM1001045.1"   "MBV0899429.1"   "MCM1001449.1"   "MCL2287834.1"  
+  #[21] "MCM1002635.1"   "WP_180807986.1" "MCM1001130.1"
   rownames(df)=df$cds.ID
   cds.fna=cds.fna[names(cds.fna) %in% df$cds.ID]
-  names(cds.fna)=paste(df[names(cds.fna),"protein.ID"],df[names(cds.fna),"genome.ID"],sep="-")
-  writeXStringSet(cds.fna,paste(out_prefix,".fna",sep=""))
+  cds.fna=cds.fna[!duplicated(names(cds.fna))]
+  names(cds.fna)=paste(df[names(cds.fna),"protein.ID"],df[names(cds.fna),"genome.ID"],sep=" ")
+  writeXStringSet(cds.fna,paste(out_prefix,"_cds.fna",sep=""))
   
-  genome.ID=df$genome.ID
-  genome.ID=genome.ID[!duplicated(genome.ID)]
-  library(taxonomizr)
-  library(parallel)
-  clus=makeCluster(as.numeric(threads))
-  clusterExport(cl=clus,varlist = list("genome.ID",
-                                       "accessionToTaxa","getRawTaxonomy","taxonomizr.sql"))
-  txid=parSapply(clus,genome.ID,function(i){return(accessionToTaxa(i,taxonomizr.sql))}) 
-  names(txid)=genome.ID
-  taxaPath=parSapply(clus,txid,function(i){i=getRawTaxonomy(i,taxonomizr.sql);return(paste(i[[1]],collapse=","))})
-  names(taxaPath)=genome.ID
-  
-  df$txid=txid[df$genome.ID]
-  df$taxaPath=taxaPath[df$genome.ID]
-  write.table(df,paste(out_prefix,"_taxon.tsv",sep=""),
-              sep="\t",row.names = FALSE,quote = FALSE)
+  # system(paste("rm ",out_prefix,"_cds.fna",sep=""))
+  # 
+  # genome.ID=df$genome.ID
+  # genome.ID=genome.ID[!duplicated(genome.ID)]
+  # library(taxonomizr)
+  # library(parallel)
+  # clus=makeCluster(as.numeric(threads))
+  # clusterExport(cl=clus,varlist = list("genome.ID",
+  #                                      "accessionToTaxa","getRawTaxonomy","taxonomizr.sql"))
+  # txid=parSapply(clus,genome.ID,function(i){return(accessionToTaxa(i,taxonomizr.sql))}) 
+  # names(txid)=genome.ID
+  # taxaPath=parSapply(clus,txid,function(i){i=getRawTaxonomy(i,taxonomizr.sql);return(paste(i[[1]],collapse=","))})
+  # names(taxaPath)=genome.ID
+  # 
+  # df$txid=txid[df$genome.ID]
+  # df$taxaPath=taxaPath[df$genome.ID]
+  # write.table(df,paste(out_prefix,"_taxon.tsv",sep=""),
+  #             sep="\t",row.names = FALSE,quote = FALSE)
 }
 
 #####
@@ -867,6 +938,33 @@ pal2nal=function(protAlign.fa=protAlign.fa,
   
   system(paste("rm ",outAlign.fa,".lst",sep=""))
   system(paste("rm ",outAlign.fa,"_CDS.fa",sep=""))
+}
+
+# Extract 4dtv alignment
+# dependencies: ape (R)
+get4dtvAlign=function(in.fa=in.fa,
+                      out.fa=out.fa){
+  inDNA=ape::read.dna(file=in.fa,format="fasta",as.matrix=TRUE,as.character=TRUE)
+  firstP=inDNA[,seq(1,ncol(inDNA),3)]
+  secondP=inDNA[,seq(2,ncol(inDNA),3)]
+  thirdP=inDNA[,seq(3,ncol(inDNA),3)]
+  
+  dtv4=sapply(seq(1,ncol(inDNA)/3,1),
+              function(i){
+                r=FALSE
+                if (all(firstP[,i]=="c") & all(secondP[,i]=="t")){r=TRUE}
+                if (all(firstP[,i]=="g") & all(secondP[,i]=="t")){r=TRUE}
+                if (all(firstP[,i]=="t") & all(secondP[,i]=="c")){r=TRUE}
+                if (all(firstP[,i]=="c") & all(secondP[,i]=="c")){r=TRUE}
+                if (all(firstP[,i]=="a") & all(secondP[,i]=="c")){r=TRUE}
+                if (all(firstP[,i]=="g") & all(secondP[,i]=="c")){r=TRUE}
+                if (all(firstP[,i]=="c") & all(secondP[,i]=="g")){r=TRUE}
+                if (all(firstP[,i]=="g") & all(secondP[,i]=="g")){r=TRUE}
+                return(r)
+              })
+  dtv4.dna=thirdP[,dtv4]
+  dtv4.dna=toupper(dtv4.dna)
+  ape::write.dna(x=dtv4.dna,file=out.fa,format="fasta",colsep="",indent=0,blocksep=0)
 }
 
 # concatenate sequences with same ID from multiple files
@@ -1025,18 +1123,418 @@ phyloNotung=function(Notung.jar="/home/c/c-liu/Softwares/Notung/Notung-2.9.1.5.j
 #####
 # Selective pressure
 #####
-# absrel of hyphy
+# ParaAT and KaKs_calculator
+# Compute pairwise codon alignments for input sequences, and pairwise KaKs
+# Dependencies: MAFFT, ParaAT, Kaks_calculator
+# Ks>5 means genetic saturation? 
+# https://www.nature.com/articles/s42003-023-05044-1
+# 
+ParaAT=function(protein.faa=protein.faa,
+                cds.fna=cds.fna,
+                threads=threads,
+                geneticCode=1,
+                out_dir=out_dir){
+  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
+  wd=getwd()
+  setwd(out_dir)
+  
+  # protein.faa="/bucket/BourguignonU/Cong/termite_pca/seqs.trimmed_HOG/proteins/HOG0000080.faa"
+  # cds.fna="/bucket/BourguignonU/Cong/termite_pca/seqs.trimmed_HOG/cds/HOG0000080.fna"
+  # out_dir="."
+  # threads=1
+  # geneticCode=1
+  
+  cmd=paste("grep","'>'",protein.faa,"|",
+            "sed 's/>//'",
+            sep=" ")
+  homolog.lst=system(cmd,intern=TRUE)
+  df=expand.grid(homolog.lst,homolog.lst,stringsAsFactors=F)
+  df=unique(t(apply(df, 1, sort)))
+  df=as.data.frame(df)
+  df=df[df$V1!=df$V2,]
+  write.table(df,paste(out_dir,"/",basename(protein.faa),".homolog",sep=""),
+              sep="\t",row.names=FALSE,col.names=FALSE,quote=FALSE)
+  write(as.character(threads),paste(out_dir,"/",basename(protein.faa),".threads",sep=""))
+  
+  cmd=paste("ParaAT.pl",
+            "-homolog",paste("./",basename(protein.faa),".homolog",sep=""),
+            "-aminoacid",protein.faa,
+            "-nuc",cds.fna,
+            "-processor",paste("./",basename(protein.faa),".threads",sep=""),
+            "-output",paste("./",basename(protein.faa),sep=""),
+            "-code",as.character(geneticCode),
+            "-format axt -kaks -m mafft",
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  res=read.table(paste(out_dir,"/",basename(protein.faa),".homolog",sep=""),
+                 sep="\t",header=FALSE,quote="")
+  colnames(res)=c("Gene.1","Gene.2")
+  res[,c("Ka","Ks","KaABOVEKs","p.null_KaEqualKS","Length","S.sites","N.sites","Substitutions","Syn.subs","Nonsyn.subs",
+         "Divergence.Distance","ML.Score")]=
+  t(sapply(1:nrow(res),
+           function(i){
+             kaks=paste(out_dir,"/",basename(protein.faa),
+                        "/",res[i,"Gene.1"],"-",res[i,"Gene.2"],".cds_aln.axt.kaks",sep="")
+             kaks=read.table(kaks,sep="\t",header=TRUE,quote="")
+             return(
+             c(kaks[1,"Ka"],kaks[1,"Ks"],kaks[1,"Ka.Ks"],
+             kaks[1,"P.Value.Fisher."],kaks[1,"Length"],kaks[1,"S.Sites"],kaks[1,"N.Sites"],kaks[1,"Substitutions"],
+             kaks[1,"Syn.Subs"],kaks[1,"Nonsyn.Subs"],kaks[1,"Divergence.Distance"],kaks[1,"ML.Score"])
+             )
+           }))
+  write.table(res,paste(out_dir,"/",basename(protein.faa),".pairwise.dNdS",sep=""),
+              sep="\t",row.names=FALSE,quote=FALSE)
+  
+  system(paste("rm ",out_dir,"/",basename(protein.faa),".homolog",sep=""))
+  system(paste("rm ",out_dir,"/",basename(protein.faa),".threads",sep=""))
+  system(paste("rm -r ",out_dir,"/",basename(protein.faa),sep=""))
+  setwd(wd)
+}
+
+# Extract a pair of sequences, align them (Protein, DNA, Codon), and compute pairwise identity, similarity, dN, dS
+# Same logic with ParaAT
+# Dependencies: seqkit, mafft, pal2nal, seqinr (R), parseFastaIntoAXT.pl, KaKs_calculator
+# seqinr::dist.alignment: the "identity" and "similarity" are actually DISTANCE, and the "similarity" only makes senes for peps (A,T,G,C are also amino acids)
+pairwise=function(protein.faa=protein.faa,
+                  cds.fna=cds.fna,
+                  geneticCode=geneticCode,
+                  out.tsv=out.tsv){
+  gene.lst=system(paste("grep '>' ",protein.faa,sep=""),intern=TRUE)
+  gene.lst=sub(">","",gene.lst)
+  
+  df=expand.grid(gene.lst,gene.lst)
+  colnames(df)=c("Gene.1","Gene.2")
+  df=df[df$Gene.1!=df$Gene.2,]
+  df=as.data.frame(t(apply(df[,c(1,2)], 1, sort)))
+  df=df[!duplicated(df),]
+  colnames(df)=c("Gene.1","Gene.2")
+  
+  sapply(1:nrow(df),
+         function(i){
+           for (gene in df[i,]){
+             cmd=paste("seqkit grep -p ",gene," ",protein.faa,
+                       " >> ",out.tsv,".tmp.pep.",as.character(i),sep="")
+             system(cmd,wait=TRUE)
+             cmd=paste("seqkit grep -p ",gene," ",cds.fna,
+                       " >> ",out.tsv,".tmp.cds.",as.character(i),sep="")
+             system(cmd,wait=TRUE)
+           }
+           cmd=paste("mafft --auto --thread 1 ",
+                     out.tsv,".tmp.pep.",as.character(i)," > ",
+                     out.tsv,".tmp.mafft.",as.character(i),
+                     sep="")
+           system(cmd,wait=TRUE)
+           cmd=paste("mafft --auto --thread 1 ",
+                     out.tsv,".tmp.cds.",as.character(i)," > ",
+                     out.tsv,".tmp.mafft.dna.",as.character(i),
+                     sep="")
+           system(cmd,wait=TRUE)
+           cmd=paste("pal2nal.pl ",
+                     out.tsv,".tmp.mafft.",as.character(i)," ",
+                     out.tsv,".tmp.cds.",as.character(i)," ",
+                     "-output fasta ",
+                     "-codontable ",as.character(geneticCode),
+                     " > ",out.tsv,".tmp.pal2nal.",as.character(i),
+                     sep="")
+           system(cmd,wait=TRUE)
+           cmd=paste("parseFastaIntoAXT.pl ",
+                     out.tsv,".tmp.pal2nal.",as.character(i),
+                     sep="")
+           system(cmd,wait=TRUE)
+           cmd=paste("KaKs -i ",out.tsv,".tmp.pal2nal.",as.character(i),".axt ",
+                     "-o ",out.tsv,".tmp.pal2nal.",as.character(i),".axt.kaks ",
+                     "-c ",as.character(geneticCode),sep="")
+           system(cmd,wait=TRUE)
+         })
+  
+  df$identity.pep=rep(NA,nrow(df));df$identity.codon=rep(NA,nrow(df))
+  df$identity.dna=rep(NA,nrow(df))
+  df$similarity.pep=rep(NA,nrow(df));df$similarity.codon=rep(NA,nrow(df))
+  df$similarity.dna=rep(NA,nrow(df))
+  df$dN=rep(NA,nrow(df));df$dS=rep(NA,nrow(df));df$omega=rep(NA,nrow(df))
+  df$N.sites=rep(NA,nrow(df));df$S.sites=rep(NA,nrow(df))
+  df$p.null_KaEqualKS=rep(NA,nrow(df));df$divergence.distance=rep(NA,nrow(df))
+  library(seqinr)
+  for (i in 1:nrow(df)){
+    pep.align=read.alignment(paste(out.tsv,".tmp.mafft.",as.character(i),sep=""),
+                             format="fasta")
+    cds.align=read.alignment(paste(out.tsv,".tmp.pal2nal.",as.character(i),sep=""),
+                             format="fasta")
+    dna.align=read.alignment(paste(out.tsv,".tmp.mafft.dna.",as.character(i),sep=""),
+                             format="fasta")
+    KAKS=read.table(paste(out.tsv,".tmp.pal2nal.",as.character(i),".axt.kaks",sep=""),
+                    sep="\t",header=TRUE,quote="")
+    df[i,"identity.pep"]=as.vector(dist.alignment(x=pep.align,matrix="identity"))
+    df[i,"identity.codon"]=as.vector(dist.alignment(x=cds.align,matrix="identity"))
+    df[i,"identity.dna"]=as.vector(dist.alignment(x=dna.align,matrix="identity"))
+    df[i,"similarity.pep"]=as.vector(dist.alignment(x=pep.align,matrix="similarity"))
+    df[i,"similarity.codon"]=as.vector(dist.alignment(x=cds.align,matrix="similarity"))
+    df[i,"similarity.dna"]=as.vector(dist.alignment(x=dna.align,matrix="similarity"))
+    df[i,"dN"]=KAKS[1,"Ka"]
+    df[i,"dS"]=KAKS[1,"Ks"]
+    df[i,"omega"]=KAKS[1,"Ka.Ks"]
+    df[i,"p.null_KaEqualKS"]=KAKS[1,"P.Value.Fisher."]
+    df[i,"divergence.distance"]=KAKS[1,"Divergence.Distance"]
+    df[i,"N.sites"]=KAKS[1,"N.Sites"]
+    df[i,"S.sites"]=KAKS[1,"S.Sites"]
+  }
+  
+  for (i in 1:nrow(df)){
+    system(paste("rm ",out.tsv,".tmp.pep.",as.character(i),sep=""))
+    system(paste("rm ",out.tsv,".tmp.cds.",as.character(i),sep=""))
+    system(paste("rm ",out.tsv,".tmp.mafft.",as.character(i),sep=""))
+    system(paste("rm ",out.tsv,".tmp.mafft.dna.",as.character(i),sep=""))
+    system(paste("rm ",out.tsv,".tmp.pal2nal.",as.character(i),sep=""))
+    #system(paste("rm ",out.tsv,".tmp.pal2nal.",as.character(i),".axt",sep=""))
+    #system(paste("rm ",out.tsv,".tmp.pal2nal.",as.character(i),".axt.kaks",sep=""))
+  }
+  
+  write.table(df,out.tsv,sep="\t",row.names = FALSE,quote = FALSE)
+}
+
+# Compute pairwise Ka, Ks with seqinr::kaks, using Li (1993)
+# Multiple substitution fixed with K80
+kaks.seqinr=function(codon.align=codon.align,
+                     out.tsv=out.tsv){
+  codon.align=seqinr::read.alignment(codon.align,format="fasta")
+  K=seqinr::kaks(codon.align,forceUpperCase=TRUE,rmgap=FALSE)
+  res=expand.grid(codon.align$nam,codon.align$nam)
+  res=as.data.frame(unique(t(apply(res,1,sort))))
+  colnames(res)=c("seq1","seq2")
+  res=res[res$seq1!=res$seq2,]
+  ks.mat=as.matrix(K$ks)
+  res$Ks=sapply(1:nrow(res),
+                function(i){
+                  return( ks.mat[res[i,"seq1"],res[i,"seq2"]] )
+                })
+  ka.mat=as.matrix(K$ka)
+  res$Ka=sapply(1:nrow(res),
+                function(i){
+                  return( ka.mat[res[i,"seq1"],res[i,"seq2"]] )
+                })
+  vks.mat=as.matrix(K$vks)
+  res$variance.Ks=sapply(1:nrow(res),
+                         function(i){
+                           return( vks.mat[res[i,"seq1"],res[i,"seq2"]] )
+                         })
+  vka.mat=as.matrix(K$vka)
+  res$variance.Ka=sapply(1:nrow(res),
+                         function(i){
+                           return( vka.mat[res[i,"seq1"],res[i,"seq2"]] )
+                         })
+  write.table(res,out.tsv,
+              row.names=FALSE,quote=FALSE,sep="\t")
+}
+
+# Multiple sequence alignment -> pairwise alignment ->
+# 4-fold degenerate synonymous sites of the third codons (4dtv) alignment ->
+# alignment length, K80 divergence and raw divergence
+# Dependencies: seqkit, ape (R)
+distFrom4dtv=function(in.fa=in.fa, # codon alignment
+                      out.tsv=out.tsv){
+  seqID=system(paste("grep '>' ",in.fa,sep=""),intern=TRUE)
+  seqID=sub("^>","",seqID)
+  res=expand.grid(seqID,seqID)
+  res=as.data.frame(unique(t(apply(res,1,sort))))
+  colnames(res)=c("seq1","seq2")
+  res=res[res$seq1!=res$seq2,]
+  
+  inDNA=ape::read.dna(file=in.fa,format="fasta",as.matrix=TRUE,as.character=TRUE)
+  
+  res[,c("length.4dtv","divergence","rawDiv")]=
+    t(sapply(1:nrow(res),
+                function(i){ # 1:nrow(res)
+                  d=inDNA[c(res[i,"seq1"],res[i,"seq2"]),]
+                  firstP=d[,seq(1,ncol(d),3)]
+                  secondP=d[,seq(2,ncol(d),3)]
+                  thirdP=d[,seq(3,ncol(d),3)]
+                  
+                  # 4d codon sites in first seq
+                  dtv4.1=sapply(seq(1,ncol(d)/3,1),
+                              function(i){
+                                p1=firstP[1,i]
+                                p2=secondP[1,i]
+                                dtv=FALSE
+                                if (p1%in%c("a","t") & p2=="c"){dtv=TRUE} # acN,tcN
+                                if (p1=="c" & p2%in%c("t","c","g")){dtv=TRUE} # ctN,ccN,cgN
+                                if (p1=="g" & p2%in%c("t","c","g")){dtv=TRUE} # gtN,gcN,ggN
+                                return(dtv)
+                              })
+                  dtv4.1=which(dtv4.1)
+                  # 4d codon sites in second seq
+                  dtv4.2=sapply(seq(1,ncol(d)/3,1),
+                                function(i){
+                                  p1=firstP[2,i]
+                                  p2=secondP[2,i]
+                                  dtv=FALSE
+                                  if (p1%in%c("a","t") & p2=="c"){dtv=TRUE} # acN,tcN
+                                  if (p1=="c" & p2%in%c("t","c","g")){dtv=TRUE} # ctN,ccN,cgN
+                                  if (p1=="g" & p2%in%c("t","c","g")){dtv=TRUE} # gtN,gcN,ggN
+                                  return(dtv)
+                                })
+                  dtv4.2=which(dtv4.2)
+                  
+                  # 4d codon position shared by two seq
+                  dtv4=intersect(dtv4.1,dtv4.2)
+                  if (length(dtv4)<2){return(c(NA,NA,NA))}else{
+                    dtv4.1=firstP[,dtv4]
+                    dtv4.2=secondP[,dtv4]
+                    dtv4.3=thirdP[,dtv4]
+                    
+                    sites=intersect(which(dtv4.1[1,]==dtv4.1[2,]),
+                                    which(dtv4.2[1,]==dtv4.2[2,]))
+                    if (length(sites)<20){return(c(NA,NA,NA))}else{
+                      x=dtv4.3[,]
+                      length.4dtv=ncol(x)
+                      
+                      divergence=ape::dist.dna(ape::as.DNAbin.character(x),
+                                               model="K80",as.matrix=TRUE,
+                                               pairwise.deletion=TRUE)
+                      divergence=divergence[1,2]
+                      if (is.infinite(divergence)){divergence=NA}
+                      
+                      rawDiv=ape::dist.dna(ape::as.DNAbin.character(x),
+                                           model="raw",as.matrix=TRUE,
+                                           pairwise.deletion=TRUE)
+                      rawDiv=rawDiv[1,2]
+                      return(c(length.4dtv,divergence,rawDiv))
+                    }
+                    
+                  }
+                }))
+  write.table(res,out.tsv,sep="\t",row.names=FALSE,quote=FALSE)
+}
+
+
+# absrel of hyphy: estimate omega and test positive selection
 # Dependencies: hyphy
-absrel=function(codon.align=codon.align,
+absrel=function(hyphy.res="/apps/unit/BourguignonU/hyphy/res",
+                codon.align=codon.align,
                 geneTree=geneTree,
                 out_prefix=out_prefix){
-  cmd=paste("hyphy absrel",
+  cmd=paste("hyphy",
+            paste("LIBPATH=",hyphy.res,sep=""),
+            "absrel",
             "--alignment",codon.align,
             "--tree",geneTree,
             "--output",paste(out_prefix,".json",sep=""))
   print(cmd);system(cmd,wait=TRUE)
 }
-# hyphy absrel --alignment hiv1_transmission.fna --tree tree.nwk
+
+# Format json from absrel
+# Dependencies: jsonlite (R), treeio (R), ggtree (R)
+json2tsv_absrel=function(json=json,
+                         tsv=tsv){
+  json=jsonlite::read_json(json)
+  
+  tree=json$input$trees[[1]]
+  tree=paste(tree,";",sep="")
+  tree=ape::read.tree(text=tree)
+  tree=ggtree::ggtree(tree)$data
+  tree=as.data.frame(tree)
+  
+  branch_attributes=json$`branch attributes`[[1]]
+  tree[,c("Baseline_MG94xREV","Baseline_MG94xREV_omega_ratio","Full_adaptive_model","LRT","Nucleotide_GTR",
+          "Rate_Distributions_dN","Rate_Distributions_dS","Rate_Distributions_omega","Uncorrected_P_value",
+          "original_name")]=
+  t(sapply(tree$label,
+         function(label){
+           if (label!=""){
+             Baseline_MG94xREV=branch_attributes[[label]]$`Baseline MG94xREV`
+             Baseline_MG94xREV_omega_ratio=branch_attributes[[label]]$`Baseline MG94xREV omega ratio`
+             Full_adaptive_model=branch_attributes[[label]]$`Full adaptive model`
+             LRT=branch_attributes[[label]]$`LRT`
+             Nucleotide_GTR=branch_attributes[[label]]$`Nucleotide GTR`
+             
+             Rate_Distributions=unlist(branch_attributes[[label]]$`Rate Distributions`)
+             Rate_Distributions_dN=Rate_Distributions[seq(1,length(Rate_Distributions),2)]
+             Rate_Distributions_dS=Rate_Distributions[seq(2,length(Rate_Distributions),2)]
+             Rate_Distributions_dN.above.dS=Rate_Distributions_dN/Rate_Distributions_dS
+             
+             Rate_Distributions_dN=paste(as.character(Rate_Distributions_dN),collapse=";")
+             Rate_Distributions_dS=paste(as.character(Rate_Distributions_dS),collapse=";")
+             Rate_Distributions_dN.above.dS=paste(as.character(Rate_Distributions_dN.above.dS),collapse=";")
+             
+             Uncorrected_P_value=branch_attributes[[label]]$`Uncorrected P-value`
+             original_name=branch_attributes[[label]]$`original name`
+             if (is.null(original_name)){original_name=NA}
+             res=c(Baseline_MG94xREV,Baseline_MG94xREV_omega_ratio,Full_adaptive_model,LRT,Nucleotide_GTR,
+                   Rate_Distributions_dN,Rate_Distributions_dS,Rate_Distributions_dN.above.dS,Uncorrected_P_value,
+                   original_name)
+           }else{
+             res=rep(NA,10)
+           }
+         }))
+  
+  write.table(tree,tsv,sep="\t",row.names=FALSE,quote=FALSE)
+}
+
+# hyphy LIBPATH=/apps/unit/BourguignonU/hyphy/res FitMG94.bf --alignment CD2.nex
+# FitMG94 of hyphy: estimate dN and dS on gene tree branches
+# Obtain branch lengths under the nucleotide GTR model and remove zero lengths
+# internal nodes might be deleted
+fitMG94=function(FitMG94.bf="/apps/unit/BourguignonU/hyphy-analyses/FitMG94/FitMG94.bf",
+                 hyphy.res="/apps/unit/BourguignonU/hyphy/res",
+                 codon.align=codon.align,
+                 geneTree=geneTree,
+                 out_prefix=out_prefix){
+    cmd=paste("hyphy",
+              paste("LIBPATH=",hyphy.res,sep=""),
+              FitMG94.bf,
+              "--type local",
+              "--lrt Yes",
+              "--alignment",codon.align,
+              "--tree",geneTree,
+              "--output",paste(out_prefix,".json",sep=""))
+    print(cmd);system(cmd,wait=TRUE)
+}
+
+json2tsv_fitMG94=function(json=json,
+                          tsv=tsv){
+  json=jsonlite::read_json(json)
+  
+  tree=json$input$trees[[1]]
+  tree=paste(tree,";",sep="")
+  tree=ape::read.tree(text=tree)
+  tree=ggtree::ggtree(tree)$data
+  tree=as.data.frame(tree)
+  
+  branch_attributes=json$`branch attributes`[[1]]
+  tree[,c("omega","omega_lowerBound","omega_higherBound",
+          "Nucleotide_GTR","Standard_MG94","dN","dS",
+          "nonsynonymous_substitution_per_codon",
+          "synonymous_substitution_per_codon",
+          "original_name")]=
+  t(sapply(tree$label,
+         function(label){
+           if (label!=""){
+             omega=branch_attributes[[label]]$`Confidence Intervals`$`MLE`
+             omega_lowerBound=branch_attributes[[label]]$`Confidence Intervals`$`LB`
+             omega_higherBound=branch_attributes[[label]]$`Confidence Intervals`$`UB`
+             
+             Nucleotide_GTR=branch_attributes[[label]]$`Nucleotide GTR`
+             Standard_MG94=branch_attributes[[label]]$`Standard MG94`
+             dN=branch_attributes[[label]]$`dN`
+             dS=branch_attributes[[label]]$`dS`
+             nonsynonymous_substitution_per_codon=branch_attributes[[label]]$`nonsynonymous`
+             synonymous_substitution_per_codon=branch_attributes[[label]]$`synonymous`
+             original_name=branch_attributes[[label]]$`original name`
+             if (is.null(original_name)){original_name=NA}
+             
+             res=c(omega,omega_lowerBound,omega_higherBound,
+                   Nucleotide_GTR,Standard_MG94,dN,dS,
+                   nonsynonymous_substitution_per_codon,
+                   synonymous_substitution_per_codon,
+                   original_name)
+           }else{
+             res=rep(NA,10)
+           }
+           return(res)
+         }))
+  
+  write.table(tree,tsv,sep="\t",row.names=TRUE,quote=FALSE)
+}
 
 # relax of hyphy
 # hyphy relax --alignment pb2.fna --tree tree.nwk --test test
@@ -1051,6 +1549,10 @@ badirate=function(perl.5.16="~/Softwares/perl-5.16.3/perl",
                   badirate.pl="~/Softwares/badirate/BadiRate.pl",
                   tree.nwk=tree.nwk,
                   famSize.tsv=famSize.tsv, # Fields: FAM_ID sp1 sp2
+                  start_val=0, # 0/1
+                  estimation="ML", # ML: maximum likelyhood
+                  rateModel="BD", # BD: Birth (per gene and per million of years), Death (per gene and per million of years)
+                                  # BDI: Birth, Death, and Innovation (per million of years)
                   out_dir=out_dir,
                   threads=threads){
   library(badirater)
@@ -1060,16 +1562,15 @@ badirate=function(perl.5.16="~/Softwares/perl-5.16.3/perl",
   library(stringr)
   library(ggtree)
   library(treeio)
+  
   # perl.5.16="~/Softwares/perl-5.16.3/perl"
   # badirate.pl="~/Softwares/badirate/BadiRate.pl"
-  # tree.nwk="/flash/BourguignonU/Cong/termite_pca/badirate/test/droso.12sp.tamura.nwk"
-  # famSize.tsv="/flash/BourguignonU/Cong/termite_pca/badirate/test/og.tsv"
-  # out_dir="/flash/BourguignonU/Cong/termite_pca/badirate/test/"
-  # threads=2
-  
-  #turnOverRates=c("BDI","GD")
-  #branchModels=c("FR","GR")
-  #startValues=c("0","1","2","3")
+  # tree.nwk="/flash/BourguignonU/Cong/termite_pca/geneContent/droso.12sp.tamura.nwk"
+  # famSize.tsv="/flash/BourguignonU/Cong/termite_pca/geneContent/4FAMs.12sp.tsv"
+  # out_dir="/flash/BourguignonU/Cong/termite_pca/geneContent/BDI_ML"
+  # threads=1
+  # estimation="ML"
+  # rateModel="BDI"
   
   threads=as.character(threads)
   if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
@@ -1080,18 +1581,15 @@ badirate=function(perl.5.16="~/Softwares/perl-5.16.3/perl",
   if (!file.exists(paste(out_dir,"/og.split",sep=""))){
     system(paste("mkdir ",out_dir,"/og.split",sep=""))
   }
-  og.lst=system(paste("ls ",out_dir,"/og.split/*.tsv",sep=""),intern=TRUE)
-  if (nrow(famSize)!=length(og.lst)){
-    sapply(1:nrow(famSize), 
-           function(i){
-             if (!file.exists(paste(out_dir,"/og.split/",famSize[i,1],".tsv",sep=""))){
-               write.table(famSize[i,],
-                           paste(out_dir,"/og.split/",famSize[i,1],".tsv",sep=""),
-                           sep="\t",row.names = FALSE,quote=FALSE)
-             }})
-  }
+  sapply(1:nrow(famSize), 
+         function(i){
+           if (!file.exists(paste(out_dir,"/og.split/",famSize[i,1],".tsv",sep=""))){
+             write.table(famSize[i,],
+                         paste(out_dir,"/og.split/",famSize[i,1],".tsv",sep=""),
+                         sep="\t",row.names = FALSE,quote=FALSE)
+           }})
   
-  # branch ID
+  # branch IDs of badirate
   if (!file.exists(paste(out_dir,"/branchID.nwk",sep=""))){
     cmd=paste(perl.5.16,
               badirate.pl,
@@ -1102,21 +1600,34 @@ badirate=function(perl.5.16="~/Softwares/perl-5.16.3/perl",
               sep=" ")
     print(cmd);system(cmd,wait=TRUE)
   }
-
+  # originalTree=ggtree(read.newick(tree.nwk))$data
+  # badirateTree=ggtree(read.newick(paste(out_dir,"/branchID.nwk",sep="")))$data
+  # originalTree=as.data.frame(originalTree)
+  # originalTree$badirateID=str_extract(badirateTree$label,"[0-9]*$")
+  # originalTree$badirate.parentID=sapply(1:nrow(originalTree),
+  #                                       function(i){
+  #                                         parent=originalTree[i,"parent"]
+  #                                         return(originalTree[originalTree$node==parent,"badirateID"])
+  #                                       })
+  # originalTree$badirate.branchID=paste(as.character(originalTree$badirate.parentID),
+  #                                      as.character(originalTree$badirateID),
+  #                                      sep="->")
+  # originalTree$estimation=rep(estimation,nrow(originalTree))
+  # originalTree$rateModel=rep(rateModel,nrow(originalTree))
+  
   # Setup badirate
-  library(badirater)
   setupTab.0=prepare_badirate(og_path=paste(out_dir,"/og.split/",sep=""),
                               tree=tree.nwk,
                               branch_models=c(gr="GR",fr="FR"),
-                              rate_model="BDI",
-                              estimation="ML",
+                              rate_model=rateModel,
+                              estimation=estimation,
                               out_dir=paste(out_dir,"/rawOutput.0",sep=""),
                               script_dir=paste(out_dir,"/scripts.0",sep=""),
-                              replicates=3,
+                              replicates=1,
                               ancestral=TRUE,
                               outlier=TRUE,
                               seed=20231212,
-                              start_value=0,
+                              start_value=start_val,
                               pbs_q="smps",
                               badirate_path=badirate.pl,
                               create_scripts="pbs")
@@ -1124,297 +1635,764 @@ badirate=function(perl.5.16="~/Softwares/perl-5.16.3/perl",
     write.table(setupTab.0,paste(out_dir,"/setupTab.0.tsv",sep=""),
                 sep="\t",row.names=FALSE,quote=FALSE)
   }
-  setupTab.1=prepare_badirate(og_path=paste(out_dir,"/og.split/",sep=""), 
-                              tree=tree.nwk,
-                              branch_models=c(gr="GR",fr="FR"),
-                              rate_model="BDI", 
-                              estimation="ML",
-                              out_dir=paste(out_dir,"/rawOutput.1",sep=""),
-                              script_dir=paste(out_dir,"/scripts.1",sep=""),
-                              replicates=3,
-                              ancestral=TRUE, 
-                              outlier=TRUE,
-                              seed=20231212,
-                              start_value=1,
-                              pbs_q="smps",
-                              badirate_path=badirate.pl,
-                              create_scripts="pbs")
-  if (!file.exists(paste(out_dir,"/setupTab.1.tsv",sep=""))){
-    write.table(setupTab.1,paste(out_dir,"/setupTab.1.tsv",sep=""),
-                sep="\t",row.names=FALSE,quote=FALSE)
-  }
   
   # badirate cmd
-  og.lst=system(paste("ls ",out_dir,"/og.split/*.tsv",sep=""),intern=TRUE)
+  og.lst=system(paste("ls ",out_dir,"/og.split/",sep=""),intern=TRUE)
+  og.lst=paste(out_dir,"/og.split/",og.lst,sep="")
+  #og.lst=paste(out_dir,"/og.split/",famSize[,1],".tsv",sep="")
   if (!file.exists(paste(out_dir,"/rawOutput.0/gr/",sep=""))){
     system(paste("mkdir ",out_dir,"/rawOutput.0/gr/",sep=""))
     system(paste("mkdir ",out_dir,"/rawOutput.0/fr/",sep=""))
-    system(paste("mkdir ",out_dir,"/rawOutput.1/gr/",sep=""))
-    system(paste("mkdir ",out_dir,"/rawOutput.1/fr/",sep=""))
   }
-  
-  library(stringr)
   cmd.0.GR.1=paste(perl.5.16,badirate.pl,
-                 "-seed 20231212",
-                 "-start_val 0",
-                 "-rmodel BDI",
-                 "-bmodel GR",
-                 "-ep ML",
-                 "-treefile",tree.nwk,
-                 "-sizefile",og.lst,
-                 "-anc -outlier",
-                 "-out",paste(out_dir,"/rawOutput.0/gr/",
-                              basename(og.lst),".gr01.bd",sep=""),
-                  sep=" ")
-  cmd.0.GR.2=str_replace(cmd.0.GR.1,"gr01","gr02")
-  cmd.0.GR.3=str_replace(cmd.0.GR.1,"gr01","gr03")
+                   "-seed 20231212",
+                   "-start_val",as.character(start_val),
+                   "-unobs",
+                   "-rmodel",rateModel,
+                   #"-bmodel GR",
+                   "-ep", estimation,
+                   "-treefile",tree.nwk,
+                   "-sizefile",og.lst,
+                   "-anc -outlier",
+                   "-out",paste(out_dir,"/rawOutput.0/gr/",
+                                basename(og.lst),".gr01.bd",sep=""),
+                   sep=" ")
   cmd.0.FR.1=paste(perl.5.16,badirate.pl,
                    "-seed 20231212",
-                   "-start_val 0",
-                   "-rmodel BDI",
+                   "-start_val",as.character(start_val),
+                   "-unobs",
+                   "-rmodel",rateModel,
                    "-bmodel FR",
-                   "-ep ML",
+                   "-ep",estimation,
                    "-treefile",tree.nwk,
                    "-sizefile",og.lst,
                    "-anc -outlier",
                    "-out",paste(out_dir,"/rawOutput.0/fr/",
                                 basename(og.lst),".fr01.bd",sep=""),
-                  sep=" ")
-  cmd.0.FR.2=str_replace(cmd.0.FR.1,"fr01","fr02")
-  cmd.0.FR.3=str_replace(cmd.0.FR.1,"fr01","fr03")
-  cmd.1.GR.1=paste(perl.5.16,badirate.pl,
-                   "-seed 20231212",
-                   "-start_val 1",
-                   "-rmodel BDI",
-                   "-bmodel GR",
-                   "-ep ML",
-                   "-treefile",tree.nwk,
-                   "-sizefile",og.lst,
-                   "-anc -outlier",
-                   "-out",paste(out_dir,"/rawOutput.1/gr/",
-                               basename(og.lst),".gr01.bd",sep=""),
                    sep=" ")
-  cmd.1.GR.2=str_replace(cmd.1.GR.1,"gr01","gr02")
-  cmd.1.GR.3=str_replace(cmd.1.GR.1,"gr01","gr03")
-  cmd.1.FR.1=paste(perl.5.16,badirate.pl,
-                   "-seed 20231212",
-                   "-start_val 1",
-                   "-rmodel BDI",
-                   "-bmodel FR",
-                   "-ep ML",
-                   "-treefile",tree.nwk,
-                   "-sizefile",og.lst,
-                   "-anc -outlier",
-                   "-out",paste(out_dir,"/rawOutput.1/fr/",
-                                basename(og.lst),".fr01.bd",sep=""),
-                  sep=" ")
-  cmd.1.FR.2=str_replace(cmd.1.FR.1,"fr01","fr02")
-  cmd.1.FR.3=str_replace(cmd.1.FR.1,"fr01","fr03")
-  cmd=c(cmd.0.GR.1,cmd.0.GR.2,cmd.0.GR.3,
-        cmd.0.FR.1,cmd.0.FR.2,cmd.0.FR.3,
-        cmd.1.GR.1,cmd.1.GR.2,cmd.1.GR.3,
-        cmd.1.FR.1,cmd.1.FR.2,cmd.1.FR.3)
-  out.file=sapply(cmd,
-                  function(i){
-                    out.file=unlist(strsplit(i," "))
-                    out.file=out.file[length(out.file)]
-                    return(out.file)
-                  })
-  out.file=unname(out.file)
+  cmd=c(cmd.0.GR.1,cmd.0.FR.1)
+  out.file=c(paste(out_dir,"/rawOutput.0/gr/",
+                   basename(og.lst),".gr01.bd",sep=""),
+             paste(out_dir,"/rawOutput.0/fr/",
+                   basename(og.lst),".fr01.bd",sep=""))
   err.file=paste(out.file,".stderr",sep="")
   cmd=paste(cmd,">",err.file,sep=" ")
-  end.output=sapply(out.file,
-                    function(i){
-                      res=TRUE
-                      if (!file.exists(i)){res=FALSE}
-                      if (file.exists(i)){
-                        if (file.size(i)==0){res=FALSE}
-                      }
-                      return(res)
-                    })
-  cmd=cmd[which(!end.output)]
+  tsv=paste(out_dir,"/fam_results/",basename(out.file),".tsv",sep="")
   
   # run badirate
-  print("Start badirate jobs...")
-  library(parallel)
-  clus=makeCluster(as.numeric(threads))
-  parSapply(clus,cmd,
-            function(i){system(i,wait=TRUE)})
-  print("Collect badirate results...")
-  bd_collect(setupTab.0,out_dir=paste(out_dir,"/results.0",sep=""))
-  bd_collect(setupTab.1,out_dir=paste(out_dir,"/results.1",sep=""))
-  
-  # model selection
-  bd_model_select <- function(setup_table, results_dir){
-    dplyr::tibble(file_path = list.files(path = results_dir, pattern =  ".likelihood.txt")) %>%
-      dplyr::mutate(model = file_path %>% stringr::str_sub(0,2),
-                    replicates = file_path %>% stringr::str_sub(3,4) %>% as.numeric()) %>%
-      dplyr::left_join(setup_table %>% select(-replicates), by = "model") %>%
-      dplyr::mutate(data = file_path %>% purrr::map(function(x){paste(results_dir, "/", x, sep = "") %>%
-          readr::read_delim(col_names=c("filename", "nann", "likelihood"), delim = " ", col_types = cols(col_character(), col_character(), col_double()))})) %>%
-      tidyr::unnest() %>%
-      dplyr::mutate(og = filename) %>%
-      dplyr::select(og, model, parameters, replicates, likelihood) %>%
-      dplyr::mutate(aic = 2*(parameters - likelihood)) %>%
-      dplyr::group_by(og, model) %>%
-      dplyr::slice(which.min(aic)) %>%
-      dplyr::ungroup() %>%
-      dplyr::group_by(og) %>%
-      dplyr::mutate(min_aic = min(aic),
-                    waic_num = exp((min_aic - aic)/2),
-                    waic = waic_num / sum(waic_num),
-                    best_waic = max(waic),
-                    second_waic = sort(waic)[-2],
-                    waic_ratio = best_waic / second_waic) %>%
-      dplyr::slice(which.max(waic)) %>%
-      dplyr::select(og, model, replicates, aic, waic, waic_ratio) %>%
-      dplyr::mutate(signif = waic_ratio > 2.7) %>%
-      return()
-  }
-  bestModels.0=bd_model_select(setup_table=setupTab.0, 
-                               results_dir=paste(out_dir,"/results.0/",sep=""))
-  bestModels.0=as.data.frame(bestModels.0)
-  bestModels.0[,"fam"]=sub("\\.tsv.*$","",basename(bestModels.0[,"og"]))
-  #rownames(bestModels.0)=paste(bestModels.0[,"fam"],"-",as.numeric(bestModels.0[,"replicates"]),sep="")
-  write.table(bestModels.0,paste(out_dir,"/bestModels.0.tsv",sep=""),
-              sep="\t",row.names=FALSE,quote=FALSE)
-  bestModels.1=bd_model_select(setup_table=setupTab.1, 
-                               results_dir=paste(out_dir,"/results.1",sep=""))
-  bestModels.1=as.data.frame(bestModels.1)
-  bestModels.1[,"fam"]=sub("\\.tsv.*$","",basename(bestModels.1[,"og"]))
-  #rownames(bestModels.1)=paste(bestModels.1[,"fam"],"-",bestModels.1[,"replicates"],sep="")
-  write.table(bestModels.1,paste(out_dir,"/bestModels.1.tsv",sep=""),
-              sep="\t",row.names=FALSE,quote=FALSE)
-  
-  fam=c(bestModels.1$fam,bestModels.0$fam)
-  fam=fam[!duplicated(fam)]
-  bestModels=data.frame(fam=fam)
-  bestModels[,"bd"]=sapply(bestModels[,"fam"],
-                            function(fam){
-                              aic.0=bestModels.0[bestModels.0[,"fam"]==fam,c("aic","og")]
-                              aic.1=bestModels.1[bestModels.1[,"fam"]==fam,c("aic","og")]
-                              aic=rbind(aic.1,aic.0)
-                              bd=aic[aic$aic==max(aic$aic),"og"][1]
-                              return(bd)
-                            })
-#  ~/Softwares/perl-5.16.3/perl ~/Softwares/badirate/BadiRate.pl -seed 20231212 -start_val 0 -rmodel BDI bmodel GR -ep ML -treefile /bucket/BourguignonU/Cong/termite_pca/timeTree_label.nwk -sizefile /flash/BourguignonU/Cong/termite_pca/AI/badirate.true_geneANDpgeneMat_copyMat/og.split/HOG0019764.1.tsv -anc -outlier -out test.bd
-  bestModels[,"rateModel"]=rep("BDI",nrow(bestModels))
-  bestModels[,"branchModel"]=toupper(basename(dirname(bestModels[,"bd"])))
-  bestModels[,"startValue"]=sub("rawOutput\\.","",str_extract(bestModels[,"bd"],"rawOutput\\.[01]*"))
-  
-  library(ggtree)
-  library(treeio)
-  branchID.tree=read.newick(paste(out_dir,"/branchID.nwk",sep=""))
-  branchID.tree=as.data.frame(ggtree(branchID.tree)$data)
-  nodeID.bd=sapply(branchID.tree$label,
-                   function(i){
-                     if (grepl("_",i)){i=unlist(strsplit(i,"_"));i=i[length(i)]}
-                     return(as.numeric(i))
-                   })
-  node2nodeID.bd=nodeID.bd;names(node2nodeID.bd)=branchID.tree$node
-  parentID.bd=node2nodeID.bd[branchID.tree$parent]
-  branchID.tree=cbind(branchID.tree,nodeID.bd=nodeID.bd,parentID.bd=parentID.bd)
-  ref.tree=as.data.frame(ggtree(read.newick(tree.nwk))$data)
-  branchID.tree$label=ref.tree$label
-  branchID.tree$branchID.bd=paste(as.character(branchID.tree$parentID.bd),
-                                               "->",as.character(branchID.tree$nodeID.bd),
-                                               sep="")
-  clus=makeCluster(as.numeric(threads))
-  clusterExport(cl=clus,varlist = list("branchID.tree","bestModels","read.tree","ggtree","out_dir"))
-  res=parSapply(clus,1:nrow(bestModels),
-                function(i){
-                  #i=2
-                  df=branchID.tree
-                  fam=rep(bestModels[i,"fam"],nrow(df))
-                  branchModel.bd=rep(bestModels[i,"branchModel"],nrow(df))
-                  rateModel.bd=rep(bestModels[i,"rateModel"],nrow(df))
-                  startValue.bd=rep(bestModels[i,"startValue"],nrow(df))
-                  
-                  bd=bestModels[i,"bd"]
-                  repli=unlist(strsplit(basename(bd),"\\."));repli=repli[length(repli)-1]
+  cmd=cmd[which(!file.exists(tsv))]
+  cmd=sample(cmd,length(cmd),replace = FALSE)
+  if (!file.exists(paste(out_dir,"/fam_results/",sep=""))){system(paste("mkdir ",out_dir,"/fam_results/",sep=""))}
+  if (length(cmd)!=0){
+    print("Start badirate jobs...")
+    library(parallel)
+    clus=makeCluster(as.numeric(threads))
+    parSapply(clus,cmd,
+              function(i){
+                bd=unlist(strsplit(i," "))
+                bd=bd[grepl("bd$",bd)]
+                tsv=paste(out_dir,"/fam_results/",basename(bd),".tsv",sep="")
+                
+                bd.finished=TRUE
+                if (!file.exists(bd)){bd.finished=FALSE}
+                if (file.exists(bd)){if (file.size(bd)==0){bd.finished=FALSE}}
+                if (!bd.finished){
+                  system(i,wait=TRUE)
+                }
+                
+                if (!file.exists(tsv)){
+                  library(treeio)
+                  library(ggtree)
+                  library(stringr)
+                  #bd="/flash/BourguignonU/Cong/termite_pca/seqs.HOG/badirate/start0_BDI/rawOutput.0/fr/HOG0000012.tsv.fr01.bd"
                   bd=readLines(bd)
-                  bd=sub("^\t*","",bd)
                   
-                  anc=bd[grepl(paste(bestModels[i,"fam"],"\t",sep=""),bd)]
-                  anc=unlist(strsplit(anc,"\t"))[2]
-                  anc=read.tree(text=anc)
-                  anc=as.data.frame(ggtree(anc)$data)
-                  anc.bd=sapply(anc$label,
-                                function(i){
-                                  if (grepl("_",i)){i=unlist(strsplit(i,"_"));i=i[length(i)]}
-                                  return(as.numeric(i))
-                                })
-                  branchID.bd2branch_code.bd=paste("awk -F '\t' -v OFS='\t' '{if ($1==\"",
-                                                   bestModels[i,"bd"]," \") print $3,$4}' ",
-                                                   out_dir,"/results.",as.character(startValue.bd[1]),
-                                                   "/",repli,".branch_code.txt",
-                                                   sep="")
-                  branchID.bd2branch_code.bd=system(branchID.bd2branch_code.bd,intern=TRUE)
-                  branch_code.bd=sapply(df$branchID.bd,
-                                        function(j){
-                                          a=branchID.bd2branch_code.bd[grepl(j,branchID.bd2branch_code.bd)]
-                                          if (length(a)==0){return(NA)}else{return(unlist(strsplit(a,"\t"))[2])}
-                                        })
-                  # branch_code.bd=unlist(unname(branch_code.bd))
-                  rates=bd[which(bd=="#Branch_Group	Birth	Death	Innovation"):which(bd=="##Ancestral Family Size")]
-                  rates=rates[c(-1,-length(rates),-length(rates)+1)]
-                  Birth.bd=sapply(branch_code.bd,
-                                  function(j){
-                                    if (is.na(j)){return(NA)}else{
-                                      a=unlist(strsplit(rates[grepl(paste("^",j,"\t",sep=""),rates)],"\t"))[2]
-                                      return(as.numeric(a))
-                                    }
-                                  })
-                  Death.bd=sapply(branch_code.bd,
-                                  function(j){
-                                    if (is.na(j)){return(NA)}else{
-                                      a=unlist(strsplit(rates[grepl(paste("^",j,"\t",sep=""),rates)],"\t"))[3]
-                                      return(as.numeric(a))
-                                    }
-                                  })
-                  Innovation.bd=sapply(branch_code.bd,
-                                       function(j){
-                                         if (is.na(j)){return(NA)}else{
-                                           a=unlist(strsplit(rates[grepl(paste("^",j,"\t",sep=""),rates)],"\t"))[4]
-                                           return(as.numeric(a))
-                                         }
-                                       })
-                  #Birth.bd=unname(Birth.bd)
-                  #Death.bd=unname(Death.bd)
-                  #Innovation.bd=unname(Innovation.bd)
+                  originalTree.nwk=bd[grepl("\ttreefile = ",bd)]
+                  originalTree.nwk=sub("\ttreefile = ","",originalTree.nwk)
+                  originalTree=ggtree(read.newick(originalTree.nwk))$data
+                  originalTree=as.data.frame(originalTree)
+                  badirateTree=ggtree(read.tree(text=bd[2]))$data
+                  originalTree$badirateID=sub("_","",str_extract(badirateTree$label,"[0-9]*$"))
+                  originalTree$badirate.parentID=sapply(1:nrow(originalTree),
+                                                        function(i){
+                                                          parent=originalTree[i,"parent"]
+                                                          return(originalTree[originalTree$node==parent,"badirateID"])
+                                                        })
+                  originalTree$badirate.branchID=paste(as.character(originalTree$badirate.parentID),
+                                                       as.character(originalTree$badirateID),
+                                                       sep="->")
+                  badirate.branchID2badirate.branchCode=bd[which(bd=="\tbmodel= "):which(grepl("\tstart_val",bd))]
+                  badirate.branchID2badirate.branchCode=badirate.branchID2badirate.branchCode[-c(1,length(badirate.branchID2badirate.branchCode))]
+                  originalTree$badirate.branchCode=sapply(originalTree$badirate.branchID,
+                                                          function(i){
+                                                            i=paste("\t",i,"\t",sep="")
+                                                            r=badirate.branchID2badirate.branchCode[grepl(i,badirate.branchID2badirate.branchCode)]
+                                                            r=str_extract(r,"\t[0-9]*$")
+                                                            r=sub("\t","",r)
+                                                            if (length(r)==0){r=NA}else{r=as.numeric(r)}
+                                                            return(r)
+                                                          })
+                  seed=bd[grepl("\tseed = ",bd)];seed=sub("\tseed = ","",seed)
+                  originalTree$seed=rep(as.numeric(seed),nrow(originalTree))
+                  estimation=bd[grepl("\tep = ",bd)];estimation=sub("\tep = ","",estimation)
+                  originalTree$estimation=rep(estimation,nrow(originalTree))
+                  rateModel=bd[grepl("\trmodel = ",bd)];rateModel=sub("\trmodel = ","",rateModel)
+                  originalTree$rateModel=rep(rateModel,nrow(originalTree))
+                  start_val=bd[grepl("\tstart_val = ",bd)];start_val=sub("\tstart_val = ","",start_val)
+                  originalTree$start_val=rep(as.numeric(start_val),nrow(originalTree))
+                  sizefile=bd[grepl("\tsizefile = ",bd)];sizefile=sub("\tsizefile = ","",sizefile)
+                  originalTree$sizefile=rep(sizefile,nrow(originalTree))
                   
-                  df=cbind(df,
-                           fam=fam,branch_code.bd=branch_code.bd,
-                           Birth.bd=Birth.bd,Death.bd=Death.bd,Innovation.bd=Innovation.bd,
-                           anc.bd=anc.bd,branchModel.bd=branchModel.bd,rateModel.bd=rateModel.bd,
-                           startValue.bd=startValue.bd)
-                  return(df)
-                })
-  res=data.frame(parent=unlist(res["parent",]),
-                 node=unlist(res["node",]),
-                 branch.length=unlist(res["branch.length",]),
-                 label=unlist(res["label",]),
-                 isTip=unlist(res["isTip",]),
-                 x=unlist(res["x",]),
-                 y=unlist(res["y",]),
-                 branch=unlist(res["branch",]),
-                 angle=unlist(res["angle",]),
-                 nodeID.bd=unlist(res["nodeID.bd",]),
-                 parentID.bd=unlist(res["parentID.bd",]),
-                 branchID.bd=unlist(res["branchID.bd",]),
-                 fam=unlist(res["fam",]),
-                 branch_code.bd=unlist(res["branch_code.bd",]),
-                 Birth.bd=unlist(res["Birth.bd",]),
-                 Death.bd=unlist(res["Death.bd",]),
-                 Innovation.bd=unlist(res["Innovation.bd",]),
-                 anc.bd=unlist(res["anc.bd",]),
-                 branchModel.bd=unlist(res["branchModel.bd",]),
-                 rateModel.bd=unlist(res["rateModel.bd",]),
-                 startValue.bd=unlist(res["startValue.bd",]))
-  write.table(res,paste(out_dir,"/badirate_results.tsv",sep=""),
-              sep="\t",row.names = FALSE,quote = FALSE)
+                  res=originalTree
+                  branchGroups=res[,"badirate.branchCode"];branchGroups=branchGroups[!is.na(branchGroups)]
+                  branchGroups=length(branchGroups[!duplicated(branchGroups)])
+                  
+                  if (rateModel=="BD"){Parameters=1+2*branchGroups}
+                  if (rateModel=="BDI"){Parameters=1+3*branchGroups}
+                  
+                  res$Parameters=rep(Parameters,nrow(originalTree))
+                  
+                  res$fam=rep(NA,nrow(res))
+                  res$log.likelihood=rep(NA,nrow(res))
+                  res$AIC=rep(NA,nrow(res))
+                  res$ancestralState=rep(NA,nrow(res))
+                  res$birthRate.bd=rep(NA,nrow(res))
+                  res$deathRate.bd=rep(NA,nrow(res))
+                  res$innovationRate.bd=rep(NA,nrow(res))
+                  res$outlier=rep(FALSE,nrow(res))
+                  if (bd[length(bd)]=="END OUTPUT"){
+                    log.likelihood=bd[grepl("\t\t#Likelihood: ",bd)]
+                    log.likelihood=as.numeric(sub("\t\t#Likelihood: ","",log.likelihood))
+                    res$log.likelihood=rep(log.likelihood,nrow(res))
+                    res$AIC=2*res$Parameters-2*res$log.likelihood # the preferred model is the one with the minimum AIC value
+                    
+                    anc=bd[which(bd=="\t\t#Family\tAncestral Family Size Tree")+1]
+                    res$fam=rep(unlist(strsplit(anc,"\t"))[3],nrow(res))
+                    anc=unlist(strsplit(anc,"\t"))[4]
+                    anc=as.data.frame(ggtree(read.tree(text=anc))$data)
+                    res$ancestralState=as.numeric(sub("^.*_","",anc$label))
+                    
+                    rates=bd[which(grepl("#Branch_Group\tBirth\tDeath",bd)):which(bd=="\t##Ancestral Family Size")]
+                    rates=rates[c(-1,-length(rates),-length(rates)+1)]
+                    rates=sub("\t\t","",rates)
+                    rates=strsplit(rates,"\t")
+                    for (j in 1:length(rates)){
+                      res[res$badirate.branchCode==as.numeric(rates[[j]][1]) & !is.na(res$badirate.branchCode),
+                          "birthRate.bd"]=as.numeric(rates[[j]][2])
+                      res[res$badirate.branchCode==as.numeric(rates[[j]][1]) & !is.na(res$badirate.branchCode),
+                          "deathRate.bd"]=as.numeric(rates[[j]][3])
+                      res[res$badirate.branchCode==as.numeric(rates[[j]][1]) & !is.na(res$badirate.branchCode),
+                          "innovationRate.bd"]=as.numeric(rates[[j]][4])
+                    }
+                    
+                    outlier=bd[which(bd=="\t##Outlier Families per Branch"):which(bd=="END OUTPUT")]
+                    outlier=outlier[-c(1,2,length(outlier),length(outlier)-1,length(outlier)-2)]
+                    outlier=sub("\t\t","",outlier)
+                    outlier=stringr::str_extract(outlier,"[0-9]*->[0-9]*")
+                    if (length(outlier)!=0){res[res$badirate.branchID%in%outlier,"outlier"]=TRUE}
+                  }
+                  write.table(res,tsv,
+                              row.names=FALSE,quote=FALSE,sep="\t")
+                }
+              })
+  }
 }
 
+# Dependencies: ggtree (R), treeio (R), stringr (R)
+bd2tsv=function(bd=bd, # output of badirate
+                #originalTree.nwk=originalTree.nwk,
+                #badirateTree.nwk=badirateTree.nwk, # This file from `perl.5.16 badirate.pl -print_ids -treefile ${originalTree.nwk} -sizefile ${famSize.tsv} > ${badirateTree.nwk}`
+                tsv=tsv){
+  library(treeio)
+  library(ggtree)
+  library(stringr)
+  bd="/flash/BourguignonU/Cong/termite_pca/seqs.HOG/badirate/start0_BDI/rawOutput.0/fr/HOG0000012.tsv.fr01.bd"
+  bd=readLines(bd)
+  
+  originalTree.nwk=bd[grepl("\ttreefile = ",bd)]
+  originalTree.nwk=sub("\ttreefile = ","",originalTree.nwk)
+  originalTree=ggtree(read.newick(originalTree.nwk))$data
+  originalTree=as.data.frame(originalTree)
+  badirateTree=ggtree(read.tree(text=bd[2]))$data
+  originalTree$badirateID=sub("_","",str_extract(badirateTree$label,"[0-9]*$"))
+  originalTree$badirate.parentID=sapply(1:nrow(originalTree),
+                                        function(i){
+                                          parent=originalTree[i,"parent"]
+                                          return(originalTree[originalTree$node==parent,"badirateID"])
+                                        })
+  originalTree$badirate.branchID=paste(as.character(originalTree$badirate.parentID),
+                                       as.character(originalTree$badirateID),
+                                       sep="->")
+  badirate.branchID2badirate.branchCode=bd[which(bd=="\tbmodel= "):which(grepl("\tstart_val",bd))]
+  badirate.branchID2badirate.branchCode=badirate.branchID2badirate.branchCode[-c(1,length(badirate.branchID2badirate.branchCode))]
+  originalTree$badirate.branchCode=sapply(originalTree$badirate.branchID,
+                                          function(i){
+                                            i=paste("\t",i,"\t",sep="")
+                                            r=badirate.branchID2badirate.branchCode[grepl(i,badirate.branchID2badirate.branchCode)]
+                                            r=str_extract(r,"\t[0-9]*$")
+                                            r=sub("\t","",r)
+                                            if (length(r)==0){r=NA}else{r=as.numeric(r)}
+                                            return(r)
+                                          })
+  seed=bd[grepl("\tseed = ",bd)];seed=sub("\tseed = ","",seed)
+  originalTree$seed=rep(as.numeric(seed),nrow(originalTree))
+  estimation=bd[grepl("\tep = ",bd)];estimation=sub("\tep = ","",estimation)
+  originalTree$estimation=rep(estimation,nrow(originalTree))
+  rateModel=bd[grepl("\trmodel = ",bd)];rateModel=sub("\trmodel = ","",rateModel)
+  originalTree$rateModel=rep(rateModel,nrow(originalTree))
+  start_val=bd[grepl("\tstart_val = ",bd)];start_val=sub("\tstart_val = ","",start_val)
+  originalTree$start_val=rep(as.numeric(start_val),nrow(originalTree))
+  sizefile=bd[grepl("\tsizefile = ",bd)];sizefile=sub("\tsizefile = ","",sizefile)
+  originalTree$sizefile=rep(sizefile,nrow(originalTree))
+  
+  res=originalTree
+  branchGroups=res[,"badirate.branchCode"];branchGroups=branchGroups[!is.na(branchGroups)]
+  branchGroups=length(branchGroups[!duplicated(branchGroups)])
+  
+  if (rateModel=="BD"){Parameters=1+2*branchGroups}
+  if (rateModel=="BDI"){Parameters=1+3*branchGroups}
+  
+  res$Parameters=rep(Parameters,nrow(originalTree))
+  
+  res$fam=rep(NA,nrow(res))
+  res$log.likelihood=rep(NA,nrow(res))
+  res$AIC=rep(NA,nrow(res))
+  res$ancestralState=rep(NA,nrow(res))
+  res$birthRate.bd=rep(NA,nrow(res))
+  res$deathRate.bd=rep(NA,nrow(res))
+  res$innovationRate.bd=rep(NA,nrow(res))
+  res$outlier=rep(FALSE,nrow(res))
+  if (bd[length(bd)]=="END OUTPUT"){
+    log.likelihood=bd[grepl("\t\t#Likelihood: ",bd)]
+    log.likelihood=as.numeric(sub("\t\t#Likelihood: ","",log.likelihood))
+    res$log.likelihood=rep(log.likelihood,nrow(res))
+    res$AIC=2*res$Parameters-2*res$log.likelihood # the preferred model is the one with the minimum AIC value
+    
+    anc=bd[which(bd=="\t\t#Family\tAncestral Family Size Tree")+1]
+    res$fam=rep(unlist(strsplit(anc,"\t"))[3],nrow(res))
+    anc=unlist(strsplit(anc,"\t"))[4]
+    anc=as.data.frame(ggtree(read.tree(text=anc))$data)
+    res$ancestralState=as.numeric(sub("^.*_","",anc$label))
+    
+    rates=bd[which(grepl("#Branch_Group\tBirth\tDeath",bd)):which(bd=="\t##Ancestral Family Size")]
+    rates=rates[c(-1,-length(rates),-length(rates)+1)]
+    rates=sub("\t\t","",rates)
+    rates=strsplit(rates,"\t")
+    for (i in 1:length(rates)){
+      res[res$badirate.branchCode==as.numeric(rates[[i]][1]) & !is.na(res$badirate.branchCode),
+              c("birthRate.bd","deathRate.bd","innovationRate.bd")]=as.numeric(rates[[i]][2:4])
+    }
+    
+    outlier=bd[which(bd=="\t##Outlier Families per Branch"):which(bd=="END OUTPUT")]
+    outlier=outlier[-c(1,2,length(outlier),length(outlier)-1,length(outlier)-2)]
+    outlier=sub("\t\t","",outlier)
+    outlier=stringr::str_extract(outlier,"[0-9]*->[0-9]*")
+    if (length(outlier)!=0){res[res$badirate.branchID%in%outlier,"outlier"]=TRUE}
+  }
+  write.table(res,tsv,
+              row.names=FALSE,quote=FALSE,sep="\t")
+} 
+
+# badirate=function(perl.5.16="~/Softwares/perl-5.16.3/perl",
+#                   badirate.pl="~/Softwares/badirate/BadiRate.pl",
+#                   tree.nwk=tree.nwk,
+#                   famSize.tsv=famSize.tsv, # Fields: FAM_ID sp1 sp2
+#                   out_dir=out_dir,
+#                   threads=threads){
+#   library(badirater)
+#   library(parallel)
+#   library(readr)
+#   library(dplyr)
+#   library(stringr)
+#   library(ggtree)
+#   library(treeio)
+#   # perl.5.16="~/Softwares/perl-5.16.3/perl"
+#   # badirate.pl="~/Softwares/badirate/BadiRate.pl"
+#   # tree.nwk="/flash/BourguignonU/Cong/termite_pca/badirate/test/droso.12sp.tamura.nwk"
+#   # famSize.tsv="/flash/BourguignonU/Cong/termite_pca/badirate/test/og.tsv"
+#   # out_dir="/flash/BourguignonU/Cong/termite_pca/badirate/test/"
+#   # threads=2
+#   
+#   #turnOverRates=c("BDI","GD")
+#   #branchModels=c("FR","GR")
+#   #startValues=c("0","1","2","3")
+#   
+#   threads=as.character(threads)
+#   if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
+#   out_dir=sub("/$","",out_dir)
+#   
+#   # split gene families
+#   famSize=read.table(famSize.tsv,header=TRUE,sep="\t",quote="")
+#   if (!file.exists(paste(out_dir,"/og.split",sep=""))){
+#     system(paste("mkdir ",out_dir,"/og.split",sep=""))
+#   }
+#   sapply(1:nrow(famSize), 
+#          function(i){
+#            if (!file.exists(paste(out_dir,"/og.split/",famSize[i,1],".tsv",sep=""))){
+#              write.table(famSize[i,],
+#                          paste(out_dir,"/og.split/",famSize[i,1],".tsv",sep=""),
+#                          sep="\t",row.names = FALSE,quote=FALSE)
+#            }})
+#   
+#   # branch ID
+#   if (!file.exists(paste(out_dir,"/branchID.nwk",sep=""))){
+#     cmd=paste(perl.5.16,
+#               badirate.pl,
+#               "-print_ids",
+#               "-treefile",tree.nwk,
+#               "-sizefile",famSize.tsv,
+#               ">",paste(out_dir,"/branchID.nwk",sep=""),
+#               sep=" ")
+#     print(cmd);system(cmd,wait=TRUE)
+#   }
+# 
+#   # Setup badirate
+#   setupTab.0=prepare_badirate(og_path=paste(out_dir,"/og.split/",sep=""),
+#                               tree=tree.nwk,
+#                               branch_models=c(gr="GR",fr="FR"),
+#                               rate_model="BDI",
+#                               estimation="ML",
+#                               out_dir=paste(out_dir,"/rawOutput.0",sep=""),
+#                               script_dir=paste(out_dir,"/scripts.0",sep=""),
+#                               replicates=3,
+#                               ancestral=TRUE,
+#                               outlier=TRUE,
+#                               seed=20231212,
+#                               start_value=0,
+#                               pbs_q="smps",
+#                               badirate_path=badirate.pl,
+#                               create_scripts="pbs")
+#   if (!file.exists(paste(out_dir,"/setupTab.0.tsv",sep=""))){
+#     write.table(setupTab.0,paste(out_dir,"/setupTab.0.tsv",sep=""),
+#                 sep="\t",row.names=FALSE,quote=FALSE)
+#   }
+#   setupTab.1=prepare_badirate(og_path=paste(out_dir,"/og.split/",sep=""), 
+#                               tree=tree.nwk,
+#                               branch_models=c(gr="GR",fr="FR"),
+#                               rate_model="BDI", 
+#                               estimation="ML",
+#                               out_dir=paste(out_dir,"/rawOutput.1",sep=""),
+#                               script_dir=paste(out_dir,"/scripts.1",sep=""),
+#                               replicates=3,
+#                               ancestral=TRUE, 
+#                               outlier=TRUE,
+#                               seed=20231212,
+#                               start_value=1,
+#                               pbs_q="smps",
+#                               badirate_path=badirate.pl,
+#                               create_scripts="pbs")
+#   if (!file.exists(paste(out_dir,"/setupTab.1.tsv",sep=""))){
+#     write.table(setupTab.1,paste(out_dir,"/setupTab.1.tsv",sep=""),
+#                 sep="\t",row.names=FALSE,quote=FALSE)
+#   }
+#   
+#   # badirate cmd
+#   og.lst=system(paste("ls ",out_dir,"/og.split/*.tsv",sep=""),intern=TRUE)
+#   if (!file.exists(paste(out_dir,"/rawOutput.0/gr/",sep=""))){
+#     system(paste("mkdir ",out_dir,"/rawOutput.0/gr/",sep=""))
+#     system(paste("mkdir ",out_dir,"/rawOutput.0/fr/",sep=""))
+#     system(paste("mkdir ",out_dir,"/rawOutput.1/gr/",sep=""))
+#     system(paste("mkdir ",out_dir,"/rawOutput.1/fr/",sep=""))
+#   }
+#   
+#   library(stringr)
+#   cmd.0.GR.1=paste(perl.5.16,badirate.pl,
+#                  "-seed 20231212",
+#                  "-start_val 0",
+#                  "-rmodel BDI",
+#                  "-bmodel GR",
+#                  "-ep ML",
+#                  "-treefile",tree.nwk,
+#                  "-sizefile",og.lst,
+#                  "-anc -outlier",
+#                  "-out",paste(out_dir,"/rawOutput.0/gr/",
+#                               basename(og.lst),".gr01.bd",sep=""),
+#                   sep=" ")
+#   cmd.0.GR.2=str_replace(cmd.0.GR.1,"gr01","gr02")
+#   cmd.0.GR.3=str_replace(cmd.0.GR.1,"gr01","gr03")
+#   cmd.0.FR.1=paste(perl.5.16,badirate.pl,
+#                    "-seed 20231212",
+#                    "-start_val 0",
+#                    "-rmodel BDI",
+#                    "-bmodel FR",
+#                    "-ep ML",
+#                    "-treefile",tree.nwk,
+#                    "-sizefile",og.lst,
+#                    "-anc -outlier",
+#                    "-out",paste(out_dir,"/rawOutput.0/fr/",
+#                                 basename(og.lst),".fr01.bd",sep=""),
+#                   sep=" ")
+#   cmd.0.FR.2=str_replace(cmd.0.FR.1,"fr01","fr02")
+#   cmd.0.FR.3=str_replace(cmd.0.FR.1,"fr01","fr03")
+#   cmd.1.GR.1=paste(perl.5.16,badirate.pl,
+#                    "-seed 20231212",
+#                    "-start_val 1",
+#                    "-rmodel BDI",
+#                    "-bmodel GR",
+#                    "-ep ML",
+#                    "-treefile",tree.nwk,
+#                    "-sizefile",og.lst,
+#                    "-anc -outlier",
+#                    "-out",paste(out_dir,"/rawOutput.1/gr/",
+#                                basename(og.lst),".gr01.bd",sep=""),
+#                    sep=" ")
+#   cmd.1.GR.2=str_replace(cmd.1.GR.1,"gr01","gr02")
+#   cmd.1.GR.3=str_replace(cmd.1.GR.1,"gr01","gr03")
+#   cmd.1.FR.1=paste(perl.5.16,badirate.pl,
+#                    "-seed 20231212",
+#                    "-start_val 1",
+#                    "-rmodel BDI",
+#                    "-bmodel FR",
+#                    "-ep ML",
+#                    "-treefile",tree.nwk,
+#                    "-sizefile",og.lst,
+#                    "-anc -outlier",
+#                    "-out",paste(out_dir,"/rawOutput.1/fr/",
+#                                 basename(og.lst),".fr01.bd",sep=""),
+#                   sep=" ")
+#   cmd.1.FR.2=str_replace(cmd.1.FR.1,"fr01","fr02")
+#   cmd.1.FR.3=str_replace(cmd.1.FR.1,"fr01","fr03")
+#   cmd=c(cmd.0.GR.1,cmd.0.GR.2,cmd.0.GR.3,
+#         cmd.0.FR.1,cmd.0.FR.2,cmd.0.FR.3,
+#         cmd.1.GR.1,cmd.1.GR.2,cmd.1.GR.3,
+#         cmd.1.FR.1,cmd.1.FR.2,cmd.1.FR.3)
+#   out.file=sapply(cmd,
+#                   function(i){
+#                     out.file=unlist(strsplit(i," "))
+#                     out.file=out.file[length(out.file)]
+#                     return(out.file)
+#                   })
+#   out.file=unname(out.file)
+#   err.file=paste(out.file,".stderr",sep="")
+#   cmd=paste(cmd,">",err.file,sep=" ")
+#   end.output=sapply(out.file,
+#                     function(i){
+#                       res=TRUE
+#                       if (!file.exists(i)){res=FALSE}
+#                       if (file.exists(i)){
+#                         if (file.size(i)==0){res=FALSE}
+#                       }
+#                       return(res)
+#                     })
+#   cmd=cmd[which(!end.output)]
+#   
+#   # run badirate
+#   print("Start badirate jobs...")
+#   library(parallel)
+#   clus=makeCluster(as.numeric(threads))
+#   parSapply(clus,cmd,
+#             function(i){system(i,wait=TRUE)})
+#   print("Collect badirate results...")
+#   bd_collect(setupTab.0,out_dir=paste(out_dir,"/results.0",sep=""))
+#   bd_collect(setupTab.1,out_dir=paste(out_dir,"/results.1",sep=""))
+#   
+#   # model selection
+#   bd_model_select <- function(setup_table, results_dir){
+#     dplyr::tibble(file_path = list.files(path = results_dir, pattern =  ".likelihood.txt")) %>%
+#       dplyr::mutate(model = file_path %>% stringr::str_sub(0,2),
+#                     replicates = file_path %>% stringr::str_sub(3,4) %>% as.numeric()) %>%
+#       dplyr::left_join(setup_table %>% select(-replicates), by = "model") %>%
+#       dplyr::mutate(data = file_path %>% purrr::map(function(x){paste(results_dir, "/", x, sep = "") %>%
+#           readr::read_delim(col_names=c("filename", "nann", "likelihood"), delim = " ", col_types = cols(col_character(), col_character(), col_double()))})) %>%
+#       tidyr::unnest() %>%
+#       dplyr::mutate(og = filename) %>%
+#       dplyr::select(og, model, parameters, replicates, likelihood) %>%
+#       dplyr::mutate(aic = 2*(parameters - likelihood)) %>%
+#       dplyr::group_by(og, model) %>%
+#       dplyr::slice(which.min(aic)) %>%
+#       dplyr::ungroup() %>%
+#       dplyr::group_by(og) %>%
+#       dplyr::mutate(min_aic = min(aic),
+#                     waic_num = exp((min_aic - aic)/2),
+#                     waic = waic_num / sum(waic_num),
+#                     best_waic = max(waic),
+#                     second_waic = sort(waic)[-2],
+#                     waic_ratio = best_waic / second_waic) %>%
+#       dplyr::slice(which.max(waic)) %>%
+#       dplyr::select(og, model, replicates, aic, waic, waic_ratio) %>%
+#       dplyr::mutate(signif = waic_ratio > 2.7) %>%
+#       return()
+#   }
+#   bestModels.0=bd_model_select(setup_table=setupTab.0, 
+#                                results_dir=paste(out_dir,"/results.0/",sep=""))
+#   bestModels.0=as.data.frame(bestModels.0)
+#   bestModels.0[,"fam"]=sub("\\.tsv.*$","",basename(bestModels.0[,"og"]))
+#   #rownames(bestModels.0)=paste(bestModels.0[,"fam"],"-",as.numeric(bestModels.0[,"replicates"]),sep="")
+#   write.table(bestModels.0,paste(out_dir,"/bestModels.0.tsv",sep=""),
+#               sep="\t",row.names=FALSE,quote=FALSE)
+#   bestModels.1=bd_model_select(setup_table=setupTab.1, 
+#                                results_dir=paste(out_dir,"/results.1",sep=""))
+#   bestModels.1=as.data.frame(bestModels.1)
+#   bestModels.1[,"fam"]=sub("\\.tsv.*$","",basename(bestModels.1[,"og"]))
+#   #rownames(bestModels.1)=paste(bestModels.1[,"fam"],"-",bestModels.1[,"replicates"],sep="")
+#   write.table(bestModels.1,paste(out_dir,"/bestModels.1.tsv",sep=""),
+#               sep="\t",row.names=FALSE,quote=FALSE)
+#   
+#   fam=c(bestModels.1$fam,bestModels.0$fam)
+#   fam=fam[!duplicated(fam)]
+#   bestModels=data.frame(fam=fam)
+#   bestModels[,"bd"]=sapply(bestModels[,"fam"],
+#                             function(fam){
+#                               aic.0=bestModels.0[bestModels.0[,"fam"]==fam,c("aic","og")]
+#                               aic.1=bestModels.1[bestModels.1[,"fam"]==fam,c("aic","og")]
+#                               aic=rbind(aic.1,aic.0)
+#                               bd=aic[aic$aic==max(aic$aic),"og"][1]
+#                               return(bd)
+#                             })
+# #  ~/Softwares/perl-5.16.3/perl ~/Softwares/badirate/BadiRate.pl -seed 20231212 -start_val 0 -rmodel BDI bmodel GR -ep ML -treefile /bucket/BourguignonU/Cong/termite_pca/timeTree_label.nwk -sizefile /flash/BourguignonU/Cong/termite_pca/AI/badirate.true_geneANDpgeneMat_copyMat/og.split/HOG0019764.1.tsv -anc -outlier -out test.bd
+#   bestModels[,"rateModel"]=rep("BDI",nrow(bestModels))
+#   bestModels[,"branchModel"]=toupper(basename(dirname(bestModels[,"bd"])))
+#   bestModels[,"startValue"]=sub("rawOutput\\.","",str_extract(bestModels[,"bd"],"rawOutput\\.[01]*"))
+#   
+#   # bestModels=bestModels.0 if bestModels.1 crashed
+#   
+#   
+#   bestModels=bestModels[!duplicated(bestModels$fam),]
+#   write.table(bestModels,paste(out_dir,"/bestModels.tsv",sep=""),
+#               sep="\t",row.names=FALSE,quote=FALSE)
+#   
+# 
+#   library(ggtree)
+#   library(treeio)
+#   branchID.tree=read.newick(paste(out_dir,"/branchID.nwk",sep=""))
+#   branchID.tree=as.data.frame(ggtree(branchID.tree)$data)
+#   nodeID.bd=sapply(branchID.tree$label,
+#                    function(i){
+#                      if (grepl("_",i)){i=unlist(strsplit(i,"_"));i=i[length(i)]}
+#                      return(as.numeric(i))
+#                    })
+#   node2nodeID.bd=nodeID.bd;names(node2nodeID.bd)=branchID.tree$node
+#   parentID.bd=node2nodeID.bd[branchID.tree$parent]
+#   branchID.tree=cbind(branchID.tree,nodeID.bd=nodeID.bd,parentID.bd=parentID.bd)
+#   ref.tree=as.data.frame(ggtree(read.newick(tree.nwk))$data)
+#   branchID.tree$label=ref.tree$label
+#   branchID.tree$branchID.bd=paste(as.character(branchID.tree$parentID.bd),
+#                                                "->",as.character(branchID.tree$nodeID.bd),
+#                                                sep="")
+#   clus=makeCluster(as.numeric(threads))
+#   clusterExport(cl=clus,varlist = list("branchID.tree","bestModels","read.tree","ggtree","out_dir"))
+#   res=parSapply(clus,1:nrow(bestModels),
+#                 function(i){
+#                   #i=2
+#                   df=branchID.tree
+#                   fam=rep(bestModels[i,"fam"],nrow(df))
+#                   branchModel.bd=rep(bestModels[i,"branchModel"],nrow(df))
+#                   rateModel.bd=rep(bestModels[i,"rateModel"],nrow(df))
+#                   startValue.bd=rep(bestModels[i,"startValue"],nrow(df))
+#                   
+#                   bd=bestModels[i,"bd"]
+#                   repli=unlist(strsplit(basename(bd),"\\."));repli=repli[length(repli)-1]
+#                   bd=readLines(bd)
+#                   bd=sub("^\t*","",bd)
+#                   
+#                   anc=bd[grepl(paste(bestModels[i,"fam"],"\t",sep=""),bd)]
+#                   anc=unlist(strsplit(anc,"\t"))[2]
+#                   anc=read.tree(text=anc)
+#                   anc=as.data.frame(ggtree(anc)$data)
+#                   anc.bd=sapply(anc$label,
+#                                 function(i){
+#                                   if (grepl("_",i)){i=unlist(strsplit(i,"_"));i=i[length(i)]}
+#                                   return(as.numeric(i))
+#                                 })
+#                   branchID.bd2branch_code.bd=paste("awk -F '\t' -v OFS='\t' '{if ($1==\"",
+#                                                    bestModels[i,"bd"]," \") print $3,$4}' ",
+#                                                    out_dir,"/results.",as.character(startValue.bd[1]),
+#                                                    "/",repli,".branch_code.txt",
+#                                                    sep="")
+#                   branchID.bd2branch_code.bd=system(branchID.bd2branch_code.bd,intern=TRUE)
+#                   branch_code.bd=sapply(df$branchID.bd,
+#                                         function(j){
+#                                           a=branchID.bd2branch_code.bd[grepl(j,branchID.bd2branch_code.bd)]
+#                                           if (length(a)==0){return(NA)}else{return(unlist(strsplit(a,"\t"))[2])}
+#                                         })
+#                   # branch_code.bd=unlist(unname(branch_code.bd))
+#                   rates=bd[which(bd=="#Branch_Group	Birth	Death	Innovation"):which(bd=="##Ancestral Family Size")]
+#                   rates=rates[c(-1,-length(rates),-length(rates)+1)]
+#                   Birth.bd=sapply(branch_code.bd,
+#                                   function(j){
+#                                     if (is.na(j)){return(NA)}else{
+#                                       a=unlist(strsplit(rates[grepl(paste("^",j,"\t",sep=""),rates)],"\t"))[2]
+#                                       return(as.numeric(a))
+#                                     }
+#                                   })
+#                   Death.bd=sapply(branch_code.bd,
+#                                   function(j){
+#                                     if (is.na(j)){return(NA)}else{
+#                                       a=unlist(strsplit(rates[grepl(paste("^",j,"\t",sep=""),rates)],"\t"))[3]
+#                                       return(as.numeric(a))
+#                                     }
+#                                   })
+#                   Innovation.bd=sapply(branch_code.bd,
+#                                        function(j){
+#                                          if (is.na(j)){return(NA)}else{
+#                                            a=unlist(strsplit(rates[grepl(paste("^",j,"\t",sep=""),rates)],"\t"))[4]
+#                                            return(as.numeric(a))
+#                                          }
+#                                        })
+#                   #Birth.bd=unname(Birth.bd)
+#                   #Death.bd=unname(Death.bd)
+#                   #Innovation.bd=unname(Innovation.bd)
+#                   
+#                   df=cbind(df,
+#                            fam=fam,branch_code.bd=branch_code.bd,
+#                            Birth.bd=Birth.bd,Death.bd=Death.bd,Innovation.bd=Innovation.bd,
+#                            anc.bd=anc.bd,branchModel.bd=branchModel.bd,rateModel.bd=rateModel.bd,
+#                            startValue.bd=startValue.bd)
+#                   return(df)
+#                 })
+#   res=data.frame(parent=unlist(res["parent",]),
+#                  node=unlist(res["node",]),
+#                  branch.length=unlist(res["branch.length",]),
+#                  label=unlist(res["label",]),
+#                  isTip=unlist(res["isTip",]),
+#                  x=unlist(res["x",]),
+#                  y=unlist(res["y",]),
+#                  branch=unlist(res["branch",]),
+#                  angle=unlist(res["angle",]),
+#                  nodeID.bd=unlist(res["nodeID.bd",]),
+#                  parentID.bd=unlist(res["parentID.bd",]),
+#                  branchID.bd=unlist(res["branchID.bd",]),
+#                  fam=unlist(res["fam",]),
+#                  branch_code.bd=unlist(res["branch_code.bd",]),
+#                  Birth.bd=unlist(res["Birth.bd",]),
+#                  Death.bd=unlist(res["Death.bd",]),
+#                  Innovation.bd=unlist(res["Innovation.bd",]),
+#                  anc.bd=unlist(res["anc.bd",]),
+#                  branchModel.bd=unlist(res["branchModel.bd",]),
+#                  rateModel.bd=unlist(res["rateModel.bd",]),
+#                  startValue.bd=unlist(res["startValue.bd",]))
+#   write.table(res,paste(out_dir,"/badirate_results.tsv",sep=""),
+#               sep="\t",row.names = FALSE,quote = FALSE)
+# }
+
+# DupliPHY-ML: Rates specified for families, but not for branches
+# 2 threads
+# Dependencies: Dupliphy-ML, parallel (R)
+DupliPHYml=function(DupliPHYml.jar="~/Softwares/Dupliphy-ML/DupliphyML.jar",
+                    tree.nwk=tree.nwk,
+                    famSize.tsv=famSize.tsv, # Fields: FAM_ID sp1 sp2
+                    out_prefix=out_prefix){
+  cmd1=paste("java -Xmx509952m -jar",DupliPHYml.jar,
+            famSize.tsv,"BDI+G",tree.nwk,paste(out_prefix,".BDI",sep=""),"100000",
+            ">",paste(out_prefix,".BDI.stderr",sep=""),
+            sep=" ")
+  #print(cmd);system(cmd,wait=TRUE)
+  cmd2=paste("java -Xmx509952m -jar",DupliPHYml.jar,
+            famSize.tsv,"Parsimony+G",tree.nwk,paste(out_prefix,".Parsimony",sep=""),"100000",
+            ">",paste(out_prefix,".Parsimony.stderr",sep=""),
+            sep=" ")
+  library(parallel)
+  clus=makeCluster(2)
+  parSapply(clus,c(cmd2,cmd1),function(i){system(i,wait=TRUE)})
+  #print(cmd);system(cmd,wait=TRUE)
+  
+}
+
+# Count: duplication (lambda), loss (mu) and transfer (kappa), Rates specified for families & branches
+# Dependencies: Count
+Count=function(Count.jar="~/Softwares/Count/Count.jar",
+               tree.nwk=tree.nwk,
+               famSize.tsv=famSize.tsv, # Fields: FAM_ID sp1 sp2
+               out_dir=out_dir){
+  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
+  out_dir=sub("/$","",out_dir)
+  wd=getwd()
+  setwd(out_dir)
+  
+  # Simple model
+  cmd=paste("java -Xmx204800m -jar",Count.jar,"ML",
+            "-gain_k 1 -loss_k 1 -duplication_k 1", # Uniform rates between families
+            "-uniform_duplication true -uniform_duplication true", # Uniform rates between branches
+            tree.nwk,famSize.tsv,"> model.1.txt",
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  # lineage specific rates
+  cmd=paste("java -Xmx204800m -jar",Count.jar,"ML",
+            "-gain_k 1 -loss_k 1 -duplication_k 1", # Uniform rates between families
+            tree.nwk,famSize.tsv," model.1.txt > model.2.txt",
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  # lineage and family specific rates
+  cmd=paste("java -Xmx204800m -jar",Count.jar,"ML",
+            "-gain_k 2 -loss_k 2 -duplication_k 2", # Uniform rates between families
+            tree.nwk,famSize.tsv," model.2.txt > model.3.txt",
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  # lineage and family specific rates (more complex)
+  cmd=paste("java -Xmx204800m -jar",Count.jar,"ML",
+            "-gain_k 3 -loss_k 3 -duplication_k 3", # Uniform rates between families
+            tree.nwk,famSize.tsv," model.3.txt > model.4.txt",
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  # Ancestral state
+  cmd=paste("java -Xmx204800m -jar",Count.jar,"Posteriors",
+            tree.nwk,famSize.tsv," model.4.txt > ancestral.tsv",
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  setwd(wd)
+}
+
+# Ancestral states via ape
+# Dependencies: ape (R), ggtree (R), treeio (R), reshape (R)
+ape.ace=function(tree.nwk=tree.nwk,
+                 famSize.tsv=famSize.tsv, # Fields: FAM_ID sp1 sp2
+                 #type="continuous", # continuous/discrete
+                 out.tsv=out.tsv){
+  #tree.nwk="/bucket/BourguignonU/Cong/termite_pca/timeTree_label.nwk"
+  #famSize.tsv="/bucket/BourguignonU/Cong/termite_pca/AI/true_geneANDpgeneMat_copyMat.tsv"
+  library(ape)
+  library(ggtree)
+  library(reshape2)
+  
+  tree=read.tree(tree.nwk)
+  famSize=read.table(famSize.tsv,sep="\t",header=TRUE,quote="")
+  rownames(famSize)=famSize[,1]
+  df=as.data.frame(ggtree(tree)$data)
+  node2lab=df[!df$isTip,c("node","label")]
+  rownames(node2lab)=node2lab$node
+  
+  mat=matrix(rep(0,nrow(famSize)*nrow(node2lab)),
+             nrow=nrow(famSize),ncol=nrow(node2lab))
+  rownames(mat)=rownames(famSize);colnames(mat)=rownames(node2lab)
+  res=reshape2::melt(mat)
+  colnames(res)=c("Fam","Node","nodeLab")
+  res[,"nodeLab"]=node2lab[as.character(res[,"Node"]),"label"]
+  res[,"ace"]=rep(NA,nrow(res))
+  res[,"95CI.low"]=rep(NA,nrow(res))
+  res[,"95CI.high"]=rep(NA,nrow(res))
+  rownames(res)=paste(res$Fam,as.character(res$Node),sep="-")
+  
+  # library(parallel)
+  # clus=makeCluster(as.numeric(threads))
+  # clusterExport(cl=clus,varlist = list("famSize","ace","tree","res"))
+  for (i in 1:nrow(famSize)){
+    fam=famSize[i,1]
+    x=famSize[i,-1]
+    x=as.numeric(x)
+    names(x)=colnames(famSize)[-1]
+    ancestral=ace(x=x,
+                  phy=tree,
+                  type="continuous",
+                  method="ML",
+                  CI=TRUE)
+    
+    state=ancestral$ace
+    names(state)=paste(fam,as.character(names(state)),sep="-")
+    res[names(state),"ace"]=state
+    
+    CI=ancestral$CI95
+    rownames(CI)=names(state)
+    res[names(state),"95CI.low"]=CI[,1]
+    res[names(state),"95CI.high"]=CI[,2]
+  }
+  write.table(res,out.tsv,sep="\t",row.names = FALSE,quote=FALSE)
+}
+
+# Count gain/loss/innovation events from ape.ace
 
 
 
@@ -1424,15 +2402,72 @@ badirate=function(perl.5.16="~/Softwares/perl-5.16.3/perl",
 
 
 
-
-
-
-
-
-
-
-
-
+# DupliPHYml=function(DupliPHYml.jar="~/Softwares/Dupliphy-ML/DupliphyML.jar",
+#                     tree.nwk=tree.nwk,
+#                     famSize.tsv=famSize.tsv, # Fields: FAM_ID sp1 sp2
+#                     out_dir=out_dir,
+#                     threads=threads){
+#   threads=as.character(threads)
+#   if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
+#   out_dir=sub("/$","",out_dir)
+#   
+#   # split gene families
+#   famSize=read.table(famSize.tsv,header=TRUE,sep="\t",quote="")
+#   if (!file.exists(paste(out_dir,"/og.split",sep=""))){
+#     system(paste("mkdir ",out_dir,"/og.split",sep=""))
+#   }
+#   sapply(1:nrow(famSize), 
+#          function(i){
+#            if (!file.exists(paste(out_dir,"/og.split/",famSize[i,1],".tsv",sep=""))){
+#              write.table(famSize[i,],
+#                          paste(out_dir,"/og.split/",famSize[i,1],".tsv",sep=""),
+#                          sep="\t",row.names = FALSE,quote=FALSE)
+#            }})
+#   
+#   og.lst=system(paste("ls ",out_dir,"/og.split/*.tsv",sep=""),intern=TRUE)
+#   if (!file.exists(paste(out_dir,"/BDI/",sep=""))){
+#     system(paste("mkdir ",out_dir,"/BDI",sep=""))
+#     system(paste("mkdir ",out_dir,"/Parsimony",sep=""))
+#   }
+#   
+#   out_prefix.BDI=paste(out_dir,"/BDI/",famSize[,1],".BDI",sep="")
+#   cmd.BDI=paste("java -jar",DupliPHYml.jar,
+#                 paste(out_dir,"/og.split/",famSize[,1],".tsv",sep=""),
+#                 "BDI",tree.nwk,out_prefix.BDI,"100000",
+#                 ">",paste(out_prefix.BDI,".stderr",sep=""),
+#                 sep=" ")
+#   out_desc.BDI=paste(out_prefix.BDI,"_desc.txt",sep="")
+#   
+#   out_prefix.Parsimony=paste(out_dir,"/Parsimony/",famSize[,1],".Parsimony",sep="")
+#   cmd.Parsimony=paste("java -jar",DupliPHYml.jar,
+#                       paste(out_dir,"/og.split/",famSize[,1],".tsv",sep=""),
+#                       "Parsimony",tree.nwk,out_prefix.Parsimony,"100000",
+#                       ">",paste(out_prefix.Parsimony,".stderr",sep=""),
+#                       sep=" ")
+#   out_desc.Parsimony=paste(out_prefix.Parsimony,"_desc.txt",sep="")
+#   
+#   cmd=c(cmd.Parsimony,cmd.BDI)
+#   out_desc=c(out_desc.Parsimony,out_desc.BDI)
+#   done=sapply(out_desc,
+#               function(i){
+#                 if (!file.exists(i)){
+#                   return(FALSE)
+#                 }else{
+#                   if (file.size(i)==0){
+#                     return(FALSE)
+#                   }else{
+#                     return(TRUE)
+#                   }
+#                 }
+#               })
+#   cmd=cmd[which(!done)]
+#   
+#   library(parallel)
+#   clus=makeCluster(as.numeric(threads))
+#   parSapply(clus,cmd,function(i){system(i,wait=TRUE)})
+#   
+#   
+# }
 
 # # HGTphyloDetect: detect HGTs
 # # Super slow
@@ -1656,3 +2691,112 @@ badirate=function(perl.5.16="~/Softwares/perl-5.16.3/perl",
 #             sep=" ")
 #   print(cmd);system(cmd,wait=TRUE)
 # }
+
+# # Pairwise identity/similarity, gaps removed
+# # Dependencies: seqinr, reshape2
+# pairwiseIdentity=function(alignment,
+#                           out_prefix=out_prefix){
+#   library(seqinr)
+#   library(reshape2)
+#   align=read.alignment(file=alignment,format="fasta")
+#   
+#   identity=dist.alignment(x=align,
+#                           matrix="identity",
+#                           gap=FALSE)
+#   identity=melt(as.matrix(identity))
+#   colnames(identity)=c("Gene1","Gene2","Identity")
+#   identity=identity[identity$Gene1!=identity$Gene2,]
+#   write.table(identity,paste(out_prefix,".identity",sep=""),
+#               sep="\t",row.names=FALSE,quote=FALSE)
+#   
+#   similarity=dist.alignment(x=align,
+#                             matrix="similarity",
+#                             gap=FALSE)
+#   similarity=melt(as.matrix(similarity))
+#   colnames(similarity)=c("Gene1","Gene2","Similarity")
+#   similarity=similarity[similarity$Gene1!=similarity$Gene2,]
+#   write.table(similarity,paste(out_prefix,".similarity",sep=""),
+#               sep="\t",row.names=FALSE,quote=FALSE)
+# }
+# 
+# # Pairwise dN, dS
+# # Dependencies: seqinr (R), reshape2 (R)
+# kaks=function(codon.align=codon.align,
+#               out.tsv=out.tsv){
+#   library(seqinr)
+#   codon=read.alignment(codon.align,format="fasta")
+#   KaKs=seqinr::kaks(codon)
+#   library(reshape2)
+#   dN=KaKs$ka;dN=melt(as.matrix(dN))
+#   dN[,1]=as.character(dN[,1]);dN[,2]=as.character(dN[,2]);dN[,3]=as.numeric(dN[,3])
+#   dN[,c(1,2)]=t(apply(dN[,c(1,2)],1,sort))
+#   dN=dN[!duplicated(dN),];dN=dN[dN[,1]!=dN[,2],]
+#   
+#   dS=KaKs$ks;dS=melt(as.matrix(dS))
+#   dS[,1]=as.character(dS[,1]);dS[,2]=as.character(dS[,2]);dS[,3]=as.numeric(dS[,3])
+#   dS[,c(1,2)]=t(apply(dS[,c(1,2)],1,sort))
+#   dS=dS[!duplicated(dS),];dS=dS[dS[,1]!=dS[,2],]
+#   
+#   dNdS=data.frame(Gene.1=dN[,1],Gene.2=dN[,2],dN=dN[,3])
+#   dNdS$dS=sapply(1:nrow(dNdS),
+#                  function(i){return(dS[dS[,1]==dNdS[i,1] & dS[,2]==dNdS[i,2],3])})
+#   dNdS$Saturation=rep(FALSE,nrow(dNdS))
+#   dNdS[dNdS$dN==9.999999 & dNdS$dS==9.999999,"Saturation"]=TRUE
+#   write.table(dNdS,out.tsv,sep="\t",row.names=FALSE,quote=FALSE)
+# }
+
+# library(ggtree);library(treeio)
+# genome=read.table("~/Desktop/PhD/Results/termite_genome_annotation/quality_genomePeptide.tsv",
+#                   sep="\t",header=TRUE,quote="")
+# rownames(genome)=genome$Label
+# genome$sp.name=paste(genome$Genus,genome$Species,sep="_")
+# df=data.frame(sp=c(),
+#               sp.name=c(),
+#               TE=c(),
+#               TE.containOverlap_length=c(),
+#               TE.containOverlap_proportionGenome=c(),
+#               TE.containOverlap_proportionTE=c())
+# for (i in 1:nrow(genome)){
+#   d=read.table(paste("~/Desktop/PhD/Results/termite_genome_annotation/RepCall/post.EDTA/",
+#                      genome[i,"Label"],"_TE.composition.tsv",sep=""),
+#                sep="\t",header=TRUE,quote="")
+#   d$sp=rep(genome[i,"Label"],nrow(d))
+#   d$sp.name=rep(paste(genome[i,"Genus"],genome[i,"Species"],sep="_"),
+#                 nrow(d))
+#   df=rbind(d,df)
+# }
+# df$TE.type=sub("[/?].*$","",df$TE)
+# df$row=paste(df$sp,"_",df$TE.type,sep="")
+# d=tapply(df$TE.containOverlap_proportionTE,df$row,sum)
+# d=data.frame(row=names(d),TE.containOverlap_proportionGenome=d)
+# d$sp=sapply(d$row,function(i){return(unlist(strsplit(i,"_"))[1])})
+# d$TE=sapply(1:nrow(d),function(i){
+#   return(sub(paste(d[i,"sp"],"_",sep=""),"",d[i,"row"]))})
+# d$sp.name=genome[d$sp,"sp.name"]
+# library(ggplot2)
+# tree=read.newick("~/Desktop/PhD/Results/termite_pca/timeTree.nwk")
+# A=ggtree(tree)+
+#   #geom_tiplab(size=1.5)+
+#   theme(text=element_text(face="bold",size=7))+
+#   theme_tree2()
+# A=revts(A)+
+#   scale_x_continuous(limits=c(-2.5,0),
+#                      breaks=seq(-2.5,0,0.5),
+#                      labels=abs(seq(-2.5,0,0.5)))+
+#   xlab("Time (100 Mya)")+labs(title="A")+
+#   theme(text = element_text(face = "bold",size=7))
+# A
+# B=ggplot(d,aes(y=sp.name,x=TE))+
+#   geom_tile(aes(fill=TE.containOverlap_proportionGenome))+
+#   scale_fill_continuous(low="white",high="red")+
+#   labs(title="B",x=NULL,y=NULL,fill="TE composition")+
+#   theme_classic()+
+#   theme(text=element_text(face="bold",size=7),
+#         axis.text.x=element_text(angle=45,hjust=1))
+# B
+# library(aplot)
+# B %>% insert_left(A,width=0.5)
+
+
+
+

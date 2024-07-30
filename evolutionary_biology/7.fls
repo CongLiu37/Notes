@@ -1,8 +1,8 @@
 PWD /Users/congliu/Desktop/Notes/evolutionary_biology
 INPUT /opt/homebrew/Cellar/texlive/20230313/share/texmf-dist/web2c/texmf.cnf
 INPUT /opt/homebrew/Cellar/texlive/20230313/share/texmf-var/web2c/pdftex/pdflatex.fmt
-INPUT /Users/congliu/Desktop/Notes/evolutionary_biology/6.tex
-OUTPUT 6.log
+INPUT /Users/congliu/Desktop/Notes/evolutionary_biology/7.tex
+OUTPUT 7.log
 INPUT /opt/homebrew/Cellar/texlive/20230313/share/texmf-dist/tex/latex/base/article.cls
 INPUT /opt/homebrew/Cellar/texlive/20230313/share/texmf-dist/tex/latex/base/article.cls
 INPUT /opt/homebrew/Cellar/texlive/20230313/share/texmf-dist/tex/latex/base/article.cls

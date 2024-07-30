@@ -73,13 +73,14 @@ N0_Stat=function(N0.tsv=N0.tsv,
   write.table(res,paste(out_prefix,"_spStat.tsv",sep=""),
               sep="\t",row.names=FALSE,quote=FALSE)
 }
-N0.tsv="/bucket/BourguignonU/Cong/termite_pca/orthofinder/OrthoFinder/Results_Jul24_1/Phylogenetic_Hierarchical_Orthogroups/N0.tsv"
-orthofinder.in_dir="/bucket/BourguignonU/Cong/termite_pca/orthofinder"
-out_prefix="/bucket/BourguignonU/Cong/termite_pca/orthofinder/OrthoFinder/Results_Jul24_1/Phylogenetic_Hierarchical_Orthogroups/N0"
+#N0.tsv="/bucket/BourguignonU/Cong/termite_pca/orthofinder/OrthoFinder/Results_Jul24_1/Phylogenetic_Hierarchical_Orthogroups/N0.tsv"
+#orthofinder.in_dir="/bucket/BourguignonU/Cong/termite_pca/orthofinder"
+#out_prefix="/bucket/BourguignonU/Cong/termite_pca/orthofinder/OrthoFinder/Results_Jul24_1/Phylogenetic_Hierarchical_Orthogroups/N0"
 # OMA
 # 不好用。。。
 
-# Best protein-protein hit by blast
+# Best protein-protein hit (lowest evalue, longest alignment) by blast 
+# Dependencies: diamond, parallel (R)
 best_blastp=function(query.faa=query.faa,
                      reference.faa=reference.faa,
                      out_dir=out_dir,
@@ -89,39 +90,75 @@ best_blastp=function(query.faa=query.faa,
   out_dir=sub("/$","",out_dir)
   if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
   wd=getwd();setwd(out_dir)
+  tmp=paste(out_basename,"_tmp_",sep="")
+  system(paste("mkdir",tmp,sep=" "))
   
-  cmd=paste("cp",query.faa,out_dir,sep=" ")
+  cmd=paste("cp",query.faa,tmp,sep=" ")
   print(cmd);system(cmd,wait=TRUE)
-  query.faa=unlist(strsplit(query.faa,"/"));query.faa=query.faa[length(query.faa)]
+  query.faa=paste(out_dir,"/",tmp,"/",basename(query.faa),sep="")
   
-  cmd=paste("cp",reference.faa,out_dir,sep=" ")
+  cmd=paste("cp",reference.faa,tmp,sep=" ")
   print(cmd);system(cmd,wait=TRUE)
-  reference.faa=unlist(strsplit(reference.faa,"/"));reference.faa=reference.faa[length(reference.faa)]
+  reference.faa=paste(out_dir,"/",tmp,"/",basename(reference.faa),sep="")
   
-  cmd=paste("makeblastdb",
-            "-in",reference.faa,
-            "-dbtype","prot",
-            "-parse_seqids",
+  cmd=paste("diamond makedb",
+            "--in",reference.faa,
+            "--db",paste(reference.faa,".dmdb",sep=""),
+            "--threads",threads,
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   
-  cmd=paste("blastp",
-            "-num_threads",threads,
-            "-db",reference.faa,
-            "-query",query.faa,
-            "-outfmt 6",
-            "-evalue 1e-5",
-            "-num_alignments 1",
-            "-out",paste(out_dir,"/",out_basename,".blast",sep=""),
+  cmd=paste("diamond blastp",
+            "--threads",threads,
+            "--db",paste(reference.faa,".dmdb",sep=""),
+            "--query",query.faa,
+            "--out",paste(out_dir,"/",out_basename,".blast",sep=""),
+            "--min-score 50",
+            "--query-cover 75",
+            "--outfmt 6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore qcovhsp scovhsp",
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   
-  system(paste("rm",query.faa,sep=" "),wait=TRUE)
-  system(paste("rm",reference.faa,sep=" "),wait=TRUE)
-  system(paste("rm"," ",reference.faa,".*",sep=""),wait=TRUE)
+  system(paste("rm -r",tmp,sep=" "),wait=TRUE)
+  
+  blast=read.table(paste(out_dir,"/",out_basename,".blast",sep=""),
+                   sep="\t",header=FALSE,quote="")
+  colnames(blast)=c("qseqid","sseqid","pident","length","mismatch","gapopen",
+                    "qstart","qend","sstart","send","evalue","bitscore",
+                    "qcovhsp","scovhsp")
+  library(parallel)
+  clus=makeCluster(as.numeric(threads))
+  clusterExport(clus,list("blast"),envir=environment())
+  blast[,"retainHit"]=parSapply(clus,
+                                1:nrow(blast),
+                                function(i){
+                                  query=blast[i,"qseqid"]
+                                  evalue=blast[i,"evalue"]
+                                  
+                                  d=blast[blast[,"qseqid"]==query,]
+                                  bestEval=min(d[,"evalue"])
+                                  if (evalue!=bestEval){return(FALSE)}else{return(TRUE)}
+                                })
+  blast=blast[blast[,"retainHit"],]
+  clusterExport(clus,list("blast"),envir=environment())
+  blast[,"retainHit"]=parSapply(clus,
+                                1:nrow(blast),
+                                function(i){
+                                  query=blast[i,"qseqid"]
+                                  length=blast[i,"length"]
+                                  
+                                  d=blast[blast[,"qseqid"]==query,]
+                                  longest=max(d[,"length"])
+                                  if (length!=longest){return(FALSE)}else{return(TRUE)}
+                                })
+  stopCluster(clus)
+  blast=blast[blast[,"retainHit"],]
+  write.table(blast,paste(out_dir,"/",out_basename,".best.blast.tsv",sep=""),
+              sep="\t",row.names=FALSE,quote=FALSE)
   setwd(wd)
 }
-
+# /flash/BourguignonU/Cong/HGT_Anna/blastBetweenLineages/
+# Chitiniovibrionales.faa  Fibromonas.faa  Leadbettera.faa
 #####
 # Gene functions
 #####
@@ -255,7 +292,7 @@ eggNOGmapper=function(proteins.faa=proteins.faa,
   setwd(wd)
 }
   
-# Gene function by best blast hits
+# Gene function by best blast hits (lowest evalue, longest alignment)
 # Dependencies: DIAMOND+nr, parallel (R)
 geneFun_bbh=function(pep.faa=pep.faa,
                      nr.dmdb="/apps/unit/BioinfoUgrp/DB/diamondDB/ncbi/2022-07/nr.dmnd",
@@ -265,7 +302,7 @@ geneFun_bbh=function(pep.faa=pep.faa,
   
   # blast search
   blast=paste(out_prefix,".blast",sep="")
-  if (!file.exists(blast)){ # the task here is to find one best hits
+  #if (!file.exists(blast)){ # the task here is to find one best hits
     cmd=paste("diamond blastp",
               "--threads",threads,
               "--db",nr.dmdb,
@@ -273,13 +310,15 @@ geneFun_bbh=function(pep.faa=pep.faa,
               "--out",blast,
               "--min-score 50",
               "--query-cover 75",
-              "--outfmt 6 qseqid sseqid length evalue bitscore stitle",
+              "--outfmt 6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore qcovhsp scovhsp stitle skingdoms sphylums sscinames",
               sep=" ")
     print(cmd);system(cmd,wait=TRUE)
-  }
+  #}
   
   blast=read.table(blast,sep="\t",header=FALSE,quote="",comment.char="")
-  colnames(blast)=c("qseqid","sseqid","length","evalue","bitscore","stitle")
+  colnames(blast)=c("qseqid","sseqid","pident","length","mismatch","gapopen",
+                    "qstart","qend","sstart","send","evalue","bitscore",
+                    "qcovhsp","scovhsp","stitle","skingdoms","sphylums","sscinames")
   library(parallel)
   clus=makeCluster(as.numeric(threads))
   clusterExport(clus,list("blast"),envir=environment())

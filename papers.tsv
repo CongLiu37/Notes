@@ -1,0 +1,48 @@
+Authors	Year	Journal	Title	Comments
+# Codon usage				
+Behura and Severson	2012	Biological Reviews	"Codon usage bias: causative factors, quantification methods and genome-wide patterns: with emphasis on insect genomes"	
+Reis et al.	2004	Nucleic Acids Research	Sloving the riddle of codon usage preferences: a test for translational selection	
+Burgess et al.	2023	Annual Reviews	tRNA dysregulation in neurodevelopmental and neurodegenerative diseases	"It is notable that for 15 mRNA codons, no tRNA genes with a corresponding anticodon are found in the human genome ( Table 1 ). Although incomplete genome annotation may contribute, this is a reproducible phenomenon across genomes (Ehrlich et al. 2021). The missing anticodons are consistently one of a group of tRNAs in which the first base of the anticodon, corresponding to the more variable third base of the codon, the wobble position, is not represented. The proposed explanation for this is that translational accuracy is actually greater in some cases where non-Watson–Crick base pairing is used, which relies on posttranscriptional modification of the tRNAs to allow a different anticodon tRNA to decode the mRNA (Akashi 1994, Blanchet et al. 2018, Gingold & Pilpel 2011). There is now data in Escherichia coli directly supporting this hypothesis (Sun & Zhang 2022)."
+LaBella et a.	2019	Plos Genetics	Variation and selection on codon usage bias across an entire subphylum	
+Yu et al.	2020	Archives of virology	Comprehensive analysis of synonymous codon usage patterns and influencing factors of porcine epidemic diarrhea virus	
+Shah et al.	2010	PNAS	"Explaining complex codon usage patterns with selection for translational efficienct, mutation bias, and genetic drift"	
+Bailey et al.	2021	Genome biology evolution	Effects of Synonymous Mutations beyond Codon Bias: The Evidence for Adaptive Synonymous Substitutions from Microbial Evolution Experiments	"In microbial experiments, dN remains the most common route of adaptation. dS impacts adaptation through transcriptional/translational efficiency, mRNA folding and stability"
+				
+				
+# dN/dS				
+Buschiazzo et al.	2012	BMC Ecology and Evolution	Slow but not low: genomic comparisons reveal slower evolutionary rate and higher dN/dS in conifers compared to angiosperms	
+Muse	1996	Molecular Biology and Evolution	Estimating synonymous and nonsynonymous substitution rates	"The subtile differences between estimation omega and estimationg dN, dS"
+Escorcia-Rodriguez et al.	2022	PeerJ	"Non-synonymous to synonymous substitutions suggest that orthologs tend to keep their functions, while paralogs are a source of functional novelty"	
+Roux et al.	2024	biorxiv	Social evolution in termites reduces natural selection efficacy	
+Ma et al.	2024	biorxiv	Sociality in spiders is an evolutionary dead-end	
+Ewart et al.	2024	Proceedings of the royal society	Pervasive relaxed selection in termite genomes	
+				
+# Mutation/substitution rate				
+Rubin	2022	Social insect colony size is correlated with rates of molecular evolution	"In bees and ants, substitution rates are positively correlated with colony size. Weakly intensified purifying selection on DNA repair genes in large-colony species"	
+Ho and Lo	2013	Australian journal of entomology	The insect molecular clock	
+Ewart et al.	2024	Proceedings of the royal society B	Pervasive relaxed selection in termite genomes	
+Ho et al.	2011	Molecular ecology	Time-dependent rates of molecular evolution	
+Ho and Lo	2013	Australian journal of entomology	The insect molecular clock	
+Lynch	2010	Trends in genetics	Evolution of the mutation rate	
+				
+				
+				
+# Paralogs: unnecessary complexity				
+Munoz-Gomez et al.	2021	Journal of molecular evolution	Constructive neutral evolution 20 years latter	
+Despres et al.	2024	preprint	Compensatory mutations potentiate constructive neutral evolution by gene duplication	Experimental evidence: Compensatory mutations potentiate constructive neutral evolution by gene duplication
+Iohannes et al.	2023	New phytologist	Tackling redundancy: genetic mechanisms underlying paralog compensation in plants	
+				
+				
+				
+				
+				
+# de novo genes				
+Montanes et al.	2023	Molecular biology and evolution	Evolutionary Trajectories of New Duplicated and Putative De Novo Genes	
+Ruiz-Orera et al.	2018	Nature ecology and evolution	Translation of neutrally evolving peptides provides a basis for de novo gene evolution	
+				
+				
+				
+				
+				
+# Genome structures				
+Zdobnov et al.	2007	Trends in genetics	Quantification of insect genome divergence	

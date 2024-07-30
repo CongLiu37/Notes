@@ -1,0 +1,120 @@
+\documentclass[11pt]{article}
+
+\usepackage[UTF8]{ctex} % for Chinese 
+
+\usepackage{setspace}
+\usepackage[colorlinks,linkcolor=blue,anchorcolor=red,citecolor=black]{hyperref}
+\usepackage{lineno}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{floatrow}
+\usepackage{subfigure}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{geometry}
+\usepackage{multirow}
+\usepackage{longtable}
+\usepackage{lscape}
+\usepackage{booktabs}
+\usepackage{natbibspacing}
+\usepackage[toc,page]{appendix}
+\usepackage{makecell}
+\usepackage{amsfonts}
+ \usepackage{amsmath}
+\usepackage[utf8]{inputenc}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{enumerate}
+\usepackage{comment}
+
+\usepackage[backend=bibtex,style=authoryear,sorting=nyt,maxnames=1]{biblatex}
+\bibliography{} % Reference bib
+
+\title{Genetic drift}
+\author{}
+\date{}
+
+\linespread{1.5}
+\geometry{left=2cm,right=2cm,top=2cm,bottom=2cm}
+
+\setlength\bibitemsep{0pt}
+
+\begin{document}
+\begin{sloppypar}
+  \maketitle
+
+  \linenumbers
+Genetic drift is evolution resulted from chance events of survival, reproduction and inheritance. 
+Drift has five fundamental features. 
+First, drift is unbiased: allele frequency can go up or down, and no specific allele is favoured. 
+Second, random fluctuations in allele frequency are larger in smaller populations. 
+Third, drift causes genetic variation to be lost, as an allele frequency that fluctuates up and down randomly will eventually reach 0 or 1. 
+The loss is fast in small populations with large allele frequency fluctuations. 
+Forth, drift causes populations that are initially identical to become different. 
+Fifth, an allele can be fixed in populations by drift, even though the allele provides no benefit of natural selection. 
+
+\section{The genealogy of genes}
+The genealogy of genes is the paths of their inheritance across generations. 
+Looking backward in time, when the lineages of two gene copies merge, they coalesce. 
+If we go back far enough, we are certain to arrive at the most recent common ancestor of all copies of the gene now present in the population. 
+This typically happens in the recent past when the population size is small. 
+In many cases, each part of the genome has a different genealogy. 
+
+\section{Effective population size: the strength of genetic drift}
+Genetic drift is a random process that is always at work. 
+It is stronger in small populations, and weaker in large populations. 
+Drift is also affected by distribution of age: if most individuals in the population are too young or too old to reproduce, drift is stronger than it would be if all individuals were reporductive. 
+Changes in population size and unequal numbers of reproducing males and females also affect drift. 
+To account for all these factors, consider an idealized population of constant size in which all individuals have an equal chance of leaving offspring. 
+This constant size should make the idealized population the same strength of drift as the actual population. 
+This constant size, or effective populatin size ($N_e$), thus measures strength of drift. 
+A small value of $N_e$ means that drift is strong, while a large value means that drift is weak. 
+If a locus evolves neutrally without any selection in a diploid organism, the average time back to the most recent common ancestor of any pair of gene copies in an extant population is $2N_e$ generations. 
+
+\section{Populations that change in size}
+Population bottleneck is the situation in which a population is reduced to a small size in a small number of generations. 
+A population bottleneck causes intense genetic drift for a brief time and reduces genetic variation. 
+A similar phenomenon is founder event, when a new population is begun from a small number of individuals. 
+
+\section{Drift and genetic variation within species}
+Within a species, variation of DNA sequence at a specific locus is polymorphism. 
+Polymorphism can be quantified by heterozygosity $\pi$, the chance that two copies of a specific locus within a population are different. 
+The expected heterozygosity resulted from neutral mutations evolving by drift in a diploid species 
+\begin{equation}
+    \pi \approx 4 N_e \mu_n (\pi < 0.1)
+\end{equation}
+where $\mu_n$ is the neutral mutation rate, the chance per generation that the locus mutates to another allele that does not change the fitness. 
+
+\par
+
+Polymorphism increases with the effective population size and the neutral mutation rate. 
+Mutations in introns and regions between genes are largely neutral. 
+For these non-coding regions, the nuetral mutation rate approximately equals the mutation rate. 
+For coding regions, most mutations are nonsynonymous (protein sequence changed) and harmful, and are excluded from the population via purifying selection. 
+Loci that experience purifying selection are said to be under selective constraint.
+Therefore, the nuetral mutation rate of coding regions is often much lower than the mutation rate. 
+As a result, polymorphism in non-coding regions is typically higher than coding regions. 
+Within a coding locus, many mutations to the third codon sites are synonymous and neutral, resulting high polymorphism in these sites, compared with the first/second codon sites. 
+
+\par
+
+Chromosome regions with high recombination rates tend to be polymorphic.
+When selection eliminates deleterious mutations in a locus and constraints it, polymorphism of nearby regions is also reduced (background selection). 
+It affects large chromosome regions where recombination is rare. 
+
+
+\section{Estimating population size}
+Estimation of effective population size $N_e$ is from heterozygosity $\pi$ and mutation rate $\mu$. 
+By sequencing several individuals in a population, heterozygosity $\pi$ of neutral regions can be estimated. 
+By sequencing parents and offsprings, mutation rate $\mu$ can be estimated. 
+For neutral regions, $\mu \approx \mu_n$. 
+Thus, we have $N_e \approx \frac{\pi}{4\mu}$. 
+For human, $N_e$ is roughly 10,000. 
+
+\section{Drift and selection}
+
+
+
+\end{sloppypar}
+\end{document}

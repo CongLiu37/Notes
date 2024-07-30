@@ -59,7 +59,128 @@ The fitness function and the trait's distribution together determine whether sel
 Regards to multiple traits, selection can favour particular combinations of traits, which is called correlational selection. 
 
 \section{Evolution by directional selection}
+The evolutionary change in the mean of a trait from a single generation equals the product of two quantities: the strength of directional selection, and the amount of genetic variation. 
+Let $\bar{z}$ be the mean of a trait at the start of a generation. 
+Selection acts on the trait, and the survivors breed to produce the new generation. 
+Let $\bar{z}'$ be the mean of the trait at the start of the new generation. 
+The change of the mean is given by breeder's equation: 
+\begin{equation}
+  \Delta \bar{z} = \bar{z}' - \bar{z} = h^2 S
+\end{equation}
+$h^2$ is the trait's heritability, ranging from 0 to 1. 
+When $h^2=0$, the trait is not heritable. 
+When $h^2=1$, the offspring is exactly identical with the parents. 
+$S$ is the amount of change in the mean of the trait caused by selection within a generation. 
+That is, $S$ equals the difference between the mean of the population after selection. 
+The strength of directional selection is given by selection gradient 
+\begin{equation}
+  \beta = \frac{S}{P}
+\end{equation}
+where $P$ is the phenotypic variance. 
 
-  
+\par
+
+Another version of breeder's equation is 
+\begin{equation}
+  \Delta \bar{z} = G \beta
+\end{equation}
+$G$ is additive genetic variance, the part of the phenotypic variation that is caused by genetic variation, defined as 
+\begin{equation}
+  G = h^2 P
+\end{equation}
+where $P$ is the phenotypic variance of the trait. 
+$G$ is often smaller than $P$ ($h^2 <1$). 
+The rest of the phenotypic variance is contributed by 
+(1) nongenetic factors (environmental variance); and 
+(2) genetic variation that is not additive, caused by dominance and epistasis. 
+
+\par
+
+To predict the direction and strength of directional selection, we can measure the trait of parents and offsprings. 
+The trait's heritability $h^2$ is estimated by the slope of regression line between trait of offsprings (y) and trait of parents (x). 
+These trait values also give estimation on the phenotypic variance $P$. 
+Then we have additive genetic variance $G=h^2P$. 
+Selection gradient $\beta$ is estimated by the slope of regression line between relative fitness ($y$) and trait ($x$). 
+Finally, the change of mean trait $\Delta \bar{z} = G \beta$. 
+The implication here is that we can predict the outcome of genetic evolution without knowing anything about the genes that affect the trait. 
+Neither number of genes that affect the trait, nor the population size, affects the evolution of a quantitative trait, at least in the short term. 
+
+\section{Dominance and epistasis}
+Dominance variance results when the phenotype of heterozygotes is not intermediate between the phenotypes of the homozygotes. 
+Epistatic variance results from the interaction of alleles at different loci. 
+These variances do not contribute to evolutionary changes. 
+For the great majority of traits, the additive genetic variance is much larger than the dominance variance and the epistatic variance. 
+
+\section{Adaptation from standing genetic variation versus new mutations}
+In the change of environmental conditions, many traits will evolve rapidly using genetic variation that already exists, which is called standing genetic variation. 
+Other traits do not have genetic variation now and cannot evolve until new mutations favoured by the new environment appear. 
+In some cases the new mutations take place quickly, but in other cases the critical mutations may not appear for long periods of time. 
+
+\section{Adaptation-extinction race}
+Imagine a species intially at a fitness peak of a quantitative trait. 
+The environment changes, favouring a new value for the trait and causing the mortality rate to exceed the birth rate. 
+Then the population will decline to extinction, unless the trait is heritable, so the population can evolve towards the fitness peak of new environment. 
+Thus, there is a race between adaptation and extinction. 
+
+\par
+
+Several factors influence the outcome of adpatation-extinction race. 
+High standing genetic variation allows the population to adapt quickly. 
+Large initial population size helps survival since the population size must decline a long way before extinction, and many mutations enter the population in each generation. 
+Some species can buffer themselves from the environmental change by adjusting to new conditions physiologically. 
+
+\section{Artificial selection}
+Artificial selection on model species has revealed several key conclusions that are likely to be general for all organisms. 
+Almost all traits evolve when selected. 
+Selection can cause a trait to evolve far beyond its original range of variation. 
+Large populations evolve faster and farther than small populations. 
+Strong selection on one trait often have negative side effects on other traits. 
+
+\section{Correlated traits}
+Traits are correlated. 
+Consider two traits, the evolutionary change in trait 1 caused by one generation of selection is 
+\begin{equation}
+  \Delta \bar{z}_1 = G_1 \beta_1 + G_{1,2} \beta_2
+\end{equation}
+$G_1$ is the additive genetic variance of trait 1, and $\beta_1$ is the selection gradient of trait 1. 
+$G_{1,2}$ is the genetic covariance between trait 1 and trait 2, and $\beta_2$ is the selection gradient of trait 2. 
+A genetic covariance of 0 means the two traits are inherited independently. 
+A positive genetic covariance means that individuals that are large in one trait will tend to have offsprings that are large in both traits. 
+A negative genetic covariance means the opposite: individuals that are large in one trait will tend to have offsprings that are large in that trait, but small in the second trait. 
+
+\par
+
+Therefore, one trait can evolve in two ways. 
+One is direct response to selection, meaning that the trait is evolving because of selection acting on it. 
+Another one is indirect response, meaning that the trait is evolving because of its correlation with another trait on which selection acts. 
+
+\section{Evolutionary constraints and trade-offs}
+Traits that lack standing genetic variation cannot respond to directional selection, and so they have an evolutionary constraint that can prevent them from changing. 
+Evolutionary trade-off occurs when increasing fitness in one way decreases it in another. 
+Genetic correlation can cause evolutionary constraints. 
+When two traits are closely correlated, only specific combinations of trait values exist in the population, and there is little variation on the combinations of trait values. 
+
+\section{Causes of genetic correlations}
+Genetic correlations have two sources. 
+The first is pleiotropy, which occurs when a single locus affects more than one trait. 
+Another source is linkage disequilibrium, the nonrandom association between alleles at different loci. 
+
+\section{Phenotypic plasticity}
+Phenotypic plasticity occurs when an individual's phenotype changes in response to the environment it experiences. 
+It is seen in a wide range of traits including gene expression, development, morphology, physiology and behaviour. 
+Phenotypic plasticity can be adaptive or non-adaptive. 
+
+\par
+
+Phenotypic plasticity can be visualized with reaction norm plotting phenotypes against environmental conditions. 
+Reaction norm can differ among genotypes. 
+Genetic variation in a reaction norm is referred to as genotype-environment interaction. 
+
+\section{Quantitative trait loci (QTL)}
+Quantitative trait loci are genomic regions that affect a quantitative trait. 
+They range in size from a single nucleotide to a chromosomal segment. 
+Identification of QTL is based on the correlation between genotypes and traits: scanning the genome for loci that have large allele frequency differences among individuals with divergent phenotypes. 
+
+
 \end{sloppypar}
 \end{document}
