@@ -117,7 +117,7 @@ pgls=function(x=x,y=y,tips=tips,
 }
 
 # angle of two vectors
-angle_of_vectors=function(x,y){
+angle_of_vectors=function(a,b){
   theta=acos( sum(a*b) / ( sqrt(sum(a*a)) * sqrt(sum(b*b)) ) )
   return(theta)
 }
@@ -192,5 +192,23 @@ bray_curtis=function(x,y){
 
   
   
-  
-  
+# community=igraph::cluster_fast_greedy(tidygraph::as_tbl_graph(validPairs,directed = FALSE),
+#                                       weights=1/validPairs$Ks)
+# seq2community=igraph::membership(community)
+# seq2community=data.frame(seq=names(seq2community),community=as.numeric(unname(seq2community)))
+# rownames(seq2community)=seq2community$seq
+# validPairs$community1=seq2community[validPairs$seq1,"community"]
+# validPairs$community2=seq2community[validPairs$seq2,"community"]  
+
+# karyotype=read.table("~/Desktop/PhD/Results/termite_pca/chromosomes/karyotype.tsv",
+#                      sep="\t",header=TRUE,quote="")
+# karyotype$N50_scaffoldAbove1M=sapply(karyotype$sp,
+#                                      function(sp){
+#                                        d=read.table(paste("~/Desktop/PhD/Results/termite_pca/chromosomes/scaffold_length/",
+#                                                           sp,"_chrLength.tsv",sep=""),
+#                                                     sep="\t",header=FALSE,quote="")
+#                                        return(Biostrings::N50(d[d$V2>1e+6,2]))
+#                                      })
+# write.table(karyotype,
+#             "~/Desktop/PhD/Results/termite_pca/chromosomes/karyotype.tsv",
+#             sep="\t",row.names=FALSE,quote=FALSE)

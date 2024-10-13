@@ -341,6 +341,73 @@ seqNR=function(in.fasta=in.fasta,
   setwd(wd)
 }
 
+# CD-Hit
+# Dependencies: stringr
+cdHit=function(fasta=fasta,
+               seq.type="DNA", # DNA/protein
+               identity_threshold=0.99, # >0.8 for DNA, >0.4 for protein
+               threads=1,
+               memory=4000, # MB
+               out_prefix=out_prefix){
+  dna_word_size=function(id){
+    if (id>0.95){return(10)}
+    if (id>0.9 & id<=0.95){return(8)}
+    if (id>0.88 & id <=0.9){return(7)}
+    if (id>0.85 & id<=0.88){return(6)}
+    if (id>0.8 & id<=0.85){return(5)}
+    if (id>=0.75 & id<=0.8){return(4)}
+  }
+  prot_word_size=function(id){
+    if (id>0.7){return(5)}
+    if (id>0.6 & id<=0.7){return(4)}
+    if (id>0.5 & id<=0.6){return(3)}
+    if (id>=0.4 & id<=0.5){return(2)}
+  }
+  
+  if (seq.type=="DNA"){cmd="cd-hit-est";word_size=dna_word_size(identity_threshold)}
+  if (seq.type=="protein"){cmd="cd-hit";word_size=prot_word_size(identity_threshold)}
+  
+  cmd=paste(cmd,
+            "-i",fasta,
+            "-o",out_prefix,
+            "-c",as.character(identity_threshold),
+            "-M",as.character(memory),
+            "-T",as.character(threads),
+            "-n",as.character(word_size),
+            "-d 0")
+  print(cmd);system(cmd,wait=TRUE)
+  # make MAX_SEQ=100000000
+  cmd=paste("clstr2txt.pl",
+            paste(out_prefix,".clstr",sep=""),
+            ">",
+            paste(out_prefix,".tmp.tsv",sep=""),
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  df=read.table(paste(out_prefix,".tmp.tsv",sep=""),
+                sep="\t",header=TRUE,quote="")
+  res=data.frame(cluster=paste("Cluster",as.character(df$clstr),sep=""))
+  res$seq=df$id
+  res$length=df$length
+  res$representative=(df$clstr_rep==1)
+  res$identity2representative=as.numeric(sub("%$","",df$clstr_iden))/100
+  res$lengthABOVErepresentative=as.numeric(sub("%$","",df$clstr_cov))/100
+  
+  write.table(res,paste(out_prefix,".tsv",sep=""),
+              sep="\t",row.names=FALSE,quote=FALSE)
+  
+  cmd=paste("mv",out_prefix,
+            paste(out_prefix,"_representative.fasta",sep=""),
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  cmd=paste("rm",paste(out_prefix,".tmp.tsv",sep=""),
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+}
+
+
 # DANTE: Domain based annotation of transposable elements
 # Dependencies: DANTE
 dante=function(transposon.fna=transposon.fna,
@@ -361,6 +428,36 @@ dante=function(transposon.fna=transposon.fna,
   
   setwd(wd)
 }
+# dtv.tree=treeio::read.newick("~/Desktop/PhD/Results/termite_pca/molEvol_rate/single_copy_4dtv/4dtv.nwk")
+# dtv.tree.co=ape::cophenetic.phylo(dtv.tree)
+# dS=read.table("~/Desktop/PhD/Results/termite_pca/molEvol_rate/dS_betweenSp/sp.pair_dS_1vs1.HOG.tsv",
+#               header=TRUE,quote="",sep="\t")
+# dS$dtv.div=sapply(1:nrow(dS),
+#                   function(i){return(dtv.tree.co[dS[i,"sp1"],dS[i,"sp2"]])})
+# library(ggplot2)
+# ggplot()+
+#   geom_point(data=dS,aes(x=dtv.div,y=medianKs_1vs1.HOG))+
+#   scale_x_continuous(limits = c(0,1.5))+
+#   scale_y_continuous(limits=c(0,1.5))
+# sum((dS$dtv.div-dS$meanKs_1vs1.HOG)^2)
+#f=function(n){return(n*(n-1)/2)}
+#ggplot()+
+#  geom_point(aes(x=1000:1500,f(1000:1500)))
+align=Biostrings::readDNAMultipleAlignment("~/Desktop/PhD/Results/termite_pca/molEvol_rate/single_copy_4dtv/single_copy_4dtv.fna",
+                                          "fasta")
+align=ape::as.DNAbin(align)
+K80=ape::dist.dna(align,model="K80",pairwise.deletion=TRUE,as.matrix=TRUE)
+Raw=ape::dist.dna(align,model="raw",pairwise.deletion=TRUE,as.matrix=TRUE)
+sp.pair=expand.grid(colnames(K80),colnames(K80))
+sp.pair=unique(t(apply(sp.pair, 1, sort)))
+sp.pair=as.data.frame(sp.pair)
+sp.pair=sp.pair[sp.pair$V1!=sp.pair$V2,]
+sp.pair$K80=sapply(1:nrow(sp.pair),function(i){return(K80[sp.pair[i,1],sp.pair[i,2]])})
+sp.pair$Raw=sapply(1:nrow(sp.pair),function(i){return(Raw[sp.pair[i,1],sp.pair[i,2]])})
+ggplot(sp.pair)+
+  geom_line(aes(x=K80,y=Raw))+
+  scale_x_continuous(limits = c(0,1))+
+  scale_y_continuous(limits = c(0,1))
 
 # Refiner: build consensus for transposon family
 # Dependencies: Refiner implemented in RepeatModeler, seqkit

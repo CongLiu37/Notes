@@ -98,6 +98,27 @@ self2self_blastp=function(protein.faa=protein.faa,
   print(cmd);system(cmd,wait=TRUE)
 }
 
+self2self_diamond=function(protein.faa=protein.faa,
+                          threads=threads,
+                          out_prefix=out_prefix){
+  cmd=paste("diamond makedb",
+            "--db",paste(out_prefix,".dmdb",sep=""),
+            "--in",protein.faa,
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  cmd=paste("diamond blastp",
+            "--query",protein.faa,
+            "--db",paste(out_prefix,".dmdb",sep=""),
+            "--threads",as.character(threads),
+            "--out",paste(out_prefix,".self2self.blast",sep=""),
+            "--evalue 1e-5",
+            "--outfmt 6",
+            "--max-target-seqs 20",
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+}
+
 # MCScanX: classify duplicated gene pairs
 # Dependencies: blastp, MCScanX, stringr (R)
 MCScanX_dupliClass=function(gff=gff,
@@ -150,14 +171,16 @@ wgdi_input=function(genome.fna1=genome.fna1,gff1=gff1,proteins.faa1=proteins.faa
                     # Corresponding proetin & cds has same ID
                     threads=threads,
                     out_dir=out_dir,
-                    out_basename=out_basename){
+                    out_basename1=out_basename1,
+                    out_basename2=out_basename2 # not used for intragenomic comparisons
+                    ){
   threads=as.character(threads)
   out_dir=sub("/$","",out_dir)
   if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
   wd=getwd();setwd(out_dir)
   self2self=genome.fna1==genome.fna2
   
-  # Prepare fake gff and len file required by wgdi
+  
   # Dependencies: https://github.com/xuzhougeng/myscripts/blob/master/comparative/generate_conf.py
   wgdi_input=function(genome.fna=genome.fna,
                       gff=gff,
@@ -168,11 +191,13 @@ wgdi_input=function(genome.fna1=genome.fna1,gff1=gff1,proteins.faa1=proteins.faa
               sep=" ")
     print(cmd);system(cmd,wait=TRUE)
   }
+  
+  # Prepare fake gff and len file required by wgdi
   wgdi_input(genome.fna=genome.fna1,
              gff=gff1,
-             out_prefix=out_basename)
-  fake_gff1=paste(out_dir,"/",out_basename,".gff",sep="")
-  len1=paste(out_dir,"/",out_basename,".len",sep="")
+             out_prefix=out_basename1)
+  fake_gff1=paste(out_dir,"/",out_basename1,".gff",sep="")
+  len1=paste(out_dir,"/",out_basename1,".len",sep="")
   # Remove contigs without genes
   cmd=paste("awk -F '\t' -v OFS='\t' '{if ($3!=0) print $0}'",len1,"> len1",sep=" ")
   print(cmd);system(cmd,wait=TRUE)
@@ -184,9 +209,9 @@ wgdi_input=function(genome.fna1=genome.fna1,gff1=gff1,proteins.faa1=proteins.faa
   if (!self2self){
     wgdi_input(genome.fna=genome.fna2,
                gff=gff2,
-               out_prefix=out_basename)
-    fake_gff2=paste(out_dir,"/",out_basename,".gff",sep="")
-    len2=paste(out_dir,"/",out_basename,".len",sep="")
+               out_prefix=out_basename2)
+    fake_gff2=paste(out_dir,"/",out_basename2,".gff",sep="")
+    len2=paste(out_dir,"/",out_basename2,".len",sep="")
     # Remove contigs without genes
     cmd=paste("awk -F '\t' -v OFS='\t' '{if ($3!=0) print $0}'",len2,"> len2",sep=" ")
     print(cmd);system(cmd,wait=TRUE)
@@ -196,8 +221,8 @@ wgdi_input=function(genome.fna1=genome.fna1,gff1=gff1,proteins.faa1=proteins.faa
     print(cmd);system(cmd,wait=TRUE)
     system(paste("rm",fake_gff2,sep=" "));system(paste("mv","fake_gff2",fake_gff2,sep=" "))
   }else{
-    fake_gff2=paste(out_dir,"/",out_basename,".gff",sep="")
-    len2=paste(out_dir,"/",out_basename,".len",sep="")
+    fake_gff2=paste(out_dir,"/",out_basename1,".gff",sep="")
+    len2=paste(out_dir,"/",out_basename1,".len",sep="")
   }
   
   # Run blast
@@ -211,43 +236,43 @@ wgdi_input=function(genome.fna1=genome.fna1,gff1=gff1,proteins.faa1=proteins.faa
     print(cmd);system(cmd,wait=TRUE)
   }
   proteins.faa2=unlist(strsplit(proteins.faa2,"/"));proteins.faa2=proteins.faa2[length(proteins.faa2)]
-  if (!file.exists(paste("../",out_basename,".blast",sep=""))){
-    cmd=paste("makeblastdb",
-              "-in",proteins.faa1,
-              "-dbtype prot",
+  if (!file.exists(paste("../",out_basename1,".blast",sep=""))){
+    cmd=paste("diamond makedb",
+              "--db",paste(proteins.faa2,".dmdb",sep=""),
+              "--in",proteins.faa2,
               sep=" ")
     print(cmd);system(cmd,wait=TRUE)
-    cmd=paste("blastp",
-              "-num_threads",threads,
-              "-db",proteins.faa1,
-              "-query",proteins.faa2,
-              "-outfmt 6",
-              "-evalue 1e-5",
-              "-num_alignments 20",
-              "-out",paste(out_basename,".blast",sep=""),
+    cmd=paste("diamond blastp",
+              "--threads",as.character(threads),
+              "--db",paste(proteins.faa2,".dmdb",sep=""),
+              "--query",proteins.faa1,
+              "--outfmt 6",
+              "--evalue 1e-5",
+              "--max-target-seqs 20",
+              "--out",paste(out_basename1,".blast",sep=""),
               sep=" ")
     print(cmd);system(cmd,wait=TRUE)
-    blast1=paste(out_basename,".blast",sep="")
+    blast1=paste(out_basename1,".blast",sep="")
     system(paste("mv",blast1,"../",sep=" "),wait=TRUE)
   }
   if (!self2self){
-    if (!file.exists(paste("../",out_basename,"_reverse.blast",sep=""))){
-      cmd=paste("makeblastdb",
-                "-in",proteins.faa2,
-                "-dbtype prot",
+    if (!file.exists(paste("../",out_basename2,".blast",sep=""))){
+      cmd=paste("diamond makedb",
+                "--db",paste(proteins.faa1,".dmdb",sep=""),
+                "--in",proteins.faa1,
                 sep=" ")
       print(cmd);system(cmd,wait=TRUE)
-      cmd=paste("blastp",
-                "-num_threads",threads,
-                "-db",proteins.faa2,
-                "-query",proteins.faa1,
-                "-outfmt 6",
-                "-evalue 1e-5",
-                "-num_alignments 20",
-                "-out",paste(out_basename,"_reverse.blast",sep=""),
+      cmd=paste("diamond blastp",
+                "--threads",as.character(threads),
+                "--db",paste(proteins.faa1,".dmdb",sep=""),
+                "--query",proteins.faa2,
+                "--outfmt 6",
+                "--evalue 1e-5",
+                "--max-target-seqs 20",
+                "--out",paste(out_basename2,".blast",sep=""),
                 sep=" ")
       print(cmd);system(cmd,wait=TRUE)
-      blast2=paste(out_basename,"_reverse.blast",sep="")
+      blast2=paste(out_basename2,".blast",sep="")
       system(paste("mv",blast2,"../",sep=" "),wait=TRUE)
     }
   }else{
@@ -415,12 +440,14 @@ wgdi_bi=function(blast=blast,
   setwd(wd)
 }
 
+
+
 # ks+collinearity
 # Dependencies: wgdi
 wgdi_bk=function(wgdi_BlockInfo=wgdi_BlockInfo,
                  lens1=lens1,lens2=lens2,
                  genome1_name=genome1_name,genome2_name=genome2_name,
-                 p_block=1, # 0-1,
+                 p_block=0.2, # 0-1,
                  out_basename=out_basename,
                  out_dir=out_dir){
   out_dir=sub("/$","",out_dir)
@@ -894,6 +921,15 @@ mafft=function(in.fa=in.faa,
             align.fa,
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
+}
+
+# MAFFT in R
+# Dependencies: ips (R)
+mafftr=function(seqs=seqs # An object of class DNAbin or AAbin.
+                ){
+  res=ips::mafft(x=seqs,
+             method="auto",
+             thread=1)
 }
 
 # Convert protein alignments to CDS alignments
@@ -2393,12 +2429,8 @@ ape.ace=function(tree.nwk=tree.nwk,
 }
 
 # Count gain/loss/innovation events from ape.ace
-
-
-
-
-
-
+# Gene conversion
+# ../../geneconv -Seqfile=test.fna -Outfile=test.frags -Logfile=test.log -Seqtype=SIL -Include_monosites  -ListPair
 
 
 
