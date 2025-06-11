@@ -13,6 +13,9 @@ Content:
 10. Ortholog groups, gene functions & metabolic network
 11. Genomic analysis of protein-coding genes:
   condon/AA usage, exon-intron, protein domain, gene family, selection, etc.
+12. Statistics
+13. Whole genome alignments
+
 Mode of README for projects:
 ###############################################################################################
 ###############################################################################################

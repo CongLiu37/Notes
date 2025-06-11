@@ -189,9 +189,123 @@ bray_curtis=function(x,y){
 # Kullback-Leibler divergence of y to x
 # Jensen-Shannon divergence 
 
+# likelyhood ratio test
+LRT=function(loglik.simple.model=loglik.simple.model,
+             loglik.complex.model=loglik.complex.model,
+             df=df){
+  # df: the difference in #parameters in complex and simple model
+  # H0: You should use the simple model.
+  # H1: You should use the complex model.
+  lr=-2*(loglik.simple.model-loglik.complex.model)
+  p=pchisq(lr, df = df, lower.tail = FALSE)
+  return(p)
+}
 
+# gff->bed->sequences
+gff2bed2seq=function(gff=gff,
+                     fna=fna,
+                     out.fna=out.fna){
+  gff=ape::read.gff(gff)
+  gff$name=sapply(gff[,9],
+                  function(i){
+                    i=unlist(strsplit(i,";"))
+                    i=i[grepl("^Name=",i)]
+                    i=sub("^Name=","",i)
+                    i=sub(";$","",i)
+                    return(i)
+                  })
+  bed=gff[,c(1,4,5,10)]
+  bed[,2]=bed[,2]-1
+  bed[,5]="."
+  bed[,6]=gff[,7]
+  write.table(bed,paste(out.fna,".bed",sep=""),
+              sep="\t",row.names=FALSE,col.names=FALSE,quote=FALSE)
   
+  cmd=paste("bedtools getfasta",
+            "-fi",fna,
+            "-bed",paste(out.fna,".bed",sep=""),
+            "-nameOnly -s | ",
+            "sed 's/([+-])//' > ",
+            out.fna,
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+}
+
+# evolutionary time (eTime, substitutions per site) to calender time
+# Dependencies: ape (R), ggtree (R), tidytree (R)
+eTime2cTime(sp="Gfus",eTime=0.75)
+eTime2cTime=function(eTime.nwk="~/Desktop/PhD/Results/termite_pca/molEvol_rate/single_copy_4dtv/4dtv.nwk",
+                     cTime.nwk="~/Desktop/PhD/Results/termite_pca/timeTree_label.nwk",
+                     sp=sp,eTime=eTime){
+  # eTime.nwk="~/Desktop/PhD/Results/termite_pca/molEvol_rate/single_copy_4dtv/4dtv.nwk"
+  # cTime.nwk="~/Desktop/PhD/Results/termite_pca/timeTree_label.nwk"
+  # eTime=0.1589597
+  # sp="Znev"
   
+  eTime.tree=ape::read.tree(eTime.nwk)
+  eTime.tree.data=as.data.frame(ggtree::ggtree(eTime.tree)$data)
+  
+  cTime.tree=ape::read.tree(cTime.nwk)
+  cTime.tree.data=as.data.frame(ggtree::ggtree(cTime.tree)$data)
+  
+  if (!all(eTime.tree$tip.lab==cTime.tree$tip.lab)){
+    print("Fatal: input tree topologies are not identical")
+    print("Output makes no sense")
+  }
+  
+  cTime.tree.data$mu=eTime.tree.data$branch.length / cTime.tree.data$branch.length
+  
+  start_node=eTime.tree.data[eTime.tree.data$label==sp,"node"]
+  start_node.x=eTime.tree.data[eTime.tree.data$label==sp,"x"]
+  
+  ancester_nodes=tidytree::ancestor(eTime.tree,start_node)
+  ancester_nodes.x=eTime.tree.data[ancester_nodes,"x"]
+  
+  nodes.lst=c(start_node, ancester_nodes)
+  x.lst=c(start_node.x,ancester_nodes.x)
+  
+  if (eTime>=x.lst[1]){
+    print("Events before the root of the tree")
+    x.cTime=NULL
+    y.cTime=NULL
+    x.eTime=NULL
+    y.eTime=NULL
+  }else{
+    x.eTime=x.lst[1]-eTime
+    i=which(x.eTime<=x.lst)[length(which(x.eTime<=x.lst))]
+    most.recent.node2eTime=nodes.lst[i]
+    
+    cTime=max(cTime.tree.data[,"x"])-cTime.tree.data[most.recent.node2eTime,"x"]+
+      +(eTime.tree.data[most.recent.node2eTime,"x"]-x.eTime)/cTime.tree.data[most.recent.node2eTime,"mu"]
+    x.cTime=max(cTime.tree.data[,"x"])-cTime
+    y.cTime=cTime.tree.data[most.recent.node2eTime,"y"]
+    
+    y.eTime=eTime.tree.data[most.recent.node2eTime,"y"]
+  }
+  
+  res=list(sp=sp,eTime=eTime,cTime=cTime,
+           coordinate.eTime.tree=c(x.eTime,y.eTime),
+           coordinate.cTime.tree=c(x.cTime,y.cTime))
+  return(res)
+}
+
+d=read.table("~/Desktop/PhD/Results/backup_tables/termiteGenome_DNA_Nanopore.tsv",header=TRUE,sep="\t",quote="")
+sp.tree=ape::read.tree("~/Desktop/PhD/Results/termite_pca/timeTree_label.nwk")
+d=d[order(match(d$Label, sp.tree$tip.label)),]
+d$f=basename(d$Reads)
+d$f=sub("\\.fastq","",d$f)
+d$f=sub("\\.gz","",d$f)
+write.table(d,"~/Desktop/PhD/Writting/HGT_new/Table_S1.tsv",sep="\t",row.names=FALSE,quote=FALSE)
+#res
+#ggtree(eTime.tree)+geom_point(aes(x=0.6090303,y=4.5000000))
+#ggtree(cTime.tree)+geom_point(aes(x=1.741917,y=4.5000000))
+# rbibutils::bibConvert("~/Desktop/PhD/Writting/HGT/HGT.bib", 
+#                       "~/Desktop/PhD/Writting/HGT/HGT.xml",
+#                       informat="bib",
+#                       outformat="word")
+
+
+
 # community=igraph::cluster_fast_greedy(tidygraph::as_tbl_graph(validPairs,directed = FALSE),
 #                                       weights=1/validPairs$Ks)
 # seq2community=igraph::membership(community)
@@ -212,3 +326,5 @@ bray_curtis=function(x,y){
 # write.table(karyotype,
 #             "~/Desktop/PhD/Results/termite_pca/chromosomes/karyotype.tsv",
 #             sep="\t",row.names=FALSE,quote=FALSE)
+
+

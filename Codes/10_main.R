@@ -32,9 +32,152 @@ Re_orthofinder=function(previous_orthofinder_result_dir=previous_orthofinder_res
             "-ft",previous_orthofinder_result_dir,
             "-s",tree,
             sep=" ")
+  
   print(cmd);system(cmd,wait=TRUE)
 }
 
+# Dependencies: MAFFT, PAL2NAL,treeio (R), ape (R), ggtree (R), tidytree (R), parallel (R)
+formatHOGs_orthofinder=function(N0.tsv=N0.tsv,
+                                spTree_4orthofinder.nwk=spTree_4orthofinder.nwk, # only tree topology is used
+                                pep.faa.lst=pep.faa.lst, # comma-lst
+                                cds.fna.lst=cds.fna.lst, # comma-lst
+                                out_dir=out_dir,
+                                out_prefix=out_prefix,
+                                threads=threads){
+  out_dir=sub("/$","",out_dir)
+  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "))}
+  
+  N0=read.table(N0.tsv,sep="\t",header=TRUE,quote="")
+  N0=N0[,c(1,4:ncol(N0))]
+  N0$HOG=sub("^N0\\.","",N0$HOG)
+  HOG=N0$HOG
+  N0=cbind(HOG,
+           data.frame(apply(N0[,-1],c(1,2),
+                            function(i){return(gsub(" ","",i))})))
+  
+  HOGxSpecies4copy=cbind(HOG,
+                         data.frame(apply(N0[,-1],c(1,2),
+                                          function(i){return(length(unlist(strsplit(i,","))))})))
+  write.table(HOGxSpecies4copy,
+              paste(out_dir,"/",out_prefix,"_HOGxSpecies4copy.tsv",sep=""),
+              row.names=FALSE,quote=FALSE,sep="\t")
+
+  library(parallel)
+  clus=makeCluster(threads)
+  
+  clusterExport(cl=clus,varlist=list("HOGxSpecies4copy"),envir=environment())
+  single_copy=parSapply(clus,HOGxSpecies4copy$HOG,
+                        function(hog){
+                          n=unlist(HOGxSpecies4copy[HOGxSpecies4copy$HOG==hog,-1])
+                          return(all(n==1))
+                        })
+  single_copy_HOG=HOGxSpecies4copy[which(single_copy),"HOG"]
+  writeLines(single_copy_HOG,
+             paste(out_dir,"/",out_prefix,"_single_copy_HOG.lst",sep=""))
+  
+  if (!file.exists(paste(out_dir,"/",out_prefix,"_HOG_stat.tsv",sep=""))){
+    tree=treeio::read.newick(spTree_4orthofinder.nwk)
+    tree.data=ggtree::ggtree(tree)$data
+    tree.data=as.data.frame(tree.data)
+    node2label=tree.data$label
+    names(node2label)=as.character(tree.data$node)
+    HOG_stat=data.frame(HOG=HOG,
+                        num_genes=apply(HOGxSpecies4copy[,-1],1,sum))
+    clusterExport(cl=clus,varlist=list("HOGxSpecies4copy","tree","node2label"),envir=environment())
+    HOG_stat[,c("sp.lst","sp.lst.len","mrca.node","mrca.offsprings",
+                "mrca.offsprings.len","lost.sp")]=t(parSapply(clus,HOG_stat$HOG,
+                                                           function(hog){
+                                                             copyN=HOGxSpecies4copy[HOGxSpecies4copy$HOG==hog,-1]
+                                                             copyN=unlist(copyN)
+                                                             sp.lst=names(which(copyN!=0))
+                                                             
+                                                             sp.lst.len=length(sp.lst)
+                                                             sp.lst=paste(sp.lst,collapse=",")
+                                                             
+                                                             if (sp.lst.len==1){mrca.node=sp.lst}else{mrca.node=ape::getMRCA(phy=tree,tip=unlist(strsplit(sp.lst,",")))}
+                                                             if (sp.lst.len==1){mrca.offsprings=sp.lst}else{
+                                                               lst=tidytree::offspring(tree,mrca.node,tiponly=TRUE)
+                                                               mrca.offsprings=paste(node2label[as.character(lst)],collapse=",")
+                                                             }
+                                                             mrca.offsprings.len=length(unlist(strsplit(mrca.offsprings,",")))
+                                                             lost.sp=setdiff(unlist(strsplit(mrca.offsprings,",")),
+                                                                             unlist(strsplit(sp.lst,",")))
+                                                             lost.sp=paste(lost.sp,collapse=",")
+                                                             return(c(sp.lst,sp.lst.len,mrca.node,mrca.offsprings,
+                                                                      mrca.offsprings.len,lost.sp))
+                                                           }))
+    write.table(HOG_stat,
+                paste(out_dir,"/",out_prefix,"_HOG_stat.tsv",sep=""),
+                row.names=FALSE,quote=FALSE,sep="\t")
+  }
+  
+  lst.dir=paste(out_dir,"/",out_prefix,"_lst",sep="")
+  system(paste("mkdir",lst.dir,sep=" "))
+  sapply(N0$HOG,
+         function(hog){
+           i=unlist(N0[N0$HOG==hog,-1])
+           i=i[i!=""]
+           i=paste(i,collapse=",")
+           i=unlist(strsplit(i,","))
+           writeLines(i,paste(lst.dir,"/",hog,".lst",sep=""))
+         })
+  
+  pep.faa.lst=unlist(strsplit(pep.faa.lst,","))
+  all.pep=paste(out_dir,"/",out_prefix,"_all.pep.faa",sep="")
+  cds.fna.lst=unlist(strsplit(cds.fna.lst,","))
+  all.cds=paste(out_dir,"/",out_prefix,"_all.cds.fna",sep="")
+  for (i in 1:length(pep.faa.lst)){
+    cmd=paste("cat",pep.faa.lst[i],">>",all.pep,sep=" ");system(cmd,wait=TRUE)
+    cmd=paste("cat",cds.fna.lst[i],">>",all.cds,sep=" ");system(cmd,wait=TRUE)
+  }
+  
+  pep.dir=paste(out_dir,"/",out_prefix,"_pep",sep="")
+  system(paste("mkdir",pep.dir,sep=" "))
+  cds.dir=paste(out_dir,"/",out_prefix,"_cds",sep="")
+  system(paste("mkdir",cds.dir,sep=" "))
+  mafft.dir=paste(out_dir,"/",out_prefix,"_mafft",sep="")
+  system(paste("mkdir",mafft.dir,sep=" "))
+  pal2nal.dir=paste(out_dir,"/",out_prefix,"_pal2nal",sep="")
+  system(paste("mkdir",pal2nal.dir,sep=" "))
+  clusterExport(cl=clus,varlist=list("lst.dir","pep.dir","cds.dir","mafft.dir","pal2nal.dir","all.pep","all.cds"),envir=environment())
+  parSapply(clus,N0$HOG,
+            function(hog){
+              lst=paste(lst.dir,"/",hog,".lst",sep="")
+              pep=paste(pep.dir,"/",hog,".faa",sep="")
+              cds=paste(cds.dir,"/",hog,".fna",sep="")
+              mafft=paste(mafft.dir,"/",hog,"_mafft.faa",sep="")
+              pal2nal=paste(pal2nal.dir,"/",hog,"_pal2nal.fna",sep="")
+              
+              cmd=paste("seqkit grep",
+                        "-f",lst,
+                        all.pep,">",pep,
+                        sep=" ")
+              system(cmd,wait=TRUE)
+              cmd=paste("seqkit grep",
+                        "-f",lst,
+                        all.cds,">",cds,
+                        sep=" ")
+              system(cmd,wait=TRUE)
+              
+              cmd=paste("mafft --auto",
+                        pep,">",mafft,
+                        sep=" ")
+              system(cmd,wait=TRUE)
+              cmd=paste("pal2nal.pl",
+                        mafft,
+                        cds,
+                        "-output fasta",
+                        "-codontable 1",
+                        ">",pal2nal,
+                        sep=" ")
+              system(cmd,wait=TRUE)
+            })
+  
+  system(paste("rm",all.pep,sep=" "))
+  system(paste("rm",all.cds,sep=" "))
+
+}
+  
 # Orthofinder N0.tsv statistics
 N0_Stat=function(N0.tsv=N0.tsv,
                  orthofinder.in_dir=orthofinder.in_dir, # all .faa for orthofinder
@@ -157,6 +300,26 @@ best_blastp=function(query.faa=query.faa,
               sep="\t",row.names=FALSE,quote=FALSE)
   setwd(wd)
 }
+
+bbh=function(blast1=blast1,blast2=blast2,
+             # BLAST tab with header, only need qseqid & sseqid
+             out_prefix=out_prefix){
+  b1=read.table(blast1,header=TRUE,sep="\t",quote="")
+  b1.pairs=paste(b1$qseqid,b1$sseqid,sep=" ")
+  
+  b2=read.table(blast2,header=TRUE,sep="\t",quote="")
+  b2.pairs=paste(b2$sseqid,b2$qseqid,sep=" ")
+  
+  pairs=intersect(b1.pairs,b2.pairs)
+  
+  gene1=sapply(pairs,function(i){return(unlist(strsplit(i," "))[1])})
+  gene2=sapply(pairs,function(i){return(unlist(strsplit(i," "))[2])})
+  write.table(data.frame(gene1=gene1,gene2=gene2),
+              paste(out_prefix,"_best_bidirectional_blast.tsv",sep=""),
+              sep="\t",row.names=FALSE,quote=FALSE)
+}
+
+
 # /flash/BourguignonU/Cong/HGT_Anna/blastBetweenLineages/
 # Chitiniovibrionales.faa  Fibromonas.faa  Leadbettera.faa
 #####
@@ -309,8 +472,9 @@ geneFun_bbh=function(pep.faa=pep.faa,
               "--query",pep.faa,
               "--out",blast,
               "--min-score 50",
+              "--evalue 1e-5",
               "--query-cover 75",
-              "--outfmt 6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore qcovhsp scovhsp stitle skingdoms sphylums sscinames",
+              "--outfmt 6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore qcovhsp scovhsp stitle skingdoms sphylums sscinames staxids",
               sep=" ")
     print(cmd);system(cmd,wait=TRUE)
   #}
@@ -318,7 +482,7 @@ geneFun_bbh=function(pep.faa=pep.faa,
   blast=read.table(blast,sep="\t",header=FALSE,quote="",comment.char="")
   colnames(blast)=c("qseqid","sseqid","pident","length","mismatch","gapopen",
                     "qstart","qend","sstart","send","evalue","bitscore",
-                    "qcovhsp","scovhsp","stitle","skingdoms","sphylums","sscinames")
+                    "qcovhsp","scovhsp","stitle","skingdoms","sphylums","sscinames","staxids")
   library(parallel)
   clus=makeCluster(as.numeric(threads))
   clusterExport(clus,list("blast"),envir=environment())
@@ -349,6 +513,113 @@ geneFun_bbh=function(pep.faa=pep.faa,
   blast=blast[blast[,"retainHit"],]
   write.table(blast,paste(out_prefix,"_bbh.tsv",sep=""),
               sep="\t",row.names=FALSE,quote=FALSE)
+}
+
+# Gene function by best blast hits (lowest evalue, longest alignment)
+# Dependencies: blast+nr+NCBI Gene, parallel (R)
+geneFun_blast2nr=function(pep.faa=pep.faa,
+                          nr="/bucket/BourguignonU/Cong/public_db/ncbi.blastdb_20240708/nr",
+                          gene2accession="/bucket/BourguignonU/Cong/public_db/ncbi_gene.20250610/gene2accession",
+                          out_prefix=out_prefix,
+                          threads=threads){
+  threads=as.character(threads)
+  
+  # blast search
+  blast=paste(out_prefix,".blast",sep="")
+  cmd=paste("blastp",
+            "-query",pep.faa,
+            "-db",nr,
+            "-out",blast,
+            "-outfmt '6 qaccver saccver pident length mismatch gapopen qstart qend sstart send evalue bitscore staxid'",
+            "-evalue 1e-5",
+            "-num_alignments 20",
+            "-num_threads",threads,
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  blast=read.table(blast,sep="\t",header=FALSE,quote="",comment.char="")
+  colnames(blast)=c("qaccver","saccver","pident","length","mismatch",
+                    "gapopen","qstart","qend","sstart","send","evalue","bitscore",
+                    "staxid")
+  library(parallel)
+  clus=makeCluster(as.numeric(threads))
+  clusterExport(clus,list("blast"),envir=environment())
+  blast[,"retainHit"]=parSapply(clus,
+                                1:nrow(blast),
+                                function(i){
+                                  query=blast[i,"qseqid"]
+                                  evalue=blast[i,"evalue"]
+                                  
+                                  d=blast[blast[,"qseqid"]==query,]
+                                  bestEval=min(d[,"evalue"])
+                                  if (evalue!=bestEval){return(FALSE)}else{return(TRUE)}
+                                })
+  blast=blast[blast[,"retainHit"],]
+  clusterExport(clus,list("blast"),envir=environment())
+  blast[,"retainHit"]=parSapply(clus,
+                                1:nrow(blast),
+                                function(i){
+                                  query=blast[i,"qseqid"]
+                                  length=blast[i,"length"]
+                                  
+                                  d=blast[blast[,"qseqid"]==query,]
+                                  longest=max(d[,"length"])
+                                  if (length!=longest){return(FALSE)}else{return(TRUE)}
+                                })
+  blast=blast[blast[,"retainHit"],]
+  
+  blast[,"Symbol"]=parSapply(clus,
+                             blast$saccver,
+                             function(i){
+                               cmd=paste("awk -F '\t' -v OFS='\t' -v i=1 ",
+                                         "'{if ($6==\"",i,"\") print $16}'")
+                               return(system(cmd,intern=TRUE))
+                             })
+  stopCluster(clus)
+  
+  
+  write.table(blast,paste(out_prefix,"_bbh.tsv",sep=""),
+              sep="\t",row.names=FALSE,quote=FALSE)
+}
+
+
+
+
+
+
+
+# bitacora: gene family
+# Dependencies: BITACORA, BLAST, HMMER
+bitacora=function(mode_="full", # full/genome/protein
+                  query_dir=query_dir, # Folder containing the query database or multiple databases, named as Example1_db.fasta and Example1_db.hmm (Mandatory)
+                  genome.fna=genome.fna,
+                  gff3=gff3,
+                  prot.faa=prot.faa,
+                  species="Out",
+                  bitacora_scripts_folder="/bucket/BourguignonU/Cong/Softwares/bitacora/Scripts/",
+                  GeMoMa.jar="/bucket/BourguignonU/Cong/Softwares/bitacora/GeMoMa-1.7.1/GeMoMa-1.7.1.jar",
+                  eval=1e-3,
+                  threads=threads,
+                  out_dir=out_dir){
+  if (!file.exists(out_dir)){dir.create(out_dir)}
+  wd=getwd()
+  setwd(out_dir)
+  
+  cmd=paste("runBITACORA_command_line.sh",
+            "-m",mode_,
+            "-q",query_dir,
+            "-g",genome.fna,
+            "-f",gff3,
+            "-p",prot.faa,
+            "-n",species,
+            "-sp",bitacora_scripts_folder,
+            "-gp",GeMoMa.jar,
+            "-e",as.character(eval),
+            "-t",as.character(threads),
+            "-b T")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  setwd(wd)
 }
 
 # KOfamScan
@@ -665,6 +936,82 @@ curateNetwork=function(network.tsv=network.tsv, # from KO2Network
 #######
 # Enrichment
 #######
+# topGO
+topGO=function(Gene2GO.tsv=Gene2GO.tsv, # no header
+               target.gene.lst=target.gene.lst, # one gene per line
+               go_category="BP", # BP/MF/CC,
+               out.tsv=out.tsv){
+  mapfile=Gene2GO.tsv
+  input=target.gene.lst
+  
+  library(topGO)
+  gene_id=readMappings(file=mapfile,sep="\t",IDsep=",")
+  gene_names=names(gene_id)
+  my_genes=readLines(input)
+  
+  gene_list=rep(1,length(gene_id))
+  names(gene_list)=names(gene_id)
+  
+  gene_list[match(my_genes,names(gene_list))]=0
+  
+  topGo_data=new("topGOdata",
+                 nodeSize=5,
+                 ontology=go_category,
+                 allGenes=gene_list,
+                 annot=annFUN.gene2GO,
+                 gene2GO=gene_id,
+                 geneSel=function(allScore){return(allScore==0)}) 
+  result_KS.elim=runTest(topGo_data,
+                         algorithm="elim",
+                         statistic="ks")
+  
+  allres=GenTable(topGo_data,
+                  KS=result_KS.elim,
+                  ranksOf="classic",
+                  topNodes=attributes(result_KS.elim)$geneData[4])
+  library(GO.db)
+  allres$term.full=Term(allres$GO.ID)
+  
+  write.table(allres,out.tsv,sep="\t",row.names=FALSE,quote=FALSE)
+}
+
+# genome=read.table("~/quality_genomePeptide.tsv",sep="\t",header=TRUE,quote="")
+# for (sp in genome$Label){
+#   df=paste("/bucket/BourguignonU/Cong/termite_pca/geneFunction/sum_geneFun/",
+#            sp,"_geneFunction.tsv",sep="")
+#   df=read.table(df,header=TRUE,sep="\t",quote="")
+#   GO_Universe=df[,c("Gene","GO_eggNOG")]
+#   write.table(GO_Universe,
+#               paste("/flash/BourguignonU/Cong/termite_pca/paralogs/topGO/",sp,"_GO_Universe.tsv",sep=""),
+#               sep="\t",row.names=FALSE,col.names=FALSE,quote=FALSE)
+#   writeLines(df[df$HOG.category=="single-copy","Gene"],
+#              paste("/flash/BourguignonU/Cong/termite_pca/paralogs/topGO/",sp,"_singlecopy.lst",sep=""))
+#   writeLines(df[df$HOG.category=="paralogous","Gene"],
+#              paste("/flash/BourguignonU/Cong/termite_pca/paralogs/topGO/",sp,"_paralogous.lst",sep=""))
+#   for (go_category in c("BP","MF","CC")){
+#     topGO(Gene2GO.tsv=paste("/flash/BourguignonU/Cong/termite_pca/paralogs/topGO/",sp,"_GO_Universe.tsv",sep=""), # no header
+#           target.gene.lst=paste("/flash/BourguignonU/Cong/termite_pca/paralogs/topGO/",sp,"_singlecopy.lst",sep=""), # one gene per line
+#           go_category=go_category, # BP/MF/CC,
+#           out.tsv=paste("/flash/BourguignonU/Cong/termite_pca/paralogs/topGO/",sp,"_singlecopy_",go_category,".tsv",sep=""))
+#     
+#     topGO(Gene2GO.tsv=paste("/flash/BourguignonU/Cong/termite_pca/paralogs/topGO/",sp,"_GO_Universe.tsv",sep=""), # no header
+#           target.gene.lst=paste("/flash/BourguignonU/Cong/termite_pca/paralogs/topGO/",sp,"_paralogous.lst",sep=""), # one gene per line
+#           go_category=go_category, # BP/MF/CC,
+#           out.tsv=paste("/flash/BourguignonU/Cong/termite_pca/paralogs/topGO/",sp,"_paralogous_",go_category,".tsv",sep=""))
+#     
+#   }
+#   
+# }
+
+
+
+
+
+
+
+
+
+
 # Gene function enrichment
 # Dependencies: clusterProfiler (R)
 enrichment=function(genes=genes, # a vector of gene id

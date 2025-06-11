@@ -1,0 +1,15 @@
+Gene_symbol	Gene_name	species	File_prefix	COG_Insecta	Comment	Pathway
+Dcr-2	Dicer-2	Drosophila_melanogaster	Dcr_2	ENOG503SHAD	Recognize viral dsRNA and cleave it into ~21 nt siRNA duplexes	siRNA
+Hen1	Hen1 methyltransferase	Drosophila_melanogaster	Hen1	ENOG503SM08	Catalyze 2'-O-methylation at the 3' end of siRNA	siRNA
+AGO2	Argonaute 2	Drosophila_melanogaster	AGO2	ENOG503SH9Y	Bind to siRNA and cleave target RNA recognized by siRNA	siRNA
+r2d2	r2d2	Drosophila_melanogaster	r2d2	ENOG503SRGU		siRNA
+drosha	drosha	Drosophila_melanogaster	drosha	ENOG503SHEP	Cleave primary miRNA into precursor miRNA in nuclear	miRNA
+pasha	partner of drosha	Drosophila_melanogaster	pasha	ENOG503SG9W		miRNA
+Ranbp21	Ranbp21	Drosophila_melanogaster	Ranbp21	ENOG503SJCN	Export precursor miRNA from nuclear to cytoplasm	miRNA
+Dcr-1	Dicer-1	Drosophila_melanogaster	Dcr_1	ENOG503SI16	Cleave precursor miRNA to form miRNA duplex in cytoplasm	miRNA
+loqs	loquacious	Drosophila_melanogaster	loqs	ENOG503SIBF		miRNA
+AGO1	Argonaute-1	Drosophila_melanogaster	AGO1	ENOG503SINA	Bind to miRNA and cleave target RNA recognized by miRNA	miRNA
+zuc	zucchini	Drosophila_melanogaster	zuc	ENOG503SPG8	Fragment long precursor piRNA into precursor piRNA	piRNA
+piwi	P-element induced wimpy testis	Drosophila_melanogaster	piwi	ENOG503SFQW		piRNA
+AGO3	Argonaute 3	Drosophila_melanogaster	AGO3	ENOG503SHTP		piRNA
+aub	aubergine	Drosophila_melanogaster	aub	ENOG503SFQW		piRNA

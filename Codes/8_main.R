@@ -243,9 +243,9 @@ panEDTA.reAnnotate=function(genome=genome, # same as first column of -g paramete
             "-pa",threads,
             "-q -div 40",
             "-lib",panEDTA.TElib,
-            "-cutoff 225 -gff",
+            "-cutoff 225 -gff -a",
             paste(genome,".mod.panEDTA",sep=""),
-            "> /dev/null",
+            #"> /dev/null",
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
     
@@ -346,7 +346,7 @@ seqNR=function(in.fasta=in.fasta,
 cdHit=function(fasta=fasta,
                seq.type="DNA", # DNA/protein
                identity_threshold=0.99, # >0.8 for DNA, >0.4 for protein
-               threads=1,
+               threads=1, # number of threads, default 1; with 0, all CPUs will be used
                memory=4000, # MB
                out_prefix=out_prefix){
   dna_word_size=function(id){
@@ -407,7 +407,6 @@ cdHit=function(fasta=fasta,
   
 }
 
-
 # DANTE: Domain based annotation of transposable elements
 # Dependencies: DANTE
 dante=function(transposon.fna=transposon.fna,
@@ -423,6 +422,18 @@ dante=function(transposon.fna=transposon.fna,
             "-D",database,
             "-o",paste(basename(transposon.fna),"_protDomain.gff3",sep=""),
             "-c",threads,
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  cmd=paste("dante_gff_output_filtering.py",
+            "--dom_gff",paste(basename(transposon.fna),"_protDomain.gff3",sep=""),
+            "--domains_filtered",paste(basename(transposon.fna),"_protDomain_complete.gff3",sep=""),
+            "--domains_prot_seq",paste(basename(transposon.fna),"_protDomain_complete.faa",sep=""),
+            "--th_length 0.8", # proportion of alignment length threshold (default: 0.8)
+            "--th_identity 0.35", # proportion of alignment identity threshold (default: 0.35)
+            "--th_similarity 0.45", # threshold for alignment proportional similarity (default: 0.45)
+            "--interruptions 0", # interruptions (frameshifts + stop codons) tolerance threshold per 100 AA (default: 3)
+            "--max_len_proportion 1.2", # maximal proportion of alignment length to the original length of protein domain from database (default: 1.2)
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   
@@ -555,51 +566,80 @@ tRNAscan=function(genome=genome,
 # convert_tRNAScanSE_to_gff3.pl -g --input=filtered_results.out > tRNA.gff3
 # convert_tRNAScanSE_to_gff3.pl -g --input=final_results > tRNA_raw.gff3
 # wc -l tRNA.gff3
-# miRNAture: Identify microRNA
-miRNAture=function(genome=genome,
-                   dataF="/bucket/BourguignonU/Cong/public_db/miRNAture/Dataset_mirnature_Sept21_2022/Data/", # pre-calculated data directory from miRNAture
-                   species=species, # Genus_species
-                   out_dir=out_dir,
-                   threads=threads){
-  out_dir=sub("/$","",out_dir)
-  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "),wait=TRUE)}
-  wd=getwd();setwd(out_dir)
-  threads=as.character(threads)
+
+
+
+# miRNA
+MirMachine=function(genome.fna=genome.fna,
+                    node="Arthropoda",
+                    sp="Aaca",
+                    threads=threads,
+                    out_dir=out_dir){
+  if (!dir.exists(out_dir)){dir.create(out_dir)}
+  wd=getwd()
+  setwd(out_dir)
   
-  cmd=paste("cp -r",dataF,"./dataF",sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  cmd=paste("cp",genome,"./genome.fa",sep=" ")
-  print(cmd);system(cmd,wait=TRUE)
-  
-  cmd=paste("miRNAture",
-            "-stage complete",
-            "-dataF","dataF",
-            "-speG","./genome.fa",
-            "-speN",species,
-            "-speT mrna",
-            "-w",out_dir,
-            "-m hmm,rfam,mirbase,infernal,final",
-            "-pe 0",
-            "-nbitscore_cut 1.0",
+  cmd=paste("seqkit","seq","-u",
+            genome.fna,">",
+            paste(out_dir,"/genome.fa",sep=""),
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
+  genome=paste(out_dir,"/genome.fa",sep="")
   
-  system("mv ./Final_miRNA_evaluation/miRNA_annotation_mrna_accepted_conf.gff3 miRNAture.gff3")
-  system("cat ./Final_miRNA_evaluation/Fasta/Drosophila_mirna_miRNAs_high_confidence.fasta Final_miRNA_evaluation/Fasta/Drosophila_mirna_miRNAs_medium_confidence.fasta > miRNA.fna")
-  system("rm -r ./dataF")
-  system("rm ./genome.fa")
-  system("rm -r LOGS")
-  system("rm -r miRNA_prediction")
-  system("rm miRNAture_configuration_mrna.yaml")
-  system("rm -r miRNA_validation")
-  system("rm -r TemporalFiles")
-  system("rm -r Final_miRNA_evaluation")
-  setwd(wd)
+  cmd=paste("MirMachine.py",
+            "--node",node,
+            "--species",sp,
+            "--genome",genome,
+            "--cpu",as.character(threads))
+  print(cmd);system(cmd,wait=TRUE)
+  
+  cmd=paste("rm ",out_dir,"/genome.fa",sep="")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  gff=paste(out_dir,"/results/predictions/filtered_gff/",sp,".PRE.gff",sep="")
+  gff=ape::read.gff(gff)
+  df=gff[,c("seqid","start","end")]
+  
+  df$miRNA_fam=stringr::str_extract(gff$attributes,"gene_id=.*PRE;")
+  df$miRNA_fam=sub("gene_id=","",df$miRNA_fam)
+  df$miRNA_fam=sub("\\.PRE;","",df$miRNA_fam)
+  df$seqID=paste(sp,sprintf("%08d", as.numeric( rownames(df)) ),"_",df$miRNA_fam,sep="")
+  df$strand=gff$strand
+  df$score=gff$score
+  write.table(df,paste(out_dir,"/results/predictions/filtered_gff/",sp,".PRE.tsv",sep=""),
+              sep="\t",row.names=FALSE,quote=FALSE)
+  
+  df$sequence=stringr::str_extract(gff$attributes,"sequence_with_30nt=.*$")
+  df$sequence=sub("sequence_with_30nt=","",df$sequence)
+  
+  fna=paste(out_dir,"/results/predictions/filtered_gff/",sp,".PRE.fna",sep="")
+  for (i in 1:nrow(df)){
+    write(paste(">",df[i,"seqID"],sep=""),fna,sep="\n",append=TRUE)
+    write(df[i,"sequence"],fna,sep="\n",append=TRUE)
+  }
+  
+  fasta=paste(out_dir,"/results/predictions/fasta/",sp,".PRE.fasta",sep="")
+  mature.miRNA.fna=paste(out_dir,"/results/predictions/filtered_gff/",sp,".stem_loop.miRNA.fna",sep="")
+ 
+  for (i in 1:nrow(df)){
+    pattern=paste(df[i,"miRNA_fam"],".PRE_",
+                  df[i,"seqid"],"_",as.character(df[i,"start"]),
+                  "_",as.character(df[i,"end"]),"_",
+                  sep="")
+    cmd=paste("seqkit grep ",
+              "-r -p ",pattern," ",
+              fasta," | sed 's/^>.*$/>",df[i,"seqID"],"/' ",
+              ">> ",mature.miRNA.fna,sep="")
+    print(cmd);system(cmd,wait=TRUE)
+  }
 }
 
+
+
 # miRanda: microRNA target gene identification
-# Dependencies: miRanda, bedtools
+# Dependencies: miRanda, agat
 miranda=function(gff=gff, # three_prime_UTR feature required
+                 transcripts_to_include.lst=NA, # file, one transcript per line
                  genome=genome,
                  miRNA.fna=miRNA.fna,
                  threads=threads,
@@ -608,16 +648,22 @@ miranda=function(gff=gff, # three_prime_UTR feature required
   wd=getwd();setwd(out_dir)
   threads=as.character(threads)
   
-  cmd=paste("grep 'three_prime_UTR' ",gff,
-            " | awk -F '\t' -v OFS='\t' '{print $1,$4-1,$5,$9,200,$7}' | sed 's/ID=.*;Parent=//' | sed 's/;//' > 3_UTR.bed",
-            sep="")
-  print(cmd);system(cmd,wait=TRUE)
   system(paste("cp",genome,"./genome.fa",sep=" "))
-  cmd=paste("bedtools getfasta -s -name",
-            "-fi","./genome.fa",
-            "-bed 3_UTR.bed",
-            " | sed 's/::.*//' > 3_UTR.fa")
+  system(paste("cp",miRNA.fna,"./miRNA.fna",sep=" "))
+  
+  cmd=paste("agat_sp_extract_sequences.pl",
+            "--full --type three_prime_UTR",
+            "--fasta ./genome.fa",
+            "--gff",gff,
+            "--output ./3_UTR_.fa",sep=" ")
   print(cmd);system(cmd,wait=TRUE)
+  
+  if (!is.na(transcripts_to_include.lst)){
+    cmd=paste("seqkit grep",
+              "-f",transcripts_to_include.lst,
+              "./3_UTR_.fa > ./3_UTR.fa")
+    print(cmd);system(cmd,wait=TRUE)
+  }
   
   cmd=paste("seqkit split2",
             "3_UTR.fa",
@@ -627,7 +673,6 @@ miranda=function(gff=gff, # three_prime_UTR feature required
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   
-  system(paste("cp",miRNA.fna,"./miRNA.fna",sep=" "))
   library(parallel)
   clus=makeCluster(as.numeric(threads))
   parSapply(clus,
@@ -636,6 +681,10 @@ miranda=function(gff=gff, # three_prime_UTR feature required
               utr=system("ls tmp/*.fa",intern=TRUE)[i]
               cmd=paste("miranda","miRNA.fna",utr,
                         "-sc 150","-en -20",
+                        ">",paste("tmp/",as.character(i),".miranda",sep=""),
+                        sep=" ")
+              system(cmd,wait=TRUE)
+              cmd=paste("cat ",paste("tmp/",as.character(i),".miranda",sep=""),
                         "| grep '>>' | sed 's/>>//' | sort -k 5 -n -r",
                         "| awk -F '\t' -v OFS='\t' '{print $1,$2}' | sort | uniq -u >",
                         paste("tmp/",as.character(i),".tsv",sep=""),
@@ -649,21 +698,45 @@ miranda=function(gff=gff, # three_prime_UTR feature required
   system(cmd)
   
   system("rm ./miRNA.fna")
-  system("rm ./3_UTR.fa")
-  system("rm ./3_UTR.bed")
+  system("rm ./3_UTR_.fa")
   system("rm ./genome.fa")
-  system("rm ./genome.fa.fai")
+  system("rm ./genome.fa.index")
   system("rm -r tmp")
   setwd(wd)
 }
+
+# genome=read.table("~/quality_genomePeptide.tsv",header=TRUE,sep="\t",quote="")
+# i=commandArgs(trailingOnly=TRUE)
+# i=as.numeric(i)
+# sp=genome[i,"Label"]
+# cmd=paste("grep '>'",
+#           paste("/bucket/BourguignonU/Cong/termite_genome_annotation/protein_3/",
+#                 sp,"/",sp,"_proteins_rep.faa",sep=""),
+#           "| sed 's/>//' >",
+#           paste("/flash/BourguignonU/Cong/termite_genome_annotation/miranda/",
+#                 sp,"/transcripts_to_include.lst",sep=""),
+#           sep=" ")
+# print(cmd);system(cmd,wait=TRUE)
+# miranda(gff=paste("/bucket/BourguignonU/Cong/termite_genome_annotation/protein_3/",
+#                       sp,"/",sp,"_genes.gff3",sep=""), # three_prime_UTR feature required
+#         transcripts_to_include.lst=paste("/flash/BourguignonU/Cong/termite_genome_annotation/miranda/",
+#                                          sp,"/transcripts_to_include.lst",sep=""),
+#         genome=paste("/bucket/BourguignonU/Cong/termite_genome_annotation/protein_3/",
+#                      sp,"/",sp,"_maskedGenome.fna",sep=""),
+#         miRNA.fna=paste("/bucket/BourguignonU/Cong/termite_genome_annotation/MirMachine/",
+#                         sp,"/results/predictions/filtered_gff/",sp,".stem_loop.miRNA.fna",sep=""),
+#         threads=100,
+#         out_dir=paste("/flash/BourguignonU/Cong/termite_genome_annotation/miranda/",sp,sep=""))
+
+
 
 # Infernal: non-coding RNA gene identification
 # cmscan treats uppercase and lowercase nucleotides identically
 # Dependencies: Infernal, Rfam database, stringr (R)
 infernal=function(genome=genome,
-                  domain=domain, # eukarya/archaea/bacteria Which domain shall be retained?
-                  Rfam.clanin=Rfam.clanin,
-                  Rfam.cm=Rfam.cm,
+                  domain="eukarya", # eukarya/archaea/bacteria Which domain shall be retained?
+                  Rfam.clanin="/bucket/BourguignonU/Cong/public_db/Rfam_15.0/Rfam.clanin",
+                  Rfam.cm="/bucket/BourguignonU/Cong/public_db/Rfam_15.0/Rfam.cm",
                   out_dir=out_dir,
                   threads=threads){
   out_dir=sub("/$","",out_dir)
@@ -680,13 +753,16 @@ infernal=function(genome=genome,
             "> Infernal.cmscan")
   print(cmd);system(cmd,wait=TRUE)
   
-  domains=c("eukarya","archaea","bacteria")
-  for (i in 1:3){if (grepl(domain,domains[i])){domains=domains[-i]}}
+  domains=c("[Ee]ukarya","[Aa]rchaea","[Bb]acteria")
+  i=which(c(grepl(domains[1],domain),grepl(domains[2],domain),grepl(domains[3],domain)))
+  domains=domains[-i]
+  
   cmd=paste("grep -v '=' Infernal.tblout | ",
             "grep -v 'tRNA' | ",
+            "grep -v 'rRNA' | ",
+            "grep -v 'microRNA' | ",
             "grep -v '",domains[1],"' | ",
-            "grep -v '",domains[2],"' | ",
-            "grep -v 'microRNA'",
+            "grep -v '",domains[2],"'",
             " > final.tblout",
             sep="")
   print(cmd);system(cmd,wait=TRUE)
@@ -710,35 +786,163 @@ infernal=function(genome=genome,
   setwd(wd)
 }
 
-# Integrate ncRNA results from tRNAscan-SE, miRNAture, infernal and miRanda
-ncRNA=function(tRNA.gff3=tRNA.gff3,
-               miRNAture.gff3=miRNAture.gff3,
-               miRNA.fa=miRNA.fa,
-               infernal.gff3=infernal.gff3,
-               miRanda.tsv=miRanda.tsv,
-               species=species,
-               out_dir=out_dir){
-  out_dir=sub("/$","",out_dir)
-  if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "),wait=TRUE)}
-  wd=getwd();setwd(out_dir)
+# Barrnap: rRNA
+barrnap=function(in.fna=in.fna,
+                 kingdom="bac", # Kingdom: bac euk arc mito (default 'bac')
+                 threads=threads, 
+                 out.gff3=out.gff3,
+                 out.fna=out.fna){
+  cmd=paste("barrnap",
+            "--kingdom",kingdom,
+            "--threads",as.character(threads),
+            "--outseq",out.fna,
+            in.fna,">",
+            out.gff3,
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
   
-  cmd=paste("cp",tRNA.gff3,
-            paste(species,"_tRNA.gff3",sep=""))
+  cmd=paste("grep -v partial ",out.gff3," > ",dirname(out.gff3),"/filtered_",basename(out.gff3),sep="")
   print(cmd);system(cmd,wait=TRUE)
-  cmd=paste("cp",miRNAture.gff3,
-            paste(species,"_miRNA.gff3",sep=""))
-  print(cmd);system(cmd,wait=TRUE)
-  cmd=paste("cp",miRNA.fa,
-            paste(species,"_miRNA.fa",sep=""))
-  print(cmd);system(cmd,wait=TRUE)
-  cmd=paste("cp",infernal.gff3,
-            paste(species,"_Rfam.gff3",sep=""))
-  print(cmd);system(cmd,wait=TRUE)
-  cmd=paste("cp",miRanda.tsv,
-            paste(species,"_miRNA_target.tsv",sep=""))
-  print(cmd);system(cmd,wait=TRUE)
-  setwd(wd)
 }
+
+# library(pafr)
+# library(bedr)
+# long.read.depth=read.table("~/backup_tables/termiteGenome_DNA_Nanopore.tsv",sep="\t",header=TRUE,quote="")
+# long.read.depth$filter=paste("/bucket/BourguignonU/Cong/termite_genome_annotation/minimapIon/",
+#                              long.read.depth$Label,".depth",sep="")
+# long.read.depth=long.read.depth[long.read.depth$Depth==long.read.depth$filter,]
+# rownames(long.read.depth)=long.read.depth$Label
+# genome=read.table("~/quality_genomePeptide.tsv",sep="\t",header=TRUE,quote="")
+# rownames(genome)=genome[,"Label"]
+# spp=genome[,"Label"]
+# for (sp in spp){
+#   genomeWithContam=paste("/bucket/BourguignonU/Cong/termite_genome_annotation/protein_2/",
+#                          sp,"/",sp,"_maskedGenome.fna",
+#                          sep="")
+#   genomeWithContam.stat=paste("/flash/BourguignonU/Cong/wolbachiaGenomes/minimap2/",
+#                               sp,"_genomeWithContam.stat",sep="")
+#   cmd=paste("seqkit fx2tab -n -l -g",
+#             genomeWithContam,
+#             ">",genomeWithContam.stat,sep=" ")
+#   print(cmd);system(cmd,wait=TRUE)
+#   
+#   lr.fq=long.read.depth[sp,"Reads"]
+#   bam=paste("/flash/BourguignonU/Cong/wolbachiaGenomes/minimap2/",
+#             sp,"_lr.fq.bam",sep="")
+#   cmd=paste("minimap2",
+#             "-ax map-ont",
+#             "-t 64",
+#             "--secondary=no","--MD","-L",
+#             genomeWithContam,lr.fq,"|",
+#             "samtools","view","-@ 64","-bS","|",
+#             "samtools","sort",
+#             "-m 5G",
+#             "-@ 64",
+#             "-o",bam,
+#             sep=" ")
+#   print(cmd);system(cmd,wait=TRUE)
+#   
+#   depth=paste("/flash/BourguignonU/Cong/wolbachiaGenomes/minimap2/",
+#               sp,"_lr.fq.depth",sep="")
+#   cmd=paste("samtools coverage ",bam," > ",depth,sep="")
+#   print(cmd);system(cmd,wait=TRUE)
+#   
+#   
+#   paf=paste("/flash/BourguignonU/Cong/wolbachiaGenomes/minimap2/",
+#             sp,"_wolbachia.paf",sep="")
+#   cmd=paste("minimap2 -x asm5 -t 64",
+#             "/bucket/BourguignonU/Cong/public_db/Wolbachia/Wolbachia_genomes.fna",
+#             genomeWithContam,">",paf,
+#             sep=" ")
+#   print(cmd);system(cmd,wait=TRUE)
+#   if (file.size(paf)!=0){
+#   paf=as.data.frame(read_paf(paf))
+#   chr2length=paf[,c(1,2)]
+#   chr2length=chr2length[!duplicated(chr2length),]
+#   rownames(chr2length)=chr2length[,1]
+#   bed=paf[,c(1,3,4)]
+#   colnames(bed)=c("chr","start","end")
+#   bed=bedr.merge.region(bed,check.chr=FALSE)
+#   bed[,"alignLen"]=bed[,"end"]-bed[,"start"]
+#   chr2length[,"alignLength"]=sapply(chr2length[,1],
+#                                       function(chr){
+#                                         align=bed[bed[,"chr"]==chr,]
+#                                         return(sum(align[,"alignLen"]))
+#                                       })
+#   chr2length[,"alignProportion"]=chr2length[,"alignLength"]/chr2length[,"qlen"]
+#   chr2length[,"sp"]=rep(sp,nrow(chr2length))
+#   chr2length[,"target"]=rep("Wolbachia",nrow(chr2length))
+#   
+#   res=chr2length
+#   
+#   cleanGenome.lst=read.table(paste("/bucket/BourguignonU/Cong/termite_genome_annotation/protein_3/",
+#                                      sp,"/",sp,"_chrLength.tsv",sep=""),
+#                                header=FALSE,sep="\t",quote="")
+#   res$contamination=!(res$qname %in% cleanGenome.lst[,1])
+#   
+#   Depth=read.table(depth,sep="\t",header=FALSE,quote="")
+#   rownames(Depth)=Depth[,1]
+#   res$observed.depth=Depth[res$qname,7]
+#   res$p_depth.differ=sapply(res$observed.depth,
+#                                       function(i){
+#                                         v=unlist(Depth[,7])
+#                                         return(2*min(sum(v>i),sum(v<i))/length(v))
+#                                       })
+#   res$p_depth.higher=sapply(res$observed.depth,
+#                             function(i){
+#                               v=unlist(Depth[,7])
+#                               return(sum(v>i)/length(v))
+#                             })
+#   
+#   GenomeWithContam.stat=read.table(genomeWithContam.stat,header=FALSE,sep="\t",quote="")
+#   rownames(GenomeWithContam.stat)=GenomeWithContam.stat[,1]
+#   res$expected.gc=genome[sp,"GCpercent"]
+#   res$observed.gc=GenomeWithContam.stat[res$qname,3]
+#   res$p_gc.differ=sapply(res$observed.gc,
+#                             function(i){
+#                               v=unlist(GenomeWithContam.stat[,3])
+#                               return(2*min(sum(v>i),sum(v<i))/length(v))
+#                             })
+#   res$p_gc.higher=sapply(res$observed.gc,
+#                             function(i){
+#                               v=unlist(GenomeWithContam.stat[,3])
+#                               return(sum(v>i)/length(v))
+#                             })
+#   write.table(res,
+#               paste("/flash/BourguignonU/Cong/wolbachiaGenomes/minimap2/",
+#                     sp,".alignedProportion.Wolbachia.tsv",sep=""),
+#               sep="\t",row.names=FALSE,quote=FALSE)
+# }}
+
+# # Integrate ncRNA results from tRNAscan-SE, miRNAture, infernal and miRanda
+# ncRNA=function(tRNA.gff3=tRNA.gff3,
+#                miRNAture.gff3=miRNAture.gff3,
+#                miRNA.fa=miRNA.fa,
+#                infernal.gff3=infernal.gff3,
+#                miRanda.tsv=miRanda.tsv,
+#                species=species,
+#                out_dir=out_dir){
+#   out_dir=sub("/$","",out_dir)
+#   if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "),wait=TRUE)}
+#   wd=getwd();setwd(out_dir)
+#   
+#   cmd=paste("cp",tRNA.gff3,
+#             paste(species,"_tRNA.gff3",sep=""))
+#   print(cmd);system(cmd,wait=TRUE)
+#   cmd=paste("cp",miRNAture.gff3,
+#             paste(species,"_miRNA.gff3",sep=""))
+#   print(cmd);system(cmd,wait=TRUE)
+#   cmd=paste("cp",miRNA.fa,
+#             paste(species,"_miRNA.fa",sep=""))
+#   print(cmd);system(cmd,wait=TRUE)
+#   cmd=paste("cp",infernal.gff3,
+#             paste(species,"_Rfam.gff3",sep=""))
+#   print(cmd);system(cmd,wait=TRUE)
+#   cmd=paste("cp",miRanda.tsv,
+#             paste(species,"_miRNA_target.tsv",sep=""))
+#   print(cmd);system(cmd,wait=TRUE)
+#   setwd(wd)
+# }
 
 
 # 6-frame translation (DNA to protein)
@@ -1562,3 +1766,44 @@ ncRNA=function(tRNA.gff3=tRNA.gff3,
 #               sep="\t",row.names = FALSE,quote = FALSE)
 # }
 
+# # miRNAture: Identify microRNA
+# miRNAture=function(genome=genome,
+#                    dataF="/bucket/BourguignonU/Cong/public_db/miRNAture/Dataset_mirnature_Sept21_2022/Data/", # pre-calculated data directory from miRNAture
+#                    species=species, # Genus_species
+#                    out_dir=out_dir,
+#                    threads=threads){
+#   out_dir=sub("/$","",out_dir)
+#   if (!file.exists(out_dir)){system(paste("mkdir",out_dir,sep=" "),wait=TRUE)}
+#   wd=getwd();setwd(out_dir)
+#   threads=as.character(threads)
+#   
+#   cmd=paste("cp -r",dataF,"./dataF",sep=" ")
+#   print(cmd);system(cmd,wait=TRUE)
+#   cmd=paste("cp",genome,"./genome.fa",sep=" ")
+#   print(cmd);system(cmd,wait=TRUE)
+#   
+#   cmd=paste("miRNAture",
+#             "-stage complete",
+#             "-dataF","dataF",
+#             "-speG","./genome.fa",
+#             "-speN",species,
+#             "-speT mrna",
+#             "-w",out_dir,
+#             "-m hmm,rfam,mirbase,infernal,final",
+#             "-pe 0",
+#             "-nbitscore_cut 1.0",
+#             sep=" ")
+#   print(cmd);system(cmd,wait=TRUE)
+#   
+#   system("mv ./Final_miRNA_evaluation/miRNA_annotation_mrna_accepted_conf.gff3 miRNAture.gff3")
+#   system("cat ./Final_miRNA_evaluation/Fasta/Drosophila_mirna_miRNAs_high_confidence.fasta Final_miRNA_evaluation/Fasta/Drosophila_mirna_miRNAs_medium_confidence.fasta > miRNA.fna")
+#   system("rm -r ./dataF")
+#   system("rm ./genome.fa")
+#   system("rm -r LOGS")
+#   system("rm -r miRNA_prediction")
+#   system("rm miRNAture_configuration_mrna.yaml")
+#   system("rm -r miRNA_validation")
+#   system("rm -r TemporalFiles")
+#   system("rm -r Final_miRNA_evaluation")
+#   setwd(wd)
+# }

@@ -164,7 +164,7 @@ repeatmasker=function(fna=fna,# Fasta file of genome.
             "-lib",RepeatLib.fa,
             "-pa",Threads,
             "-dir",out_dir,
-            "-gff",
+            "-gff -a",
             fna,
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)

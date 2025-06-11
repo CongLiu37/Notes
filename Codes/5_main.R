@@ -439,7 +439,8 @@ blastn_blobtools=function(fna=fna, # fna. Input DNA sequences.
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
 }
-
+#View(read.table("~/Desktop/PhD/Results/termite_pca/AI/possible_wolbachia_scaffold_barrnap.fna2nt.blast",
+#           header=FALSE,sep="\t",quote=""))
 # Scaffolds-protein search by diamond.
 # Compute taxonomy at major ranks by Megan.
 # Diamond and Megan in long-read mode.
@@ -889,6 +890,8 @@ SprayNPray=function(fna=fna, # fna. Input DNA sequences.
   setwd(wd)
   return(paste(out_dir,"/",out_basename,sep=""))
 }
+
+
 # #
 # gaeval=function(protein_alignment.gff3="none",
 #                 transcript_alignment.gff3="none",
