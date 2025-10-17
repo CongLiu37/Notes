@@ -740,6 +740,51 @@ findHomo=function(pep.faa=pep.faa,
   }
 }
 
+lst=readLines("/flash/BourguignonU/Cong/Luan/pal/pal.lst")
+for (g in lst){
+  pal.faa=paste("/flash/BourguignonU/Cong/Luan/pal/findHomo/",
+                g,".faa",sep="")
+  cmd=paste("seqkit grep -n -p ",g," /flash/BourguignonU/Cong/Luan/pal/pal.faa",
+            " > ",pal.faa,sep="")
+  print(cmd);system(cmd,wait=T)
+  findHomo(pep.faa=pal.faa,
+           nr.dmdb="/apps/unit/BioinfoUgrp/DB/diamondDB/ncbi/2022-07/nr.dmnd",
+           threads=20,
+           out_prefix=paste("/flash/BourguignonU/Cong/Luan/pal/findHomo/",
+                            g,sep=""))
+  mafft(in.fa=paste("/flash/BourguignonU/Cong/Luan/pal/findHomo/",
+                    g,"_nr.faa",sep=""),
+        align.fa=paste("/flash/BourguignonU/Cong/Luan/pal/findHomo/",
+                       g,"_mafft.faa",sep=""),
+        threads=20)
+  trimAL(inMSA.fa=paste("/flash/BourguignonU/Cong/Luan/pal/findHomo/",
+                                 g,"_mafft.faa",sep=""),
+         outMSA.fa=paste("/flash/BourguignonU/Cong/Luan/pal/findHomo/",
+                                  g,"_trimal.faa",sep=""))
+        
+  iqtree(msa.fa=paste("/flash/BourguignonU/Cong/Luan/pal/findHomo/",
+                      g,"_trimal.faa",sep=""),
+         type="protein", # dna/protein
+         out_prefix=paste("/flash/BourguignonU/Cong/Luan/pal/findHomo/",
+                          g,"_iqtree.faa",sep=""),
+         threads=10)
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # With NCBI protein ID, get corresponding CDS and taxonomic lineage
 # For each protein ID, ONE CDS is RANDOMLY picked
 # Dependencies: Entrez Direct installed by $ sh -c "$(wget -q https://ftp.ncbi.nlm.nih.gov/entrez/entrezdirect/install-edirect.sh -O -)"
@@ -1472,7 +1517,6 @@ distFrom4dtv=function(in.fa=in.fa, # codon alignment
   write.table(res,out.tsv,sep="\t",row.names=FALSE,quote=FALSE)
 }
 
-
 # absrel of hyphy: estimate omega and test positive selection
 # Dependencies: hyphy
 absrel=function(hyphy.res="/apps/unit/BourguignonU/hyphy/res",
@@ -1497,43 +1541,64 @@ json2tsv_absrel=function(json=json,
   tree=json$input$trees[[1]]
   tree=paste(tree,";",sep="")
   tree=ape::read.tree(text=tree)
-  tree=ggtree::ggtree(tree)$data
-  tree=as.data.frame(tree)
+  tree.df=ggtree::ggtree(tree)$data
+  tree.df=as.data.frame(tree.df)
+  
+  tree.df$node.offsprings=sapply(tree.df$node,
+                                 function(i){
+                                   j=tree.df[tidytree::offspring(tree,i,type="tips"),"label"]
+                                   if (length(j)==0){j=tree.df[i,"label"]}
+                                   j=sort(j)
+                                   return(paste(j,collapse=";"))
+                                 })
+  tree.df$parent.offsprings=sapply(tree.df$parent,
+                                 function(i){
+                                   j=tree.df[tidytree::offspring(tree,i,type="tips"),"label"]
+                                   if (length(j)==0){j=tree.df[i,"label"]}
+                                   j=sort(j)
+                                   return(paste(j,collapse=";"))
+                                 })
   
   branch_attributes=json$`branch attributes`[[1]]
-  tree[,c("Baseline_MG94xREV","Baseline_MG94xREV_omega_ratio","Full_adaptive_model","LRT","Nucleotide_GTR",
-          "Rate_Distributions_dN","Rate_Distributions_dS","Rate_Distributions_omega","Uncorrected_P_value",
-          "original_name")]=
-  t(sapply(tree$label,
-         function(label){
-           if (label!=""){
-             Baseline_MG94xREV=branch_attributes[[label]]$`Baseline MG94xREV`
-             Baseline_MG94xREV_omega_ratio=branch_attributes[[label]]$`Baseline MG94xREV omega ratio`
-             Full_adaptive_model=branch_attributes[[label]]$`Full adaptive model`
-             LRT=branch_attributes[[label]]$`LRT`
-             Nucleotide_GTR=branch_attributes[[label]]$`Nucleotide GTR`
-             
-             Rate_Distributions=unlist(branch_attributes[[label]]$`Rate Distributions`)
-             Rate_Distributions_dN=Rate_Distributions[seq(1,length(Rate_Distributions),2)]
-             Rate_Distributions_dS=Rate_Distributions[seq(2,length(Rate_Distributions),2)]
-             Rate_Distributions_dN.above.dS=Rate_Distributions_dN/Rate_Distributions_dS
-             
-             Rate_Distributions_dN=paste(as.character(Rate_Distributions_dN),collapse=";")
-             Rate_Distributions_dS=paste(as.character(Rate_Distributions_dS),collapse=";")
-             Rate_Distributions_dN.above.dS=paste(as.character(Rate_Distributions_dN.above.dS),collapse=";")
-             
-             Uncorrected_P_value=branch_attributes[[label]]$`Uncorrected P-value`
-             original_name=branch_attributes[[label]]$`original name`
-             if (is.null(original_name)){original_name=NA}
-             res=c(Baseline_MG94xREV,Baseline_MG94xREV_omega_ratio,Full_adaptive_model,LRT,Nucleotide_GTR,
-                   Rate_Distributions_dN,Rate_Distributions_dS,Rate_Distributions_dN.above.dS,Uncorrected_P_value,
-                   original_name)
-           }else{
-             res=rep(NA,10)
-           }
-         }))
+  tree.df$Uncorrected_P_value=sapply(tree.df$label,
+                                     function(label){
+                                       if (label==""){Uncorrected_P_value=NA}else{
+                                       Uncorrected_P_value=(branch_attributes[[label]]$`Uncorrected P-value`)}
+                                       return(Uncorrected_P_value)
+                                     })
+  tree.df$omega=sapply(tree.df$label,
+                       function(label){
+                         if (label==""){Baseline_MG94xREV_omega_ratio=NA}else{
+                           Baseline_MG94xREV_omega_ratio=branch_attributes[[label]]$`Baseline MG94xREV omega ratio`}
+                         return(Baseline_MG94xREV_omega_ratio)
+                       })
   
-  write.table(tree,tsv,sep="\t",row.names=FALSE,quote=FALSE)
+  # tree.df[,c("Baseline_MG94xREV","Baseline_MG94xREV_omega_ratio","Full_adaptive_model","LRT","Nucleotide_GTR",
+  #         "Rate_Distributions_dN","Rate_Distributions_dS","Rate_Distributions_omega","Uncorrected_P_value")]=
+  # t(sapply(tree.df$label,
+  #        function(label){
+  #          
+  #            Baseline_MG94xREV=branch_attributes[[label]]$`Baseline MG94xREV`
+  #            Baseline_MG94xREV_omega_ratio=branch_attributes[[label]]$`Baseline MG94xREV omega ratio`
+  #            Full_adaptive_model=branch_attributes[[label]]$`Full adaptive model`
+  #            LRT=branch_attributes[[label]]$`LRT`
+  #            Nucleotide_GTR=branch_attributes[[label]]$`Nucleotide GTR`
+  #            
+  #            Rate_Distributions=unlist(branch_attributes[[label]]$`Rate Distributions`)
+  #            Rate_Distributions_dN=Rate_Distributions[seq(1,length(Rate_Distributions),2)]
+  #            Rate_Distributions_dS=Rate_Distributions[seq(2,length(Rate_Distributions),2)]
+  #            Rate_Distributions_dN.above.dS=Rate_Distributions_dN/Rate_Distributions_dS
+  #            
+  #            Rate_Distributions_dN=paste(as.character(Rate_Distributions_dN),collapse=";")
+  #            Rate_Distributions_dS=paste(as.character(Rate_Distributions_dS),collapse=";")
+  #            Rate_Distributions_dN.above.dS=paste(as.character(Rate_Distributions_dN.above.dS),collapse=";")
+  #            
+  #            Uncorrected_P_value=branch_attributes[[label]]$`Uncorrected P-value`
+  #            res=c(Baseline_MG94xREV,Baseline_MG94xREV_omega_ratio,Full_adaptive_model,LRT,Nucleotide_GTR,
+  #                  Rate_Distributions_dN,Rate_Distributions_dS,Rate_Distributions_dN.above.dS,Uncorrected_P_value)
+  #        }))
+  # 
+  write.table(tree.df,tsv,sep="\t",row.names=FALSE,quote=FALSE)
 }
 
 # hyphy LIBPATH=/apps/unit/BourguignonU/hyphy/res FitMG94.bf --alignment CD2.nex
@@ -1563,16 +1628,30 @@ json2tsv_fitMG94=function(json=json,
   tree=json$input$trees[[1]]
   tree=paste(tree,";",sep="")
   tree=ape::read.tree(text=tree)
-  tree=ggtree::ggtree(tree)$data
-  tree=as.data.frame(tree)
+  tree.df=as.data.frame(ggtree::ggtree(tree)$data)
+  
+  tree.df$node.offsprings=sapply(tree.df$node,
+                                 function(i){
+                                   j=tree.df[tidytree::offspring(tree,i,type="tips"),"label"]
+                                   if (length(j)==0){j=tree.df[i,"label"]}
+                                   j=sort(j)
+                                   return(paste(j,collapse=";"))
+                                 })
+  tree.df$parent.offsprings=sapply(tree.df$parent,
+                                   function(i){
+                                     j=tree.df[tidytree::offspring(tree,i,type="tips"),"label"]
+                                     if (length(j)==0){j=tree.df[i,"label"]}
+                                     j=sort(j)
+                                     return(paste(j,collapse=";"))
+                                   })
   
   branch_attributes=json$`branch attributes`[[1]]
-  tree[,c("omega","omega_lowerBound","omega_higherBound",
+  tree.df[,c("omega","omega_lowerBound","omega_higherBound",
           "Nucleotide_GTR","Standard_MG94","dN","dS",
           "nonsynonymous_substitution_per_codon",
           "synonymous_substitution_per_codon",
           "original_name")]=
-  t(sapply(tree$label,
+  t(sapply(tree.df$label,
          function(label){
            if (label!=""){
              omega=branch_attributes[[label]]$`Confidence Intervals`$`MLE`
@@ -1599,7 +1678,95 @@ json2tsv_fitMG94=function(json=json,
            return(res)
          }))
   
-  write.table(tree,tsv,sep="\t",row.names=TRUE,quote=FALSE)
+  write.table(tree.df,tsv,sep="\t",row.names=TRUE,quote=FALSE)
+}
+
+# Label tree
+labelTree=function(tree.text=tree.text,
+                   node=list(c("Pada","Svic")), # label all branches descend from mrca
+                   #states=c("ancestral"), # ancestral: only label ancestral branch
+                                          # extant: only label extant species
+                                          # all: all branch descended from the ancestral node
+                   label="{Foreground}"){
+  # tree.text="(Bori:0.2292580098,Cmer:0.2162881506,(Mdar:0.08741383512,(((Znev:0.08171119038,Hsjo:0.03143893694):0.02383815538):0.0174824005,((Kfla:0.04170015857,(PAsim:0.2307028781,(Gfus:0.07117802103,(Ncas:0.01840461903,((Rebo:0.01124430592,Mhub:0.02559844988):0.011116978,Cbre:0.0188960985):0.0004293834907):0.02294515693):1e-08):0.0439100372):0.05654769181,(Shal:0.112909926,((Gocu:0.1775427291,Dlon:0.0642505522):0.01172992014,(PRsim:0.4236401747,((Rfla:0.08005310728,(Hten:0.0323401336,Ctes:0.0491751227):0.03418668314):0.007710339714,((Ssph:0.08480561274,(Aaca:0.04038995652,(Ofor:0.0606636153,Mnat:0.04757076576):0.003797311233):0.07700947803):1e-08,(Fval:0.06784377311,((Aunk:0.1306170067,(Eunk:0.04223800603,(Apac:0.02508881891,Aban:0.0257989308):0.02700286682):0.0244634145):0.07372669573,((Munk:0.03865183289,(Shey:0.03763464222,(Llab:0.04259219138,Cwal:0.08379718508):0.006317183079):0.004748950186):0.008857657192,(((Punk:0.03122390861,Abea:0.02396904008):0.007952933317,(Pred:0.03509906124,Iunk:0.07815701173):0.008672879662):0.006641972461,(Cpar:0.113431962,(Ntar:0.1496951552,(Lunk:0.04040163269,((Nluj:0.01490959933,Hunk:0.04141330914):0.01058250769,(Ccav:0.03193998868,Csp4:0.1151284084):0.0003519319698):0.01406213512):0.02108581795):1e-08):1e-08):1e-08):0.04553573054):1e-08):0.004260697919):0.05288211324):0.04203912462):0.01203726929):0.04712678639):0.06609269134):1e-08):0.02961437174):0.001485681023);"
+  # node=list(c("Pada","Svic"))
+  # label="{Foreground}"
+  tree=ape::read.tree(text=tree.text)
+  tree$node.label=1:tree$Nnode+length(tree$tip.label)
+  tree.df=as.data.frame(ggtree::ggtree(tree)$data)
+  
+  node=sapply(node,function(i){return(i[i %in% tree$tip.label])})
+  mrca=sapply(node,
+              function(n){
+                res=ape::getMRCA(tree,n)
+                if (is.null(res)){return(n)}else{return(res)}
+              })
+  offsprings=sapply(mrca,
+                    function(m){
+                      res=tidytree::offspring(tree,m,tiponly=F)
+                      if (length(res)==0){return(m)}else{return(tree.df[tree.df$node %in% res,"label"])}
+                    })
+  offsprings=unlist(offsprings)
+  offsprings=offsprings[offsprings %in% tree.df$label]
+  
+  tree$tip.label=sapply(tree$tip.label,
+                        function(i){
+                          if (i %in% offsprings){
+                            return(paste(i,label,sep=""))
+                          }else{
+                            return(i)
+                          }
+                        })
+  tree$node.label=sapply(tree$node.label,
+                         function(i){
+                           if (as.character(i) %in% offsprings){
+                             return(paste(i,label,sep=""))
+                           }else{
+                             return(i)
+                           }
+                         })
+  return( ape::write.tree(tree) )
+}
+
+
+BUSTED=function(hyphy.res="/apps/unit/BourguignonU/hyphy/res",
+                codon.align=codon.align,
+                geneTree=geneTree,
+                foreground="Foreground",
+                out_prefix=out_prefix){
+  cmd=paste("hyphy",
+            paste("LIBPATH=",hyphy.res,sep=""),
+            "BUSTED",
+            "--alignment",codon.align,
+            "--tree",geneTree,
+            "--branches",foreground,
+            "--output",paste(out_prefix,".json",sep=""))
+  print(cmd);system(cmd,wait=TRUE)
+  
+  json=jsonlite::read_json(paste(out_prefix,".json",sep=""))
+  return(json$`test results`$`p-value`)
+}
+
+RELAX=function(hyphy.res="/apps/unit/BourguignonU/hyphy/res",
+               codon.align=codon.align,
+               geneTree=geneTree,
+               test="test",
+               reference="reference",
+               out_prefix=out_prefix){
+  cmd=paste("hyphy",
+            paste("LIBPATH=",hyphy.res,sep=""),
+            "RELAX",
+            "--alignment",codon.align,
+            "--tree",geneTree,
+            "--test",test,
+            "--reference",reference,
+            "--output",paste(out_prefix,".json",sep=""))
+  system(cmd,wait=TRUE)
+  json=jsonlite::read_json(paste(out_prefix,".json",sep=""))
+  p=json$`test results`$`p-value`
+  k=json$`test results`$`relaxation or intensification parameter`
+  
+  return(list(p=p,k=k))
 }
 
 # relax of hyphy

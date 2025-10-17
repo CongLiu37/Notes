@@ -1,0 +1,591 @@
+pathway_id	subcategory	category
+00010	Carbohydrate metabolism	Metabolism
+00020	Carbohydrate metabolism	Metabolism
+00030	Carbohydrate metabolism	Metabolism
+00040	Carbohydrate metabolism	Metabolism
+00051	Carbohydrate metabolism	Metabolism
+00052	Carbohydrate metabolism	Metabolism
+00053	Carbohydrate metabolism	Metabolism
+00061	Lipid metabolism	Metabolism
+00062	Lipid metabolism	Metabolism
+00071	Lipid metabolism	Metabolism
+00073	Lipid metabolism	Metabolism
+00074	Lipid metabolism	Metabolism
+00100	Lipid metabolism	Metabolism
+00120	Lipid metabolism	Metabolism
+00121	Lipid metabolism	Metabolism
+00130	Metabolism of cofactors and vitamins	Metabolism
+00140	Lipid metabolism	Metabolism
+00190	Energy metabolism	Metabolism
+00195	Energy metabolism	Metabolism
+00196	Energy metabolism	Metabolism
+00220	Amino acid metabolism	Metabolism
+00230	Nucleotide metabolism	Metabolism
+00232	Biosynthesis of other secondary metabolites	Metabolism
+00240	Nucleotide metabolism	Metabolism
+00250	Amino acid metabolism	Metabolism
+00253	Metabolism of terpenoids and polyketides	Metabolism
+00254	Biosynthesis of other secondary metabolites	Metabolism
+00260	Amino acid metabolism	Metabolism
+00261	Biosynthesis of other secondary metabolites	Metabolism
+00270	Amino acid metabolism	Metabolism
+00280	Amino acid metabolism	Metabolism
+00290	Amino acid metabolism	Metabolism
+00300	Amino acid metabolism	Metabolism
+00310	Amino acid metabolism	Metabolism
+00311	Biosynthesis of other secondary metabolites	Metabolism
+00330	Amino acid metabolism	Metabolism
+00331	Biosynthesis of other secondary metabolites	Metabolism
+00332	Biosynthesis of other secondary metabolites	Metabolism
+00333	Biosynthesis of other secondary metabolites	Metabolism
+00334	Amino acid metabolism	Metabolism
+00340	Amino acid metabolism	Metabolism
+00350	Amino acid metabolism	Metabolism
+00360	Amino acid metabolism	Metabolism
+00361	Xenobiotics biodegradation and metabolism	Metabolism
+00362	Xenobiotics biodegradation and metabolism	Metabolism
+00363	Xenobiotics biodegradation and metabolism	Metabolism
+00364	Xenobiotics biodegradation and metabolism	Metabolism
+00365	Xenobiotics biodegradation and metabolism	Metabolism
+00380	Amino acid metabolism	Metabolism
+00400	Amino acid metabolism	Metabolism
+00401	Biosynthesis of other secondary metabolites	Metabolism
+00402	Biosynthesis of other secondary metabolites	Metabolism
+00403	Biosynthesis of other secondary metabolites	Metabolism
+00404	Biosynthesis of other secondary metabolites	Metabolism
+00405	Biosynthesis of other secondary metabolites	Metabolism
+00410	Metabolism of other amino acids	Metabolism
+00430	Metabolism of other amino acids	Metabolism
+00440	Metabolism of other amino acids	Metabolism
+00450	Metabolism of other amino acids	Metabolism
+00460	Metabolism of other amino acids	Metabolism
+00470	Metabolism of other amino acids	Metabolism
+00480	Metabolism of other amino acids	Metabolism
+00500	Carbohydrate metabolism	Metabolism
+00510	Glycan biosynthesis and metabolism	Metabolism
+00511	Glycan biosynthesis and metabolism	Metabolism
+00512	Glycan biosynthesis and metabolism	Metabolism
+00513	Glycan biosynthesis and metabolism	Metabolism
+00514	Glycan biosynthesis and metabolism	Metabolism
+00515	Glycan biosynthesis and metabolism	Metabolism
+00520	Glycan biosynthesis and metabolism	Metabolism
+00521	Biosynthesis of other secondary metabolites	Metabolism
+00522	Metabolism of terpenoids and polyketides	Metabolism
+00523	Metabolism of terpenoids and polyketides	Metabolism
+00524	Biosynthesis of other secondary metabolites	Metabolism
+00525	Biosynthesis of other secondary metabolites	Metabolism
+00531	Glycan biosynthesis and metabolism	Metabolism
+00532	Glycan biosynthesis and metabolism	Metabolism
+00533	Glycan biosynthesis and metabolism	Metabolism
+00534	Glycan biosynthesis and metabolism	Metabolism
+00540	Glycan biosynthesis and metabolism	Metabolism
+00541	Glycan biosynthesis and metabolism	Metabolism
+00542	Glycan biosynthesis and metabolism	Metabolism
+00543	Glycan biosynthesis and metabolism	Metabolism
+00550	Glycan biosynthesis and metabolism	Metabolism
+00552	Glycan biosynthesis and metabolism	Metabolism
+00561	Lipid metabolism	Metabolism
+00562	Carbohydrate metabolism	Metabolism
+00563	Glycan biosynthesis and metabolism	Metabolism
+00564	Lipid metabolism	Metabolism
+00565	Lipid metabolism	Metabolism
+00571	Glycan biosynthesis and metabolism	Metabolism
+00572	Glycan biosynthesis and metabolism	Metabolism
+00590	Lipid metabolism	Metabolism
+00591	Lipid metabolism	Metabolism
+00592	Lipid metabolism	Metabolism
+00600	Lipid metabolism	Metabolism
+00601	Glycan biosynthesis and metabolism	Metabolism
+00603	Glycan biosynthesis and metabolism	Metabolism
+00604	Glycan biosynthesis and metabolism	Metabolism
+00620	Carbohydrate metabolism	Metabolism
+00621	Xenobiotics biodegradation and metabolism	Metabolism
+00622	Xenobiotics biodegradation and metabolism	Metabolism
+00623	Xenobiotics biodegradation and metabolism	Metabolism
+00624	Xenobiotics biodegradation and metabolism	Metabolism
+00625	Xenobiotics biodegradation and metabolism	Metabolism
+00626	Xenobiotics biodegradation and metabolism	Metabolism
+00627	Xenobiotics biodegradation and metabolism	Metabolism
+00630	Carbohydrate metabolism	Metabolism
+00633	Xenobiotics biodegradation and metabolism	Metabolism
+00640	Carbohydrate metabolism	Metabolism
+00642	Xenobiotics biodegradation and metabolism	Metabolism
+00643	Xenobiotics biodegradation and metabolism	Metabolism
+00650	Carbohydrate metabolism	Metabolism
+00660	Carbohydrate metabolism	Metabolism
+00670	Metabolism of cofactors and vitamins	Metabolism
+00680	Energy metabolism	Metabolism
+00710	Energy metabolism	Metabolism
+00720	Energy metabolism	Metabolism
+00730	Metabolism of cofactors and vitamins	Metabolism
+00740	Metabolism of cofactors and vitamins	Metabolism
+00750	Metabolism of cofactors and vitamins	Metabolism
+00760	Metabolism of cofactors and vitamins	Metabolism
+00770	Metabolism of cofactors and vitamins	Metabolism
+00780	Metabolism of cofactors and vitamins	Metabolism
+00785	Metabolism of cofactors and vitamins	Metabolism
+00790	Metabolism of cofactors and vitamins	Metabolism
+00791	Xenobiotics biodegradation and metabolism	Metabolism
+00830	Metabolism of cofactors and vitamins	Metabolism
+00860	Metabolism of cofactors and vitamins	Metabolism
+00900	Metabolism of terpenoids and polyketides	Metabolism
+00901	Biosynthesis of other secondary metabolites	Metabolism
+00902	Metabolism of terpenoids and polyketides	Metabolism
+00903	Metabolism of terpenoids and polyketides	Metabolism
+00904	Metabolism of terpenoids and polyketides	Metabolism
+00905	Metabolism of terpenoids and polyketides	Metabolism
+00906	Metabolism of terpenoids and polyketides	Metabolism
+00907	Metabolism of terpenoids and polyketides	Metabolism
+00908	Metabolism of terpenoids and polyketides	Metabolism
+00909	Metabolism of terpenoids and polyketides	Metabolism
+00910	Energy metabolism	Metabolism
+00920	Energy metabolism	Metabolism
+00930	Xenobiotics biodegradation and metabolism	Metabolism
+00940	Biosynthesis of other secondary metabolites	Metabolism
+00941	Biosynthesis of other secondary metabolites	Metabolism
+00942	Biosynthesis of other secondary metabolites	Metabolism
+00943	Biosynthesis of other secondary metabolites	Metabolism
+00944	Biosynthesis of other secondary metabolites	Metabolism
+00945	Biosynthesis of other secondary metabolites	Metabolism
+00946	Biosynthesis of other secondary metabolites	Metabolism
+00950	Biosynthesis of other secondary metabolites	Metabolism
+00960	Biosynthesis of other secondary metabolites	Metabolism
+00965	Biosynthesis of other secondary metabolites	Metabolism
+00966	Biosynthesis of other secondary metabolites	Metabolism
+00970	Translation	Genetic Information Processing
+00980	Xenobiotics biodegradation and metabolism	Metabolism
+00981	Metabolism of terpenoids and polyketides	Metabolism
+00982	Xenobiotics biodegradation and metabolism	Metabolism
+00983	Xenobiotics biodegradation and metabolism	Metabolism
+00984	Xenobiotics biodegradation and metabolism	Metabolism
+00996	Biosynthesis of other secondary metabolites	Metabolism
+00997	Biosynthesis of other secondary metabolites	Metabolism
+00998	Biosynthesis of other secondary metabolites	Metabolism
+00999	Biosynthesis of other secondary metabolites	Metabolism
+01010	Chemical structure transformation maps	Metabolism
+01040	Lipid metabolism	Metabolism
+01051	Metabolism of terpenoids and polyketides	Metabolism
+01052	Metabolism of terpenoids and polyketides	Metabolism
+01053	Metabolism of terpenoids and polyketides	Metabolism
+01054	Metabolism of terpenoids and polyketides	Metabolism
+01055	Metabolism of terpenoids and polyketides	Metabolism
+01056	Metabolism of terpenoids and polyketides	Metabolism
+01057	Metabolism of terpenoids and polyketides	Metabolism
+01059	Metabolism of terpenoids and polyketides	Metabolism
+01060	Chemical structure transformation maps	Metabolism
+01061	Chemical structure transformation maps	Metabolism
+01062	Chemical structure transformation maps	Metabolism
+01063	Chemical structure transformation maps	Metabolism
+01064	Chemical structure transformation maps	Metabolism
+01065	Chemical structure transformation maps	Metabolism
+01066	Chemical structure transformation maps	Metabolism
+01070	Chemical structure transformation maps	Metabolism
+01100	Global and overview maps	Metabolism
+01110	Global and overview maps	Metabolism
+01120	Global and overview maps	Metabolism
+01200	Global and overview maps	Metabolism
+01210	Global and overview maps	Metabolism
+01212	Global and overview maps	Metabolism
+01220	Global and overview maps	Metabolism
+01230	Global and overview maps	Metabolism
+01232	Global and overview maps	Metabolism
+01240	Global and overview maps	Metabolism
+01250	Global and overview maps	Metabolism
+01310	Global and overview maps	Metabolism
+01320	Global and overview maps	Metabolism
+02010	Membrane transport	Environmental Information Processing
+02020	Signal transduction	Environmental Information Processing
+02024	Cellular community - prokaryotes	Cellular Processes
+02025	Cellular community - prokaryotes	Cellular Processes
+02026	Cellular community - prokaryotes	Cellular Processes
+02030	Cell motility	Cellular Processes
+02040	Cell motility	Cellular Processes
+02060	Membrane transport	Environmental Information Processing
+03008	Translation	Genetic Information Processing
+03010	Translation	Genetic Information Processing
+03013	Translation	Genetic Information Processing
+03015	Translation	Genetic Information Processing
+03018	Folding, sorting and degradation	Genetic Information Processing
+03020	Transcription	Genetic Information Processing
+03022	Transcription	Genetic Information Processing
+03030	Replication and repair	Genetic Information Processing
+03040	Transcription	Genetic Information Processing
+03050	Folding, sorting and degradation	Genetic Information Processing
+03060	Folding, sorting and degradation	Genetic Information Processing
+03070	Membrane transport	Environmental Information Processing
+03082	Chromosome	Genetic Information Processing
+03083	Chromosome	Genetic Information Processing
+03230	Information processing in viruses	Genetic Information Processing
+03240	Information processing in viruses	Genetic Information Processing
+03250	Information processing in viruses	Genetic Information Processing
+03258	Information processing in viruses	Genetic Information Processing
+03259	Information processing in viruses	Genetic Information Processing
+03260	Information processing in viruses	Genetic Information Processing
+03261	Information processing in viruses	Genetic Information Processing
+03262	Information processing in viruses	Genetic Information Processing
+03263	Information processing in viruses	Genetic Information Processing
+03264	Information processing in viruses	Genetic Information Processing
+03265	Information processing in viruses	Genetic Information Processing
+03266	Information processing in viruses	Genetic Information Processing
+03267	Information processing in viruses	Genetic Information Processing
+03268	Information processing in viruses	Genetic Information Processing
+03271	Information processing in viruses	Genetic Information Processing
+03272	Information processing in viruses	Genetic Information Processing
+03273	Information processing in viruses	Genetic Information Processing
+03410	Replication and repair	Genetic Information Processing
+03420	Replication and repair	Genetic Information Processing
+03430	Replication and repair	Genetic Information Processing
+03440	Replication and repair	Genetic Information Processing
+03450	Replication and repair	Genetic Information Processing
+03460	Replication and repair	Genetic Information Processing
+04010	Signal transduction	Environmental Information Processing
+04011	Signal transduction	Environmental Information Processing
+04012	Signal transduction	Environmental Information Processing
+04013	Signal transduction	Environmental Information Processing
+04014	Signal transduction	Environmental Information Processing
+04015	Signal transduction	Environmental Information Processing
+04016	Signal transduction	Environmental Information Processing
+04020	Signal transduction	Environmental Information Processing
+04022	Signal transduction	Environmental Information Processing
+04024	Signal transduction	Environmental Information Processing
+04060	Signaling molecules and interaction	Environmental Information Processing
+04061	Signaling molecules and interaction	Environmental Information Processing
+04062	Immune system	Organismal Systems
+04064	Signal transduction	Environmental Information Processing
+04066	Signal transduction	Environmental Information Processing
+04068	Signal transduction	Environmental Information Processing
+04070	Signal transduction	Environmental Information Processing
+04071	Signal transduction	Environmental Information Processing
+04072	Signal transduction	Environmental Information Processing
+04075	Signal transduction	Environmental Information Processing
+04080	Signaling molecules and interaction	Environmental Information Processing
+04081	Signaling molecules and interaction	Environmental Information Processing
+04082	Signaling molecules and interaction	Environmental Information Processing
+04110	Cell growth and death	Cellular Processes
+04111	Cell growth and death	Cellular Processes
+04112	Cell growth and death	Cellular Processes
+04113	Cell growth and death	Cellular Processes
+04114	Cell growth and death	Cellular Processes
+04115	Cell growth and death	Cellular Processes
+04120	Folding, sorting and degradation	Genetic Information Processing
+04122	Folding, sorting and degradation	Genetic Information Processing
+04130	Folding, sorting and degradation	Genetic Information Processing
+04136	Transport and catabolism	Cellular Processes
+04137	Transport and catabolism	Cellular Processes
+04138	Transport and catabolism	Cellular Processes
+04139	Transport and catabolism	Cellular Processes
+04140	Transport and catabolism	Cellular Processes
+04141	Folding, sorting and degradation	Genetic Information Processing
+04142	Transport and catabolism	Cellular Processes
+04144	Transport and catabolism	Cellular Processes
+04145	Transport and catabolism	Cellular Processes
+04146	Transport and catabolism	Cellular Processes
+04148	Transport and catabolism	Cellular Processes
+04150	Signal transduction	Environmental Information Processing
+04151	Signal transduction	Environmental Information Processing
+04152	Signal transduction	Environmental Information Processing
+04210	Cell growth and death	Cellular Processes
+04211	Aging	Organismal Systems
+04212	Aging	Organismal Systems
+04213	Aging	Organismal Systems
+04214	Cell growth and death	Cellular Processes
+04215	Cell growth and death	Cellular Processes
+04216	Cell growth and death	Cellular Processes
+04217	Cell growth and death	Cellular Processes
+04218	Cell growth and death	Cellular Processes
+04260	Circulatory system	Organismal Systems
+04261	Circulatory system	Organismal Systems
+04270	Circulatory system	Organismal Systems
+04310	Signal transduction	Environmental Information Processing
+04320	Development and regeneration	Organismal Systems
+04330	Signal transduction	Environmental Information Processing
+04340	Signal transduction	Environmental Information Processing
+04341	Signal transduction	Environmental Information Processing
+04350	Signal transduction	Environmental Information Processing
+04360	Development and regeneration	Organismal Systems
+04361	Development and regeneration	Organismal Systems
+04370	Signal transduction	Environmental Information Processing
+04371	Signal transduction	Environmental Information Processing
+04380	Development and regeneration	Organismal Systems
+04382	Development and regeneration	Organismal Systems
+04390	Signal transduction	Environmental Information Processing
+04391	Signal transduction	Environmental Information Processing
+04392	Signal transduction	Environmental Information Processing
+04510	Cellular community - eukaryotes	Cellular Processes
+04512	Signaling molecules and interaction	Environmental Information Processing
+04514	Signaling molecules and interaction	Environmental Information Processing
+04520	Cellular community - eukaryotes	Cellular Processes
+04530	Cellular community - eukaryotes	Cellular Processes
+04540	Cellular community - eukaryotes	Cellular Processes
+04550	Cellular community - eukaryotes	Cellular Processes
+04610	Immune system	Organismal Systems
+04611	Immune system	Organismal Systems
+04612	Immune system	Organismal Systems
+04613	Immune system	Organismal Systems
+04614	Endocrine system	Organismal Systems
+04620	Immune system	Organismal Systems
+04621	Immune system	Organismal Systems
+04622	Immune system	Organismal Systems
+04623	Immune system	Organismal Systems
+04624	Immune system	Organismal Systems
+04625	Immune system	Organismal Systems
+04626	Environmental adaptation	Organismal Systems
+04630	Signal transduction	Environmental Information Processing
+04640	Immune system	Organismal Systems
+04650	Immune system	Organismal Systems
+04657	Immune system	Organismal Systems
+04658	Immune system	Organismal Systems
+04659	Immune system	Organismal Systems
+04660	Immune system	Organismal Systems
+04662	Immune system	Organismal Systems
+04664	Immune system	Organismal Systems
+04666	Immune system	Organismal Systems
+04668	Signal transduction	Environmental Information Processing
+04670	Immune system	Organismal Systems
+04672	Immune system	Organismal Systems
+04710	Environmental adaptation	Organismal Systems
+04711	Environmental adaptation	Organismal Systems
+04712	Environmental adaptation	Organismal Systems
+04713	Environmental adaptation	Organismal Systems
+04714	Environmental adaptation	Organismal Systems
+04720	Nervous system	Organismal Systems
+04721	Nervous system	Organismal Systems
+04722	Nervous system	Organismal Systems
+04723	Nervous system	Organismal Systems
+04724	Nervous system	Organismal Systems
+04725	Nervous system	Organismal Systems
+04726	Nervous system	Organismal Systems
+04727	Nervous system	Organismal Systems
+04728	Nervous system	Organismal Systems
+04730	Nervous system	Organismal Systems
+04740	Sensory system	Organismal Systems
+04742	Sensory system	Organismal Systems
+04744	Sensory system	Organismal Systems
+04745	Sensory system	Organismal Systems
+04750	Sensory system	Organismal Systems
+04810	Cell motility	Cellular Processes
+04814	Cell motility	Cellular Processes
+04820	Cell motility	Cellular Processes
+04910	Endocrine system	Organismal Systems
+04911	Endocrine system	Organismal Systems
+04912	Endocrine system	Organismal Systems
+04913	Endocrine system	Organismal Systems
+04914	Endocrine system	Organismal Systems
+04915	Endocrine system	Organismal Systems
+04916	Endocrine system	Organismal Systems
+04917	Endocrine system	Organismal Systems
+04918	Endocrine system	Organismal Systems
+04919	Endocrine system	Organismal Systems
+04920	Endocrine system	Organismal Systems
+04921	Endocrine system	Organismal Systems
+04922	Endocrine system	Organismal Systems
+04923	Endocrine system	Organismal Systems
+04924	Endocrine system	Organismal Systems
+04925	Endocrine system	Organismal Systems
+04926	Endocrine system	Organismal Systems
+04927	Endocrine system	Organismal Systems
+04928	Endocrine system	Organismal Systems
+04929	Endocrine system	Organismal Systems
+04930	Endocrine and metabolic disease	Human Diseases
+04931	Endocrine and metabolic disease	Human Diseases
+04932	Endocrine and metabolic disease	Human Diseases
+04933	Endocrine and metabolic disease	Human Diseases
+04934	Endocrine and metabolic disease	Human Diseases
+04935	Endocrine system	Organismal Systems
+04936	Endocrine and metabolic disease	Human Diseases
+04940	Endocrine and metabolic disease	Human Diseases
+04950	Endocrine and metabolic disease	Human Diseases
+04960	Excretory system	Organismal Systems
+04961	Excretory system	Organismal Systems
+04962	Excretory system	Organismal Systems
+04964	Excretory system	Organismal Systems
+04966	Excretory system	Organismal Systems
+04970	Digestive system	Organismal Systems
+04971	Digestive system	Organismal Systems
+04972	Digestive system	Organismal Systems
+04973	Digestive system	Organismal Systems
+04974	Digestive system	Organismal Systems
+04975	Digestive system	Organismal Systems
+04976	Digestive system	Organismal Systems
+04977	Digestive system	Organismal Systems
+04978	Digestive system	Organismal Systems
+04979	Digestive system	Organismal Systems
+04980	Digestive system	Organismal Systems
+04981	Digestive system	Organismal Systems
+05010	Neurodegenerative disease	Human Diseases
+05012	Neurodegenerative disease	Human Diseases
+05014	Neurodegenerative disease	Human Diseases
+05016	Neurodegenerative disease	Human Diseases
+05017	Neurodegenerative disease	Human Diseases
+05020	Neurodegenerative disease	Human Diseases
+05022	Neurodegenerative disease	Human Diseases
+05030	Substance dependence	Human Diseases
+05031	Substance dependence	Human Diseases
+05032	Substance dependence	Human Diseases
+05033	Substance dependence	Human Diseases
+05034	Substance dependence	Human Diseases
+05100	Infectious disease: bacterial	Human Diseases
+05110	Infectious disease: bacterial	Human Diseases
+05111	Cellular community - prokaryotes	Cellular Processes
+05112	Infectious disease: bacterial	Human Diseases
+05113	Infectious disease: bacterial	Human Diseases
+05114	Infectious disease: bacterial	Human Diseases
+05115	Infectious disease: bacterial	Human Diseases
+05116	Infectious disease: bacterial	Human Diseases
+05117	Infectious disease: bacterial	Human Diseases
+05118	Infectious disease: bacterial	Human Diseases
+05119	Infectious disease: bacterial	Human Diseases
+05120	Infectious disease: bacterial	Human Diseases
+05121	Infectious disease: bacterial	Human Diseases
+05122	Infectious disease: bacterial	Human Diseases
+05123	Infectious disease: bacterial	Human Diseases
+05124	Infectious disease: bacterial	Human Diseases
+05125	Infectious disease: bacterial	Human Diseases
+05126	Infectious disease: bacterial	Human Diseases
+05127	Infectious disease: bacterial	Human Diseases
+05128	Infectious disease: bacterial	Human Diseases
+05129	Infectious disease: bacterial	Human Diseases
+05130	Infectious disease: bacterial	Human Diseases
+05131	Infectious disease: bacterial	Human Diseases
+05132	Infectious disease: bacterial	Human Diseases
+05133	Infectious disease: bacterial	Human Diseases
+05134	Infectious disease: bacterial	Human Diseases
+05135	Infectious disease: bacterial	Human Diseases
+05140	Infectious disease: parasitic	Human Diseases
+05142	Infectious disease: parasitic	Human Diseases
+05143	Infectious disease: parasitic	Human Diseases
+05144	Infectious disease: parasitic	Human Diseases
+05145	Infectious disease: parasitic	Human Diseases
+05146	Infectious disease: parasitic	Human Diseases
+05150	Infectious disease: bacterial	Human Diseases
+05152	Infectious disease: bacterial	Human Diseases
+05160	Infectious disease: viral	Human Diseases
+05161	Infectious disease: viral	Human Diseases
+05162	Infectious disease: viral	Human Diseases
+05163	Infectious disease: viral	Human Diseases
+05164	Infectious disease: viral	Human Diseases
+05165	Infectious disease: viral	Human Diseases
+05166	Infectious disease: viral	Human Diseases
+05167	Infectious disease: viral	Human Diseases
+05168	Infectious disease: viral	Human Diseases
+05169	Infectious disease: viral	Human Diseases
+05170	Infectious disease: viral	Human Diseases
+05171	Infectious disease: viral	Human Diseases
+05200	Cancer: overview	Human Diseases
+05202	Cancer: overview	Human Diseases
+05203	Cancer: overview	Human Diseases
+05204	Cancer: overview	Human Diseases
+05205	Cancer: overview	Human Diseases
+05206	Cancer: overview	Human Diseases
+05207	Cancer: overview	Human Diseases
+05208	Cancer: overview	Human Diseases
+05210	Cancer: specific types	Human Diseases
+05211	Cancer: specific types	Human Diseases
+05212	Cancer: specific types	Human Diseases
+05213	Cancer: specific types	Human Diseases
+05214	Cancer: specific types	Human Diseases
+05215	Cancer: specific types	Human Diseases
+05216	Cancer: specific types	Human Diseases
+05217	Cancer: specific types	Human Diseases
+05218	Cancer: specific types	Human Diseases
+05219	Cancer: specific types	Human Diseases
+05220	Cancer: specific types	Human Diseases
+05221	Cancer: specific types	Human Diseases
+05222	Cancer: specific types	Human Diseases
+05223	Cancer: specific types	Human Diseases
+05224	Cancer: specific types	Human Diseases
+05225	Cancer: specific types	Human Diseases
+05226	Cancer: specific types	Human Diseases
+05230	Cancer: overview	Human Diseases
+05231	Cancer: overview	Human Diseases
+05235	Cancer: overview	Human Diseases
+05310	Immune disease	Human Diseases
+05320	Immune disease	Human Diseases
+05321	Immune disease	Human Diseases
+05322	Immune disease	Human Diseases
+05323	Immune disease	Human Diseases
+05330	Immune disease	Human Diseases
+05332	Immune disease	Human Diseases
+05340	Immune disease	Human Diseases
+05410	Cardiovascular disease	Human Diseases
+05412	Cardiovascular disease	Human Diseases
+05414	Cardiovascular disease	Human Diseases
+05415	Cardiovascular disease	Human Diseases
+05416	Cardiovascular disease	Human Diseases
+05417	Cardiovascular disease	Human Diseases
+05418	Cardiovascular disease	Human Diseases
+07011	Chronology: Antiinfectives	Drug Development
+07012	Chronology: Antiinfectives	Drug Development
+07013	Chronology: Antiinfectives	Drug Development
+07014	Chronology: Antiinfectives	Drug Development
+07015	Chronology: Nervous system agents	Drug Development
+07016	Chronology: Other drugs	Drug Development
+07017	Chronology: Other drugs	Drug Development
+07018	Chronology: Other drugs	Drug Development
+07019	Chronology: Antiinfectives	Drug Development
+07020	Chronology: Antiinfectives	Drug Development
+07021	Chronology: Antiinfectives	Drug Development
+07023	Chronology: Antiinfectives	Drug Development
+07024	Target-based classification: Enzymes	Drug Development
+07025	Structure-based classification	Drug Development
+07026	Chronology: Antiinfectives	Drug Development
+07027	Chronology: Nervous system agents	Drug Development
+07028	Chronology: Nervous system agents	Drug Development
+07029	Chronology: Nervous system agents	Drug Development
+07030	Chronology: Nervous system agents	Drug Development
+07031	Chronology: Nervous system agents	Drug Development
+07032	Chronology: Nervous system agents	Drug Development
+07033	Chronology: Nervous system agents	Drug Development
+07034	Structure-based classification	Drug Development
+07035	Structure-based classification	Drug Development
+07036	Target-based classification: Ion channels	Drug Development
+07037	Chronology: Other drugs	Drug Development
+07038	Chronology: Other drugs	Drug Development
+07039	Chronology: Nervous system agents	Drug Development
+07040	Chronology: Antineoplastics	Drug Development
+07041	Chronology: Antineoplastics	Drug Development
+07042	Chronology: Antineoplastics	Drug Development
+07043	Chronology: Antineoplastics	Drug Development
+07044	Chronology: Antiinfectives	Drug Development
+07045	Chronology: Antineoplastics	Drug Development
+07046	Chronology: Other drugs	Drug Development
+07047	Chronology: Other drugs	Drug Development
+07048	Chronology: Other drugs	Drug Development
+07049	Chronology: Other drugs	Drug Development
+07050	Chronology: Other drugs	Drug Development
+07051	Chronology: Other drugs	Drug Development
+07052	Chronology: Other drugs	Drug Development
+07053	Chronology: Antiinfectives	Drug Development
+07054	Chronology: Other drugs	Drug Development
+07055	Chronology: Other drugs	Drug Development
+07056	Chronology: Nervous system agents	Drug Development
+07057	Chronology: Nervous system agents	Drug Development
+07110	Skeleton-based classification	Drug Development
+07112	Skeleton-based classification	Drug Development
+07114	Skeleton-based classification	Drug Development
+07117	Skeleton-based classification	Drug Development
+07211	Target-based classification: G protein-coupled receptors	Drug Development
+07212	Target-based classification: G protein-coupled receptors	Drug Development
+07213	Target-based classification: G protein-coupled receptors	Drug Development
+07214	Target-based classification: G protein-coupled receptors	Drug Development
+07215	Target-based classification: G protein-coupled receptors	Drug Development
+07216	Target-based classification: Enzymes	Drug Development
+07217	Target-based classification: Enzymes	Drug Development
+07218	Target-based classification: Enzymes	Drug Development
+07219	Target-based classification: Enzymes	Drug Development
+07220	Target-based classification: G protein-coupled receptors	Drug Development
+07221	Target-based classification: Ion channels	Drug Development
+07222	Target-based classification: Nuclear receptors	Drug Development
+07223	Target-based classification: Nuclear receptors	Drug Development
+07224	Target-based classification: G protein-coupled receptors	Drug Development
+07225	Target-based classification: Nuclear receptors	Drug Development
+07226	Target-based classification: Nuclear receptors	Drug Development
+07227	Target-based classification: G protein-coupled receptors	Drug Development
+07228	Target-based classification: G protein-coupled receptors	Drug Development
+07229	Target-based classification: G protein-coupled receptors	Drug Development
+07230	Target-based classification: Ion channels	Drug Development
+07231	Target-based classification: Ion channels	Drug Development
+07232	Target-based classification: Ion channels	Drug Development
+07233	Target-based classification: Transporters	Drug Development
+07234	Target-based classification: Transporters	Drug Development
+07235	Target-based classification: Ion channels	Drug Development

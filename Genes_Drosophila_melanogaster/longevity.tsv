@@ -3,65 +3,65 @@ Gene_symbol	Gene_name	species	File_prefix	COG_Insecta	Longevity	Max_average_life
 5-HT2A	5-hydroxytryptamine (serotonin) receptor 2A	Drosophila_melanogaster	5_HT2A	ENOG503SH94	Anti-Longevity	0.9
 alpha-Man-Ia	Alpha Mannosidase I	Drosophila_melanogaster	alpha_Man_Ia	ENOG503SJT8	Anti-Longevity	0.39
 ATPCL	ATP citrate lyase	Drosophila_melanogaster	ATPCL	ENOG503SH43	Anti-Longevity	0.32
-ND-20	NADH dehydrogenase (ubiquinone) 20 kDa subunit	Drosophila_melanogaster	ND_20	ENOG503SG8U	Anti-Longevity	0.46
-chico	chico	Drosophila_melanogaster	chico	ENOG503SKP6	Anti-Longevity	0.48
-Coq2	Coenzyme Q biosynthesis protein 2	Drosophila_melanogaster	Coq2	ENOG503SHJE	Anti-Longevity	0.31
-daw	dawdle	Drosophila_melanogaster	daw	ENOG503SJJS	Anti-Longevity	0.35
-Myc	Myc	Drosophila_melanogaster	Myc	ENOG503SP9C	Anti-Longevity	0.47
-EcR	Ecdysone receptor	Drosophila_melanogaster	EcR	ENOG503SG58	Anti-Longevity	0.5
-Edem1	"ER degradation enhancer, mannosidase alpha-like 1"	Drosophila_melanogaster	Edem1	ENOG503SHBF	Anti-Longevity	0.3
-esc	extra sexcombs	Drosophila_melanogaster	esc	ENOG503SHJP	Anti-Longevity	0.59
-Ez	Enhancer of zeste	Drosophila_melanogaster	Ez	ENOG503SGNZ	Anti-Longevity	0.76
-Gr63a	Gustatory receptor 63a	Drosophila_melanogaster	Gr63a	ENOG503SJQ7	Anti-Longevity	0.3
-Ilk	Integrin linked kinase	Drosophila_melanogaster	Ilk	ENOG503SJAB	Anti-Longevity	0.63
-Ilp2	Insulin-like peptide 2	Drosophila_melanogaster	Ilp2	ENOG503STC5	Anti-Longevity	0.47
-Indy	I'm not dead yet protein	Drosophila_melanogaster	Indy	ENOG503SIE6	Anti-Longevity	0.92
-InR	Insulin-like 1 receptor	Drosophila_melanogaster	InR	ENOG503SGUP	Anti-Longevity	0.85
-JhI-21	Juvenile hormone Inducible-21	Drosophila_melanogaster	JhI_21	ENOG503SI4M	Anti-Longevity	0.32
-Lnk	Lnk	Drosophila_melanogaster	Lnk	ENOG503SGIY	Anti-Longevity	0.33
-mld	molting defective	Drosophila_melanogaster	mld	ENOG503SVU6	Anti-Longevity	0.42
-mys	myospheroid	Drosophila_melanogaster	mys	ENOG503SHCZ	Anti-Longevity	0.44
-Orco	Odorant receptor co-receptor	Drosophila_melanogaster	Orco	ENOG503SJSU	Anti-Longevity	0.56
-ovo	ovo	Drosophila_melanogaster	ovo	ENOG503SGYD	Anti-Longevity	0.5
-p53	p53	Drosophila_melanogaster	p53	ENOG503SN02	Anti-Longevity	0.58
-PolG2	"DNA polymerase subunit gamma-2, mitochondrial"	Drosophila_melanogaster	DNApol_gamma35	ENOG503T0FZ	Anti-Longevity	0.52
-ppk28	pickpocket 28	Drosophila_melanogaster	ppk28	ENOG503SKIR	Anti-Longevity	0.44
-rdgA	retinal degeneration A	Drosophila_melanogaster	rdgA	ENOG503SH0V	Anti-Longevity	0.44
-HDAC1	Histone deacetylase 1	Drosophila_melanogaster	HDAC1	ENOG503SJ57	Anti-Longevity	0.52
-Rpi	Ribose-5-phosphate isomerase	Drosophila_melanogaster	Rpi	ENOG503SJYA	Anti-Longevity	0.38
-snz	snazarus	Drosophila_melanogaster	snz	ENOG503SJ6V	Anti-Longevity	0.85
-teq	Tequila	Drosophila_melanogaster	teq	ENOG503SZ0G	Anti-Longevity	0.31
-trh	trachealess	Drosophila_melanogaster	trh	ENOG503SK9X	Anti-Longevity	0.9
+azot	ahuizotl	Drosophila_melanogaster	azot	ENOG503SFXI	Pro-Longevity	0.54
 bam	bag of marbles	Drosophila_melanogaster	bam	ENOG503SXQH	Pro-Longevity	0.5
 bchs	blue cheese	Drosophila_melanogaster	bchs	ENOG503SJ7A	Pro-Longevity	0.45
 Cat	Catalase	Drosophila_melanogaster	Cat	ENOG503SHKQ	Pro-Longevity	0.33
 Cbs	Cystathionine beta-synthase	Drosophila_melanogaster	Cbs	ENOG503SGB6	Pro-Longevity	0.43
 Cdk5	Cyclin-dependent kinase 5	Drosophila_melanogaster	Cdk5	ENOG503SK54	Pro-Longevity	0.33
-azot	ahuizotl	Drosophila_melanogaster	azot	ENOG503SFXI	Pro-Longevity	0.54
+chico	chico	Drosophila_melanogaster	chico	ENOG503SKP6	Anti-Longevity	0.48
+Coq2	Coenzyme Q biosynthesis protein 2	Drosophila_melanogaster	Coq2	ENOG503SHJE	Anti-Longevity	0.31
+daw	dawdle	Drosophila_melanogaster	daw	ENOG503SJJS	Anti-Longevity	0.35
 Dci	Dodecenoyl-CoA delta-isomerase	Drosophila_melanogaster	Dci	ENOG503SMVI	Pro-Longevity	0.31
+E(z)	Enhancer of zeste	Drosophila_melanogaster	Ez	ENOG503SGNZ	Anti-Longevity	0.76
+EcR	Ecdysone receptor	Drosophila_melanogaster	EcR	ENOG503SG58	Anti-Longevity	0.5
+Edem1	"ER degradation enhancer, mannosidase alpha-like 1"	Drosophila_melanogaster	Edem1	ENOG503SHBF	Anti-Longevity	0.3
 eEF1alpha1	eukaryotic translation elongation factor 1 alpha 1 	Drosophila_melanogaster	eEF1alpha1	ENOG503SIW3	Pro-Longevity	0.41
-MsrA	Methionine sulfoxide reductase A	Drosophila_melanogaster	MsrA	ENOG503SZDS	Pro-Longevity	0.7
 elav	embryonic lethal abnormal vision	Drosophila_melanogaster	elav	ENOG503SQ9J	Pro-Longevity	0.66
+esc	extra sexcombs	Drosophila_melanogaster	esc	ENOG503SHJP	Anti-Longevity	0.59
 fabp	fatty acid bindin protein	Drosophila_melanogaster	fabp	ENOG503SN3G	Pro-Longevity	0.81
 fh	frataxin	Drosophila_melanogaster	fh	ENOG503SNGY	Pro-Longevity	0.35
 foxo	"Forkhead box, sub-group O"	Drosophila_melanogaster	foxo	ENOG503SZ7T	Pro-Longevity	0.33
 Gadd45	Growth arrest and DNA damage-inducible 45	Drosophila_melanogaster	Gadd45	ENOG503SP8P	Pro-Longevity	0.77
 Gclc	Glutamate-cysteine ligase catalytic subunit	Drosophila_melanogaster	Gclc	ENOG503SI9B	Pro-Longevity	0.5
+Gr63a	Gustatory receptor 63a	Drosophila_melanogaster	Gr63a	ENOG503SJQ7	Anti-Longevity	0.3
 GstS1	Glutathione S transferase S1	Drosophila_melanogaster	GstS1	ENOG503SM02	Pro-Longevity	0.33
+HDAC1	Histone deacetylase 1	Drosophila_melanogaster	HDAC1	ENOG503SJ57	Anti-Longevity	0.52
+Ilk	Integrin linked kinase	Drosophila_melanogaster	Ilk	ENOG503SJAB	Anti-Longevity	0.63
+Ilp2	Insulin-like peptide 2	Drosophila_melanogaster	Ilp2	ENOG503STC5	Anti-Longevity	0.47
 inaE	inactivation no afterpotential E	Drosophila_melanogaster	inaE	ENOG503SJH8	Pro-Longevity	0.73
+Indy	I'm not dead yet protein	Drosophila_melanogaster	Indy	ENOG503SIE6	Anti-Longevity	0.92
+InR	Insulin-like 1 receptor	Drosophila_melanogaster	InR	ENOG503SGUP	Anti-Longevity	0.85
+JhI-21	Juvenile hormone Inducible-21	Drosophila_melanogaster	JhI_21	ENOG503SI4M	Anti-Longevity	0.32
+Lnk	Lnk	Drosophila_melanogaster	Lnk	ENOG503SGIY	Anti-Longevity	0.33
 Men	Malic enzyme	Drosophila_melanogaster	Men	ENOG503SGTJ	Pro-Longevity	0.45
+mld	molting defective	Drosophila_melanogaster	mld	ENOG503SVU6	Anti-Longevity	0.42
 mle	Maleless	Drosophila_melanogaster	mle	ENOG503SGMK	Pro-Longevity	0.48
 Mlp84B	Muscle LIM protein at 84B	Drosophila_melanogaster	Mlp84B	ENOG503SHFY	Pro-Longevity	0.35
+MsrA	Methionine sulfoxide reductase A	Drosophila_melanogaster	MsrA	ENOG503SZDS	Pro-Longevity	0.7
 MTF-1	Metal response element-binding Transcription Factor-1	Drosophila_melanogaster	MTF_1	ENOG503SKMW	Pro-Longevity	0.4
+Myc	Myc	Drosophila_melanogaster	Myc	ENOG503SP9C	Anti-Longevity	0.47
+mys	myospheroid	Drosophila_melanogaster	mys	ENOG503SHCZ	Anti-Longevity	0.44
+ND-20	NADH dehydrogenase (ubiquinone) 20 kDa subunit	Drosophila_melanogaster	ND_20	ENOG503SG8U	Anti-Longevity	0.46
 Nf1	Neurofibromin 1	Drosophila_melanogaster	Nf1	ENOG503SKHY	Pro-Longevity	0.68
 NLaz	Neural Lazarillo	Drosophila_melanogaster	NLaz	ENOG503SMTM	Pro-Longevity	0.31
 Nmdmc	NAD-dependent methylenetetrahydrofolate dehydrogenase	Drosophila_melanogaster	Nmdmc	ENOG503SHF7	Pro-Longevity	1.2
+Orco	Odorant receptor co-receptor	Drosophila_melanogaster	Orco	ENOG503SJSU	Anti-Longevity	0.56
+ovo	ovo	Drosophila_melanogaster	ovo	ENOG503SGYD	Anti-Longevity	0.5
 p38b	p38b MAP kinase	Drosophila_melanogaster	p38b	ENOG503SH36	Pro-Longevity	0.6
+p53	p53	Drosophila_melanogaster	p53	ENOG503SN02	Anti-Longevity	0.58
 Pcmt	Protein-L-isoaspartate (D-aspartate) O-methyltransferase	Drosophila_melanogaster	Pcmt	ENOG503SJ14	Pro-Longevity	0.39
 Pex16	peroxin 16	Drosophila_melanogaster	Pex16	ENOG503SJDW	Pro-Longevity	0.75
+PolG2	"DNA polymerase subunit gamma-2, mitochondrial"	Drosophila_melanogaster	DNApol_gamma35	ENOG503T0FZ	Anti-Longevity	0.52
+ppk28	pickpocket 28	Drosophila_melanogaster	ppk28	ENOG503SKIR	Anti-Longevity	0.44
 Rbp9	RNA-binding protein 9	Drosophila_melanogaster	Rbp9	ENOG503SIHQ	Pro-Longevity	0.33
+rdgA	retinal degeneration A	Drosophila_melanogaster	rdgA	ENOG503SH0V	Anti-Longevity	0.44
+Rpi	Ribose-5-phosphate isomerase	Drosophila_melanogaster	Rpi	ENOG503SJYA	Anti-Longevity	0.38
 SdhB	Succinate dehydrogenase subunit B	Drosophila_melanogaster	SdhB	ENOG503SFKI	Pro-Longevity	0.66
+snz	snazarus	Drosophila_melanogaster	snz	ENOG503SJ6V	Anti-Longevity	0.85
 srl	Spargel	Drosophila_melanogaster	srl	ENOG503SMS9	Pro-Longevity	0.33
 Stat92E	Signal-transducer and activator of transcription protein at 92E	Drosophila_melanogaster	Stat92E	ENOG503SKGS	Pro-Longevity	0.33
+teq	Tequila	Drosophila_melanogaster	teq	ENOG503SZ0G	Anti-Longevity	0.31
+trh	trachealess	Drosophila_melanogaster	trh	ENOG503SK9X	Anti-Longevity	0.9
 Vinc	Vinculin	Drosophila_melanogaster	Vinc	ENOG503SFME	Pro-Longevity	1.5
 Zw	Zwischenferment	Drosophila_melanogaster	Zw	ENOG503SJH5	Pro-Longevity	0.38

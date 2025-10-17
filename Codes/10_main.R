@@ -1,5 +1,8 @@
 # Ortholog groups, gene functions & metabolic network
-
+#ko_pathway_mapping <- read.table("https://rest.kegg.jp/link/pathway/ko", 
+#                                  sep = "\t", header = FALSE, stringsAsFactors = FALSE)
+k.info <- read.table("https://pathview.uncc.edu/data/khier.tsv", header = T)
+readLines("https://rest.kegg.jp/get/map00340")
 #####
 # Ortholog groups
 #####
@@ -455,34 +458,39 @@ eggNOGmapper=function(proteins.faa=proteins.faa,
   setwd(wd)
 }
   
-# Gene function by best blast hits (lowest evalue, longest alignment)
+# Gene function by best blast hits (higherst bitscore, longest alignment)
 # Dependencies: DIAMOND+nr, parallel (R)
-geneFun_bbh=function(pep.faa=pep.faa,
-                     nr.dmdb="/apps/unit/BioinfoUgrp/DB/diamondDB/ncbi/2022-07/nr.dmnd",
-                     out_prefix=out_prefix,
-                     threads=threads){
+geneFun_bh=function(pep.faa=pep.faa,
+                    nr.dmdb="/bucket/BourguignonU/Cong/public_db/ncbi.blastdb_20250610/nr.dmdb.dmnd",
+                    gene2accession="/bucket/BourguignonU/Cong/public_db/ncbi_gene.20250610/gene2accession",
+                    out_prefix=out_prefix,
+                    threads=threads){
   threads=as.character(threads)
   
   # blast search
   blast=paste(out_prefix,".blast",sep="")
-  #if (!file.exists(blast)){ # the task here is to find one best hits
+  stamp=paste(out_prefix,".blast.done",sep="")
+  if (!file.exists(stamp)){ # the task here is to find one best hits
     cmd=paste("diamond blastp",
               "--threads",threads,
               "--db",nr.dmdb,
               "--query",pep.faa,
               "--out",blast,
-              "--min-score 50",
+              #"--min-score 50",
               "--evalue 1e-5",
-              "--query-cover 75",
-              "--outfmt 6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore qcovhsp scovhsp stitle skingdoms sphylums sscinames staxids",
+              #"--query-cover 75",
+              "--outfmt 6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore qcovhsp scovhsp staxids sscinames sphylums",
+              "--taxonlist 50557", # Insecta
+              "--ultra-sensitive",
               sep=" ")
     print(cmd);system(cmd,wait=TRUE)
-  #}
+    system(paste("touch",stamp,sep=" "))
+  }
   
   blast=read.table(blast,sep="\t",header=FALSE,quote="",comment.char="")
   colnames(blast)=c("qseqid","sseqid","pident","length","mismatch","gapopen",
                     "qstart","qend","sstart","send","evalue","bitscore",
-                    "qcovhsp","scovhsp","stitle","skingdoms","sphylums","sscinames","staxids")
+                    "qcovhsp","scovhsp","staxids","sscinames","sphylums")
   library(parallel)
   clus=makeCluster(as.numeric(threads))
   clusterExport(clus,list("blast"),envir=environment())
@@ -490,13 +498,14 @@ geneFun_bbh=function(pep.faa=pep.faa,
                                 1:nrow(blast),
                                 function(i){
                                   query=blast[i,"qseqid"]
-                                  evalue=blast[i,"evalue"]
+                                  bitscore=blast[i,"bitscore"]
                                   
                                   d=blast[blast[,"qseqid"]==query,]
-                                  bestEval=min(d[,"evalue"])
-                                  if (evalue!=bestEval){return(FALSE)}else{return(TRUE)}
+                                  bestEval=max(d[,"bitscore"])
+                                  if (bitscore!=bestEval){return(FALSE)}else{return(TRUE)}
                                 })
   blast=blast[blast[,"retainHit"],]
+  
   clusterExport(clus,list("blast"),envir=environment())
   blast[,"retainHit"]=parSapply(clus,
                                 1:nrow(blast),
@@ -508,85 +517,97 @@ geneFun_bbh=function(pep.faa=pep.faa,
                                   longest=max(d[,"length"])
                                   if (length!=longest){return(FALSE)}else{return(TRUE)}
                                 })
-  stopCluster(clus)
-  
   blast=blast[blast[,"retainHit"],]
-  write.table(blast,paste(out_prefix,"_bbh.tsv",sep=""),
-              sep="\t",row.names=FALSE,quote=FALSE)
-}
-
-# Gene function by best blast hits (lowest evalue, longest alignment)
-# Dependencies: blast+nr+NCBI Gene, parallel (R)
-geneFun_blast2nr=function(pep.faa=pep.faa,
-                          nr="/bucket/BourguignonU/Cong/public_db/ncbi.blastdb_20240708/nr",
-                          gene2accession="/bucket/BourguignonU/Cong/public_db/ncbi_gene.20250610/gene2accession",
-                          out_prefix=out_prefix,
-                          threads=threads){
-  threads=as.character(threads)
   
-  # blast search
-  blast=paste(out_prefix,".blast",sep="")
-  cmd=paste("blastp",
-            "-query",pep.faa,
-            "-db",nr,
-            "-out",blast,
-            "-outfmt '6 qaccver saccver pident length mismatch gapopen qstart qend sstart send evalue bitscore staxid'",
-            "-evalue 1e-5",
-            "-num_alignments 20",
-            "-num_threads",threads,
+  blast=blast[!duplicated(blast$qseqid),]
+  writeLines(blast[!duplicated(blast$sseqid),"sseqid"],
+             paste(out_prefix,"_sseqid.lst",sep=""))
+  cmd=paste("grep",
+            "-f",paste(out_prefix,"_sseqid.lst",sep=""),
+            gene2accession,
+            ">",
+            paste(out_prefix,"_sseqid.tsv",sep=""),
             sep=" ")
   print(cmd);system(cmd,wait=TRUE)
   
-  blast=read.table(blast,sep="\t",header=FALSE,quote="",comment.char="")
-  colnames(blast)=c("qaccver","saccver","pident","length","mismatch",
-                    "gapopen","qstart","qend","sstart","send","evalue","bitscore",
-                    "staxid")
-  library(parallel)
-  clus=makeCluster(as.numeric(threads))
-  clusterExport(clus,list("blast"),envir=environment())
-  blast[,"retainHit"]=parSapply(clus,
-                                1:nrow(blast),
-                                function(i){
-                                  query=blast[i,"qseqid"]
-                                  evalue=blast[i,"evalue"]
-                                  
-                                  d=blast[blast[,"qseqid"]==query,]
-                                  bestEval=min(d[,"evalue"])
-                                  if (evalue!=bestEval){return(FALSE)}else{return(TRUE)}
-                                })
-  blast=blast[blast[,"retainHit"],]
-  clusterExport(clus,list("blast"),envir=environment())
-  blast[,"retainHit"]=parSapply(clus,
-                                1:nrow(blast),
-                                function(i){
-                                  query=blast[i,"qseqid"]
-                                  length=blast[i,"length"]
-                                  
-                                  d=blast[blast[,"qseqid"]==query,]
-                                  longest=max(d[,"length"])
-                                  if (length!=longest){return(FALSE)}else{return(TRUE)}
-                                })
-  blast=blast[blast[,"retainHit"],]
+  sseqid2gene=read.table(paste(out_prefix,"_sseqid.tsv",sep=""),
+                         sep="\t",header=FALSE,quote="")
+  sseqid2gene=sseqid2gene[!duplicated(sseqid2gene$V6),]
+  rownames(sseqid2gene)=sseqid2gene$V6
+  blast[,"Symbol"]=sseqid2gene[blast$sseqid,16]
+  blast=blast[!is.na(blast$Symbol),]
+  #blast=blast[!grepl("LOC[0-9]{9}$",blast$Symbol),]
   
-  blast[,"Symbol"]=parSapply(clus,
-                             blast$saccver,
-                             function(i){
-                               cmd=paste("awk -F '\t' -v OFS='\t' -v i=1 ",
-                                         "'{if ($6==\"",i,"\") print $16}'")
-                               return(system(cmd,intern=TRUE))
-                             })
-  stopCluster(clus)
-  
-  
-  write.table(blast,paste(out_prefix,"_bbh.tsv",sep=""),
+  write.table(blast,paste(out_prefix,"_bh.tsv",sep=""),
               sep="\t",row.names=FALSE,quote=FALSE)
 }
 
-
-
-
-
-
+# # Gene function by best blast hits (lowest evalue, longest alignment)
+# # Dependencies: blast+nr+NCBI Gene, parallel (R)
+# geneFun_blast2nr=function(pep.faa=pep.faa,
+#                           nr="/bucket/BourguignonU/Cong/public_db/ncbi.blastdb_20240708/nr",
+#                           gene2accession="/bucket/BourguignonU/Cong/public_db/ncbi_gene.20250610/gene2accession",
+#                           out_prefix=out_prefix,
+#                           threads=threads){
+#   threads=as.character(threads)
+#   
+#   # blast search
+#   blast=paste(out_prefix,".blast",sep="")
+#   cmd=paste("blastp",
+#             "-query",pep.faa,
+#             "-db",nr,
+#             "-out",blast,
+#             "-outfmt '6 qaccver saccver pident length mismatch gapopen qstart qend sstart send evalue bitscore staxid'",
+#             "-evalue 1e-5",
+#             "-num_alignments 20",
+#             "-num_threads",threads,
+#             sep=" ")
+#   print(cmd);system(cmd,wait=TRUE)
+#   
+#   blast=read.table(blast,sep="\t",header=FALSE,quote="",comment.char="")
+#   colnames(blast)=c("qaccver","saccver","pident","length","mismatch",
+#                     "gapopen","qstart","qend","sstart","send","evalue","bitscore",
+#                     "staxid")
+#   library(parallel)
+#   clus=makeCluster(as.numeric(threads))
+#   clusterExport(clus,list("blast"),envir=environment())
+#   blast[,"retainHit"]=parSapply(clus,
+#                                 1:nrow(blast),
+#                                 function(i){
+#                                   query=blast[i,"qseqid"]
+#                                   evalue=blast[i,"evalue"]
+#                                   
+#                                   d=blast[blast[,"qseqid"]==query,]
+#                                   bestEval=min(d[,"evalue"])
+#                                   if (evalue!=bestEval){return(FALSE)}else{return(TRUE)}
+#                                 })
+#   blast=blast[blast[,"retainHit"],]
+#   clusterExport(clus,list("blast"),envir=environment())
+#   blast[,"retainHit"]=parSapply(clus,
+#                                 1:nrow(blast),
+#                                 function(i){
+#                                   query=blast[i,"qseqid"]
+#                                   length=blast[i,"length"]
+#                                   
+#                                   d=blast[blast[,"qseqid"]==query,]
+#                                   longest=max(d[,"length"])
+#                                   if (length!=longest){return(FALSE)}else{return(TRUE)}
+#                                 })
+#   blast=blast[blast[,"retainHit"],]
+#   
+#   blast[,"Symbol"]=parSapply(clus,
+#                              blast$saccver,
+#                              function(i){
+#                                cmd=paste("awk -F '\t' -v OFS='\t' -v i=1 ",
+#                                          "'{if ($6==\"",i,"\") print $16}'")
+#                                return(system(cmd,intern=TRUE))
+#                              })
+#   stopCluster(clus)
+#   
+#   
+#   write.table(blast,paste(out_prefix,"_bbh.tsv",sep=""),
+#               sep="\t",row.names=FALSE,quote=FALSE)
+# }
 
 # bitacora: gene family
 # Dependencies: BITACORA, BLAST, HMMER
@@ -955,7 +976,7 @@ topGO=function(Gene2GO.tsv=Gene2GO.tsv, # no header
   gene_list[match(my_genes,names(gene_list))]=0
   
   topGo_data=new("topGOdata",
-                 nodeSize=5,
+                 nodeSize=10,
                  ontology=go_category,
                  allGenes=gene_list,
                  annot=annFUN.gene2GO,
@@ -963,7 +984,7 @@ topGO=function(Gene2GO.tsv=Gene2GO.tsv, # no header
                  geneSel=function(allScore){return(allScore==0)}) 
   result_KS.elim=runTest(topGo_data,
                          algorithm="elim",
-                         statistic="ks")
+                         statistic="sum")
   
   allres=GenTable(topGo_data,
                   KS=result_KS.elim,

@@ -1,0 +1,38 @@
+FBgn0002723	CG1705	Met	Methoprene-tolerant	JH: biosynthesis
+FBgn0010548	CG11140	Aldh-III	Aldehyde dehydrogenase type III	JH: biosynthesis
+FBgn0010611	CG4311	Hmgs	HMG Coenzyme A synthase	JH: biosynthesis
+FBgn0012036	CG3752	Aldh	Aldehyde dehydrogenase type III	JH: biosynthesis
+FBgn0025373	CG12389	Fpps	Farnesyl pyrophosphate synthase	JH: biosynthesis
+FBgn0028841	CG17330	jhamt	juvenile hormone acid methyltransferase	JH: biosynthesis
+FBgn0029969	CG10932	Acat1	Acetyl-CoA acetyltransferase 1	JH: biosynthesis
+FBgn0030026	CG10964	sni	sniffer	JH: biosynthesis
+FBgn0030683	CG8239	Mvd	Mevalonate diphosphate decarboxylase	JH: biosynthesis
+FBgn0032811	CG10268	Pmvk	Phosphomevalonate kinase	JH: biosynthesis
+FBgn0034583	CG10527	CG10527	NA	JH: biosynthesis
+FBgn0036910	CG8733	Cyp305a1	Cyp305a1	JH: biosynthesis
+FBgn0038876	CG5919	Idi	Isopentenyl-diphosphate delta isomerase	JH: biosynthesis
+FBgn0041092	CG13109	tai	taiman	JH: biosynthesis
+FBgn0061359	CG33671	Mvk	NA	JH: biosynthesis
+FBgn0061360	CG33672	CG33672	NA	JH: biosynthesis
+FBgn0261703	CG42739	gce	germ cell-expressed bHLH-PAS	JH: biosynthesis
+FBgn0263782	CG10367	Hmgcr	HMG Coenzyme A reductase	JH: biosynthesis
+FBgn0010053	CG15101	Jheh1	Juvenile hormone epoxide hydrolase 1	JH: metabolism
+FBgn0020907	CG14904	Scp2	Sarcoplasmic calcium-binding protein 2	JH: metabolism
+FBgn0034405	CG15102	Jheh2	Juvenile hormone epoxide hydrolase 2	JH: metabolism
+FBgn0034406	CG15106	Jheh3	Juvenile hormone epoxide hydrolase 3	JH: metabolism
+FBgn0035088	CG3776	CG3776	NA	JH: metabolism
+FBgn0028425	CG12317	JhI-21	Juvenile hormone Inducible-21	JH: signalling
+FBgn0028426	CG3298	RnaseZ	Ribonuclease Z	JH: signalling
+FBgn0039298	CG11853	to	takeout	JH: signalling
+FBgn0266450	CG45074	Kr-h1	Kruppel homolog 1	JH: signalling
+FBgn0004842	CG5811	RYa-R	RYamide receptor	JH: regulation of JH biosynthesis
+FBgn0010052	CG8425	Jhe	Juvenile hormone esterase	JH: regulation of JH biosynthesis
+FBgn0012041	NA	Atn	Allatotropin	JH: regulation of JH biosynthesis
+FBgn0013282	NA	Jhbp-30	Juvenile hormone binding protein Ð 30kD	JH: regulation of JH biosynthesis
+FBgn0013283	NA	Jhbp-63 	Juvenile hormone binding protein Ð 63kD	JH: regulation of JH biosynthesis
+FBgn0013284	NA	Jhbp-80	Juvenile hormone binding protein Ð 80kD	JH: regulation of JH biosynthesis
+FBgn0015591	CG13633	AstA	Allatostatin A 	JH: regulation of JH biosynthesis
+FBgn0028424	CG3767	JhI-26	Juvenile hormone-inducible protein 26	JH: regulation of JH biosynthesis
+FBgn0034076	CG8424	Jhedup	Juvenile hormone esterase duplication	JH: regulation of JH biosynthesis
+FBgn0039595	CG10001	AstA-R2	Allatostatin A receptor 2	JH: regulation of JH biosynthesis
+FBgn0266429	CG2872	AstA-R1	Allatostatin A receptor 1	JH: regulation of JH biosynthesis

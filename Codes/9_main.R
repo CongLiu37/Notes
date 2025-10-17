@@ -153,9 +153,13 @@ Extract_fq=function(bam=bam,
                     threads=threads){
   threads=as.character(threads)
   if (paired){
-    if (mapped){flag="-f 2 -F 256"}else{flag="-f 12 -F 256"}
+    if (mapped){
+      flag="-f 2" #only include reads with PROPER_PAIR (each segment properly aligned according to the aligner)
+    }else{
+      flag="-f 12" #only include reads with UNMAP & MUNMAP (segment unmapped & next segment in the template unmapped)
+    }
     if (reads_format=="fq"){
-      samtools="samtools fastq";reads_format="fq.gz"}else{samtools="samtools fasta"}
+      samtools="samtools fastq"}else{samtools="samtools fasta"}
     cmd=paste(samtools,
               flag,
               "-@",threads,
@@ -165,9 +169,13 @@ Extract_fq=function(bam=bam,
               sep=" ")
   }
   if (!paired){
-    if (mapped){flag="-f 2"}else{flag="-G 2"}
+    if (mapped){
+      flag="-G 4" # only EXCLUDE reads with UNMAP (segment unmapped)
+    }else{
+      flag="-f 4" # only include reads with UNMAP (segment unmapped)
+    }
     if (reads_format=="fq"){
-      samtools="samtools fastq";reads_format="fq.gz"}else{samtools="samtools fasta"}
+      samtools="samtools fastq"}else{samtools="samtools fasta"}
     cmd=paste(samtools,
               flag,
               "-@",threads,
@@ -176,6 +184,15 @@ Extract_fq=function(bam=bam,
               sep=" ")
   }
   print(cmd);system(cmd,wait=TRUE)
+  if (paired){
+    cmd=paste("gzip ",out_prefix,".1.",reads_format,sep="")
+    print(cmd);system(cmd,wait=T)
+    cmd=paste("gzip ",out_prefix,".2.",reads_format,sep="")
+    print(cmd);system(cmd,wait=T)
+  }else{
+    cmd=paste("gzip ",out_prefix,".",reads_format,sep="")
+    print(cmd);system(cmd,wait=T)
+  }
 }
 
 # Remove rRNA from metatranscriptome by SortMeRNA
@@ -244,6 +261,51 @@ plass=function(fq1=fq1,fq2=fq2, # comma-list
   print(cmd);system(cmd,wait=TRUE)
   
   setwd(wd)
+}
+
+# metaMDBG: Nanopore/Hifi
+metaMDBG=function(hifi.fq=hifi.fq,
+                  nanopore.fq=NA,
+                  out_dir=out_dir,
+                  threads=threads){
+  cmd=paste("metaMDBG asm",
+            "--out-dir",out_dir,
+            "--threads",as.character(threads),
+            sep=" ")
+  if (!is.na(hifi.fq)){cmd=paste(cmd,"--in-hifi",hifi.fq,sep=" ")}
+  if (!is.na(nanopore.fq)){cmd=paste(cmd,"--in-ont",nanopore.fq,sep=" ")}
+  print(cmd);system(cmd,wait=TRUE)
+}
+
+hifiasm_meta=function(hifi.fq=hifi.fq,
+                      out_prefix=out_prefix,
+                      threads=threads){
+  cmd=paste("hifiasm_meta",
+            "-o",out_prefix,
+            "-t",as.character(threads),
+            hifi.fq,
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  cmd=paste("awk '/^S/{print \">\"$2;print $3}'",
+            paste(out_prefix,".p_ctg.gfa",sep=""),
+            ">",
+            paste(out_prefix,".p_ctg.fna",sep=""),
+            sep=" ")
+  print(cmd);system(cmd,wait=T)
+}
+
+flye=function(hifi=hifi,
+              out_dir=out_dir,
+              threads=threads,
+              meta=T){
+  if (!dir.exists(out_dir)){dir.create(out_dir)}
+  cmd=paste("flye",
+            "--pacbio-hifi",hifi,
+            "--out-dir",out_dir,
+            "--threads",as.character(threads),
+            sep=" ")
+  if (meta){cmd=paste(cmd,"--meta",sep=" ")}
+  print(cmd);system(cmd,wait=TRUE)
 }
 
 # SPAdes: Genome/Metagenome assembly.
@@ -421,7 +483,8 @@ seqNR=function(in.fasta=in.fasta,
   cmd="mmseqs convert2fasta clusterDB_rep rep.fasta"
   print(cmd);system(cmd,wait=TRUE)
   
-  # cmd="mmseqs createtsv sequenceDB sequenceDB clusterDB_rep clusters.tsv"
+  cmd="mmseqs createtsv sequenceDB sequenceDB clusterDB clusters.tsv"
+  print(cmd);system(cmd,wait=TRUE)
   setwd(wd)
 }
   
@@ -515,6 +578,58 @@ gffread=function(gff=gff,
   system(paste("rm -r",tmp_dir,sep=" "))
 }
 
+viralVerify=function(in.fna=in.fna,
+                     viralVerify.db="/bucket/BourguignonU/Cong/public_db/virusVerify/nbc_hmms.hmm",
+                     out_dir=out_dir,
+                     threads=threads){
+  if (!dir.exists(out_dir)){dir.create(out_dir)}
+  cmd=paste("viralverify",
+            "-f",in.fna,
+            "-o",out_dir,
+            "--hmm",viralVerify.db,
+            "-t",threads,
+            "-p",
+            sep=" ")
+  print(cmd);system(cmd,wait=T)
+}
+
+metabat=function(in.fna=in.fna,
+                 bam.lst=bam.lst, # space-lst
+                 threads=threads,
+                 out_dir=out_dir){
+  wd=getwd()
+  
+  if (!dir.exists(out_dir)){dir.create(out_dir)}
+  setwd(out_dir)
+  cmd=paste("runMetaBat.sh",
+            "-t",as.character(threads),
+            "--saveCls --noBinOut",
+            in.fna,bam.lst,
+            sep=" ")
+  print(cmd);system(cmd,wait=T)
+  setwd(wd)
+}
+
+# Barrnap: rRNA
+barrnap=function(in.fna=in.fna,
+                 kingdom="bac", # Kingdom: bac euk arc mito (default 'bac')
+                 threads=threads, 
+                 out.gff3=out.gff3,
+                 out.fna=out.fna){
+  cmd=paste("barrnap",
+            "--kingdom",kingdom,
+            "--threads",as.character(threads),
+            "--outseq",out.fna,
+            in.fna,">",
+            out.gff3,
+            sep=" ")
+  print(cmd);system(cmd,wait=TRUE)
+  
+  cmd=paste("grep -v partial ",out.gff3," > ",dirname(out.gff3),"/filtered_",basename(out.gff3),sep="")
+  print(cmd);system(cmd,wait=TRUE)
+}
+
+
 # prodigal for metagenome
 # Dependencies: seqkit, prodigal, parallel (R)
 prodigal.meta=function(fna=fna,
@@ -539,14 +654,18 @@ prodigal.meta=function(fna=fna,
               cmd=paste("prodigal",
                         "-i",fna.i,
                         "-o",paste(fna.i,".prodigal",sep=""),
+                        "-a",paste(fna.i,".prodigal.faa",sep=""),
+                        "-d",paste(fna.i,".prodigal.fna",sep=""),
                         "-p meta -f gff",sep=" ")
               system(cmd,wait=TRUE)
             })
   prodigal=system(paste("ls ",out_prefix,"_tmp/*.prodigal",sep=""),intern=TRUE)
   for (i in prodigal){
     system(paste("cat ",i," >> ",out_prefix,".prodigal.gff3",sep=""))
+    system(paste("cat ",i,".faa"," >> ",out_prefix,".prodigal.faa",sep=""))
+    system(paste("cat ",i,".fna"," >> ",out_prefix,".prodigal.fna",sep=""))
   }
-  system(paste("rm -r ",out_prefix,"_tmp",sep=""))
+  #system(paste("rm -r ",out_prefix,"_tmp",sep=""))
 }
 
 # cds to pep
@@ -603,8 +722,8 @@ diamond_p_megan=function(query.faa=query.faa,
 # DNA-protein search by DIAMOND and assign to taxa by MEGAN
 # Dependencies: DIAMOND
 diamond_d_megan=function(query.fna=query.fna,
-                         diamond.db=diamond.db, # nr
-                         megan.db=megan.db,
+                         diamond.db="/bucket/BourguignonU/Cong/public_db/ncbi.blastdb_20250610/nr.dmdb.dmnd", # nr
+                         megan.db="/bucket/BourguignonU/Cong/public_db/megan.db/megan-nr-r2.mdb",
                          geneticCode=1, # https://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi
                          out_prefix=out_prefix,
                          threads=threads){
@@ -614,6 +733,7 @@ diamond_d_megan=function(query.fna=query.fna,
             "-d",diamond.db,
             "-q",query.fna,
             "--outfmt 100",
+            "--range-culling -k 25 -F 15",
             "--query-gencode",as.character(geneticCode),
             "--out",paste(out_prefix,".blast.daa",sep=""),
             sep=" ")

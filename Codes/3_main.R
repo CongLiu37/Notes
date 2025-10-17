@@ -1,5 +1,18 @@
 # Genome assembly
 
+nanoplot=function(fastq=fastq,
+                  threads=threads,
+                  output_prefix){
+  cmd=paste("NanoPlot",
+            "-t",as.character(threads),
+            "--prefix",output_prefix,
+            "--tsv_stats",
+            "--fastq",fastq,
+            sep=" ")
+ print(cmd);system(cmd,wait=TRUE)
+}
+
+
 # Check quality of fastq file.
 # Dependencies: FastQC
 QualityCheck=function(fq1=fq1, # Input fq file.

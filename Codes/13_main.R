@@ -375,6 +375,10 @@ phyloP_features=function(maf_for_phyloP=maf_for_phyloP, # dir for maf files, e.g
       system(cmd,wait=TRUE)
       cmd=paste("touch",stick,sep=" ")
       system(cmd,wait=TRUE)
+      # fields of phyloP output
+      # chr	start	end	name	null_scale	alt_scale	alt_subscale	lnlratio	pval
+      # if no tree partition
+      # #chr	start	end	name	scale	lnlratio	pval
     }
   }
   
@@ -397,15 +401,29 @@ phyloP_features=function(maf_for_phyloP=maf_for_phyloP, # dir for maf files, e.g
   out.lst=paste(out_prefix,"/",contig.lst,".mafDuplicateFilter_phyloP.feature.out",sep="")
   out.lst=out.lst[file.exists(out.lst)]
   all.out=paste(out_prefix,"_phyloP.feature.out",sep="")
-  for (o in out.lst){
-    cmd=paste("cat",o," | awk -F '\t' -v OFS='\t' '{if ($9~/^0/) print $0,\"con\"; else if ($9~/^-0/) print $0,\"acc\"}' >>",
-              all.out,sep=" ")
-    system(cmd,wait=TRUE)
+  
+  if (is.na(test_branches) & is.na(test_subtree)){
+    for (o in out.lst){
+      cmd=paste("cat",o," | awk -F '\t' -v OFS='\t' '{if ($7~/^0/) print $0,\"con\"; else if ($7~/^-0/) print $0,\"acc\"}' >>",
+                all.out,sep=" ")
+      system(cmd,wait=TRUE)
+    }
+    all.out=read.table(all.out,sep="\t",header=FALSE,quote="")
+    all.out[all.out$V8=="acc" & all.out$V7==0 ,"V7"]=-1e-10
+    all.out[all.out$V8=="con" & all.out$V7==0 ,"V7"]=1e-10
+  }else{
+    for (o in out.lst){
+      cmd=paste("cat",o," | awk -F '\t' -v OFS='\t' '{if ($9~/^0/) print $0,\"con\"; else if ($9~/^-0/) print $0,\"acc\"}' >>",
+                all.out,sep=" ")
+      system(cmd,wait=TRUE)
+    }
+    
+    all.out=read.table(all.out,sep="\t",header=FALSE,quote="")
+    all.out[all.out$V10=="acc" & all.out$V9==0 ,"V9"]=-1e-10
+    all.out[all.out$V10=="con" & all.out$V9==0 ,"V9"]=1e-10
   }
   
-  all.out=read.table(all.out,sep="\t",header=FALSE,quote="")
-  all.out[all.out$V10=="acc" & all.out$V9==0 ,"V9"]=-1e-10
-  all.out[all.out$V10=="con" & all.out$V9==0 ,"V9"]=1e-10
+  
   write.table(all.out,paste(out_prefix,"_phyloP.feature.out",sep=""),
               sep="\t",row.names=FALSE,col.names=FALSE,quote=FALSE)
   # cmd=paste("awk -F '\t' -v OFS='\t'",
